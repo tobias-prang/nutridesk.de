@@ -299,3 +299,27 @@ CREATE TABLE IF NOT EXISTS logs (
   KEY idx_logs_level (level),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
+
+-- Notgroschen (Emergency Fund) + Kredit-Sondertilgungen (2026-07-14)
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS emergency_fund DECIMAL(12,2) NOT NULL DEFAULT 0;
+CREATE TABLE IF NOT EXISTS emergency_log (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT UNSIGNED NOT NULL,
+  delta         DECIMAL(12,2) NOT NULL,
+  note          VARCHAR(200) NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_emlog_user (user_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+CREATE TABLE IF NOT EXISTS loan_payments (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT UNSIGNED NOT NULL,
+  loan_id       INT UNSIGNED NOT NULL,
+  amount        DECIMAL(10,2) NOT NULL,
+  note          VARCHAR(200) NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_lp_user (user_id),
+  KEY idx_lp_loan (loan_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+) ENGINE=InnoDB;

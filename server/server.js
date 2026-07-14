@@ -959,6 +959,59 @@ for (const [route, cfg] of Object.entries(RESOURCES)) {
   }));
 }
 
+// ---------- Kredit-Sondertilgung: reduziert die Restschuld atomar und protokolliert die Zahlung ----------
+const loanPayLimit = rateLimitUser('rw:loanpay', 120, 60000);
+app.get('/loans/:id/payments', auth, asyncRoute(async (req, res) => {
+  const [[loan]] = await pool.execute('SELECT id FROM loans WHERE id = ? AND user_id = ?', [req.params.id, req.uid]);
+  if (!loan) return res.status(404).json({ error: 'Nicht gefunden' });
+  const [rows] = await pool.execute('SELECT * FROM loan_payments WHERE loan_id = ? AND user_id = ? ORDER BY id DESC LIMIT 200', [req.params.id, req.uid]);
+  res.json(rows);
+}));
+app.post('/loans/:id/payment', auth, loanPayLimit, asyncRoute(async (req, res) => {
+  const amount = vNum(req.body.amount, 'Betrag', 0.01, 99999999);
+  const note = req.body.note !== undefined ? vStr(req.body.note, 'Notiz', 200, { optional: true }) : null;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[loan]] = await conn.execute('SELECT * FROM loans WHERE id = ? AND user_id = ? FOR UPDATE', [req.params.id, req.uid]);
+    if (!loan) { await conn.rollback(); return res.status(404).json({ error: 'Nicht gefunden' }); }
+    const newBalance = Math.max(0, Math.round((Number(loan.balance) - amount) * 100) / 100);
+    await conn.execute('UPDATE loans SET balance = ? WHERE id = ?', [newBalance, loan.id]);
+    await conn.execute('INSERT INTO loan_payments (user_id, loan_id, amount, note) VALUES (?, ?, ?, ?)', [req.uid, loan.id, amount, note]);
+    await conn.commit();
+    const [[row]] = await pool.execute('SELECT * FROM loans WHERE id = ?', [loan.id]);
+    res.json({ loan: row });
+  } catch (e) { try { await conn.rollback(); } catch (_) {} throw e; } finally { conn.release(); }
+}));
+
+// ---------- Notgroschen: einfacher Sparstand mit Ein-/Auszahlungen + Verlauf ----------
+const emergencyLimit = rateLimitUser('rw:emergency', 120, 60000);
+app.get('/emergency', auth, asyncRoute(async (req, res) => {
+  const [[s]] = await pool.execute('SELECT emergency_fund FROM user_settings WHERE user_id = ?', [req.uid]);
+  const [log] = await pool.execute('SELECT * FROM emergency_log WHERE user_id = ? ORDER BY id DESC LIMIT 200', [req.uid]);
+  res.json({ total: Number((s && s.emergency_fund) || 0), log });
+}));
+app.post('/emergency', auth, emergencyLimit, asyncRoute(async (req, res) => {
+  const amount = vNum(req.body.amount, 'Betrag', 0.01, 99999999);
+  const kind = vEnum(req.body.kind, 'Art', ['deposit', 'withdraw']);
+  const note = req.body.note !== undefined ? vStr(req.body.note, 'Notiz', 200, { optional: true }) : null;
+  const delta = kind === 'withdraw' ? -amount : amount;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute('INSERT IGNORE INTO user_settings (user_id) VALUES (?)', [req.uid]);
+    const [[s]] = await conn.execute('SELECT emergency_fund FROM user_settings WHERE user_id = ? FOR UPDATE', [req.uid]);
+    const cur = Number((s && s.emergency_fund) || 0);
+    const next = Math.round((cur + delta) * 100) / 100;
+    if (next < 0) { await conn.rollback(); return res.status(400).json({ error: 'So viel ist nicht im Notgroschen.' }); }
+    await conn.execute('UPDATE user_settings SET emergency_fund = ? WHERE user_id = ?', [next, req.uid]);
+    await conn.execute('INSERT INTO emergency_log (user_id, delta, note) VALUES (?, ?, ?)', [req.uid, delta, note]);
+    await conn.commit();
+    const [[entry]] = await pool.execute('SELECT * FROM emergency_log WHERE user_id = ? ORDER BY id DESC LIMIT 1', [req.uid]);
+    res.json({ total: next, entry });
+  } catch (e) { try { await conn.rollback(); } catch (_) {} throw e; } finally { conn.release(); }
+}));
+
 // ---------- Finanzbuch: nicht gebuchte Transaktionen (CSV-/Bank-Import) ----------
 // Der Client parst die CSV lokal (Datenschutz) und schickt normalisierte Zeilen als EINEN Bulk-Request.
 const STAGING_CAP = 5000;
