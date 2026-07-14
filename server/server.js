@@ -1079,6 +1079,17 @@ app.post('/games/quest/claim', auth, asyncRoute(async (req, res) => {
   await pool.execute('UPDATE user_settings SET nutris=?, quest_claimed=1, quest_date=? WHERE user_id=?', [newNut, gToday(), req.uid]);
   res.json({ reward: g.quest.reward, state: gStateObj({ ...g, nutris: newNut, claimed: 1 }) });
 }));
+// Tages-Aktivitätsbonus: einmal pro Tag XP + Nutris fürs App-Nutzen.
+app.post('/games/daily-login', auth, asyncRoute(async (req, res) => {
+  const g = await gEnsure(req.uid);
+  const today = gToday();
+  const [[s]] = await pool.execute('SELECT login_date FROM user_settings WHERE user_id=?', [req.uid]);
+  const last = s && s.login_date ? String(s.login_date).slice(0, 10) : null;
+  if (last === today) return res.json({ granted: false, state: gStateObj(g) });
+  const nutEarn = 10, room = Math.max(0, GAME_XP_CAP - g.xpToday), xp = Math.min(20, room);
+  await pool.execute('UPDATE user_settings SET login_date=?, xp=xp+?, nutris=nutris+?, xp_today=xp_today+?, xp_today_date=? WHERE user_id=?', [today, xp, nutEarn, xp, today, req.uid]);
+  res.json({ granted: true, earned: { xp, nutris: nutEarn }, state: gStateObj({ ...g, xp: g.xp + xp, nutris: g.nutris + nutEarn, xpToday: g.xpToday + xp }) });
+}));
 
 // ---------- Finanzbuch: nicht gebuchte Transaktionen (CSV-/Bank-Import) ----------
 // Der Client parst die CSV lokal (Datenschutz) und schickt normalisierte Zeilen als EINEN Bulk-Request.

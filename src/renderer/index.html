@@ -5568,6 +5568,7 @@ class Component extends DCLogic {
         aiAvail: !(data.aiCooldowns && data.aiCooldowns.available === false),
       });
       if (s.tts_read && Number(s.cloud_tts_enabled) !== 1) this._ensureCloudVoice();
+      this._dailyLogin();
       this.loadBot();
       this.loadNotes();
       this._prefetch();
@@ -6029,6 +6030,7 @@ class Component extends DCLogic {
   commTalk = () => this.setState({ commMode:'talk' });
   commGames = () => { this.setState({ commMode:'games' }); this._loadGames(); };
   _loadGames = async () => { try { const g = await this.api('/games/state'); this.setState({ game: g }); } catch (e) {} };
+  _dailyLogin = async () => { try { const r = await this.api('/games/daily-login', { method:'POST', body:{} }); if (r && r.state) this.setState({ game: r.state }); if (r && r.granted) this._toast('Willkommen zurück! +' + r.earned.xp + ' XP, +' + r.earned.nutris + ' Nutris'); } catch (e) {} };
   claimQuest = async () => { try { const r = await this.api('/games/quest/claim', { method:'POST', body:{} }); this.setState({ game: r.state }); this._toast('+' + r.reward + ' Nutris kassiert!'); } catch (e) { this._toast(e.message); } };
   openShop = () => this.setState({ modal:'shop' });
   _QUIZ = {

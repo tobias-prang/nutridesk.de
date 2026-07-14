@@ -345,3 +345,6 @@ ALTER TABLE users
 
 -- KI-Multi-Chat: Titel pro Session (2026-07-14)
 ALTER TABLE bot_sessions ADD COLUMN IF NOT EXISTS title VARCHAR(120) NULL;
+
+-- Tages-Aktivitaetsbonus (2026-07-14)
+ALTER TABLE user_settings ADD COLUMN IF NOT EXISTS login_date DATE NULL;
