@@ -127,6 +127,10 @@ const cleanAvatar = (a) => (typeof a === 'string' && a.length >= 200 && a.starts
 // Täglich alte Einträge entsorgen, damit die Tabelle nicht unbegrenzt wächst
 setInterval(() => {
   pool.execute("DELETE FROM logs WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)").catch(() => {});
+  // Chat-Verlauf-Retention: alte Bot-Nachrichten (90 Tage) + danach leere/alte Sessions entsorgen.
+  // Das Nutzer-Gedaechtnis (bot_user_memory) bleibt unangetastet, es haengt nicht am Verlauf.
+  pool.execute("DELETE FROM bot_chat WHERE created_at < DATE_SUB(NOW(), INTERVAL 90 DAY)").catch(() => {});
+  pool.execute("DELETE FROM bot_sessions WHERE last_at < DATE_SUB(NOW(), INTERVAL 90 DAY)").catch(() => {});
 }, 24 * 3600 * 1000).unref();
 // Fire-and-forget: ein Fehler beim Loggen darf den eigentlichen Request nie stören.
 function logEvent(level, event, message, opts = {}) {

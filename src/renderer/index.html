@@ -6953,16 +6953,8 @@ class Component extends DCLogic {
   _refreshOpenTicket = async () => {
     const id = this.state.kiTicketId;
     if (!id) return;
-    try {
-      const d = await this.api('/tickets/' + id);
-      const cur = this.state.kiTicket;
-      const oldN = (cur && cur.messages) ? cur.messages.length : 0;
-      const newN = (d && d.messages) ? d.messages.length : 0;
-      this.setState({ kiTicket: d });
-      if (newN > oldN && cur) { this._kiScrollTicket(); }
-    } catch (er) {}
+    try { const d = await this.api('/tickets/' + id); this.setState({ kiTicket: d }); } catch (er) {}
   };
-  _kiScrollTicket = () => { setTimeout(() => { const el = document.querySelector('#nd-ki-scroll') || null; }, 60); };
   kiOpenTicket = async (e) => {
     const id = parseInt(e.currentTarget.dataset.id); if (!id) return;
     this.setState({ kiTicketId: id, kiTicket: null });
