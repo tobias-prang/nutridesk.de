@@ -1,0 +1,19 @@
+// Frühstück, Teil 9. Von Hand geschrieben.
+module.exports = [
+{ n:'Porridge mit Apfel, Walnuss und Zimt', m:'fruh', t:10, ing:[['haferflocken',60],['milch',240],['apfel',100],['walnuesse',15],['zimt',2]], s:['Haferflocken mit Milch cremig kochen.','Apfel unterheben.','Mit Walnüssen und Zimt toppen.'] },
+{ n:'Overnight Oats mit Himbeeren und Kokos', m:'fruh', t:5, mp:1, ing:[['haferflocken',60],['milch',180],['himbeeren',70],['kokosraspel',8],['honig',10]], s:['Haferflocken mit Milch verrühren.','Über Nacht kühlen.','Mit Himbeeren und Kokos toppen.'] },
+{ n:'Skyr-Bowl mit Pfirsich und Mandeln', m:'fruh', t:5, ing:[['skyr',200],['pfirsich',100],['mandeln',15],['granola',30],['honig',8]], s:['Skyr in eine Schale geben.','Pfirsich und Mandeln daraufgeben.','Mit Granola und Honig toppen.'] },
+{ n:'Herzhaftes Frühstücksbrot mit Ei und Avocado', m:'fruh', t:12, ing:[['vollkornbrot',80],['ei',60],['avocado',60],['cherrytomaten',50]], s:['Ei kochen und in Scheiben schneiden.','Avocado auf das Brot streichen.','Mit Ei und Tomaten belegen.'] },
+{ n:'Protein-Pancakes mit Banane und Skyr', m:'fruh', t:18, ing:[['haferflocken',50],['ei',100],['banane',80],['proteinpulver',20],['skyr',60]], s:['Alle Zutaten zum Teig verrühren.','Pancakes backen.','Mit Skyr servieren.'] },
+{ n:'Chia-Pudding mit Mango und Kokos', m:'fruh', t:5, mp:1, ing:[['chiasamen',30],['kokosmilch',110],['milch',90],['mango',90],['kokosraspel',6]], s:['Chia mit Kokosmilch und Milch verrühren.','Über Nacht quellen lassen.','Mit Mango und Kokos toppen.'] },
+{ n:'Rührei mit Champignons und Vollkornbrot', m:'fruh', t:14, ing:[['ei',150],['champignons',70],['schnittlauch',4],['vollkornbrot',60],['butter',8]], s:['Champignons anbraten.','Eier zugeben und cremig stocken lassen.','Mit Brot und Schnittlauch servieren.'] },
+{ n:'Quark mit Beeren, Honig und Leinsamen', m:'fruh', t:5, ing:[['magerquark',200],['heidelbeeren',60],['leinsamen',10],['honig',10],['haferflocken',20]], s:['Quark cremig rühren.','Mit Beeren, Leinsamen und Haferflocken toppen.','Mit Honig süßen.'] },
+{ n:'Bananen-Kakao-Overnight-Oats', m:'fruh', t:5, mp:1, ing:[['haferflocken',60],['milch',180],['banane',80],['kakao',6],['erdnussbutter',12]], s:['Haferflocken mit Milch, Kakao und Banane verrühren.','Über Nacht kühlen.','Mit Erdnussbutter toppen.'] },
+{ n:'Vollkornwaffeln mit Beeren und Ahornsirup', m:'fruh', t:20, ing:[['mehl',60],['ei',60],['milch',110],['heidelbeeren',60],['ahornsirup',15]], s:['Waffelteig anrühren und backen.','Mit Beeren belegen.','Mit Ahornsirup servieren.'] },
+{ n:'Grüner Frühstücks-Smoothie mit Hafer', m:'fruh', t:5, ing:[['spinat',40],['banane',100],['apfel',80],['haferflocken',20],['milch',180]], s:['Alle Zutaten pürieren.','In ein Glas füllen.'] },
+{ n:'Avocado-Ei-Toast mit Feta', m:'fruh', t:12, ing:[['vollkornbrot',80],['avocado',60],['ei',60],['feta',30],['cherrytomaten',40]], s:['Avocado auf das Brot streichen.','Mit Ei und Feta belegen.','Mit Tomaten garnieren.'] },
+{ n:'Milchreis mit Kirschen und Zimt', m:'fruh', t:35, ing:[['reis',75],['milch',300],['kirschen',80],['zimt',2],['honig',10]], s:['Reis in Milch weich kochen.','Kirschen erwärmen.','Mit Zimt und Honig servieren.'] },
+{ n:'Skyr-Beeren-Smoothie mit Haferflocken', m:'fruh', t:5, ing:[['skyr',150],['heidelbeeren',80],['milch',150],['haferflocken',20],['honig',8]], s:['Alle Zutaten cremig pürieren.','In ein Glas füllen.'] },
+{ n:'Frühstücks-Burrito mit Ei und Bohnen', m:'fruh', t:18, ing:[['wrap',90],['ei',100],['kidneybohnen',60],['reibekaese',30],['avocado',40]], s:['Rührei zubereiten.','Wrap mit Ei, Bohnen, Käse und Avocado füllen.','Fest einrollen.'] },
+{ n:'Griechischer Joghurt mit Feige und Walnuss', m:'fruh', t:6, ing:[['griechjoghurt',200],['feige',60],['walnuesse',15],['honig',10]], s:['Joghurt in eine Schale geben.','Feige und Walnüsse daraufgeben.','Mit Honig beträufeln.'] },
+];

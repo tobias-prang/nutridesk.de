@@ -1,0 +1,21 @@
+// Frühstück & Smoothies, Teil 8. Von Hand geschrieben.
+module.exports = [
+{ n:'Green-Protein-Smoothie mit Spinat', m:'fruh', t:5, ing:[['spinat',40],['banane',100],['proteinpulver',25],['mandelmilch',220],['erdnussbutter',10]], s:['Alle Zutaten in den Mixer geben.','Cremig pürieren.','In ein Glas füllen.'] },
+{ n:'Beeren-Mandel-Smoothie', m:'fruh', t:5, ing:[['heidelbeeren',80],['himbeeren',60],['mandelmilch',200],['haferflocken',20],['honig',8]], s:['Alle Zutaten pürieren.','In ein Glas füllen.'] },
+{ n:'Mango-Kurkuma-Smoothie', m:'fruh', t:5, ing:[['mango',120],['banane',80],['mandelmilch',200],['kurkuma2',1],['ingwer',4]], s:['Alle Zutaten pürieren.','Mit Kurkuma und Ingwer verfeinern.','In ein Glas füllen.'] },
+{ n:'Overnight Oats mit Cranberries und Nuss', m:'fruh', t:5, mp:1, ing:[['haferflocken',60],['milch',180],['cranberries',20],['walnuesse',15],['honig',10]], s:['Haferflocken mit Milch verrühren.','Über Nacht kühlen.','Mit Cranberries und Walnüssen toppen.'] },
+{ n:'Herzhafte Frühstücks-Frittata mit Kartoffeln', m:'fruh', t:25, ing:[['ei',150],['kartoffeln',120],['paprika',60],['reibekaese',30],['schnittlauch',4]], s:['Kartoffeln und Paprika anbraten.','Mit Eiern übergießen und Käse bestreuen.','Stocken lassen.'] },
+{ n:'Skyr-Bowl mit Apfel und Zimt', m:'fruh', t:5, ing:[['skyr',200],['apfel',90],['zimt',2],['granola',30],['honig',8]], s:['Skyr in eine Schale geben.','Apfel würfeln und mit Zimt daraufgeben.','Mit Granola und Honig toppen.'] },
+{ n:'Protein-Porridge mit Banane und Kakao', m:'fruh', t:10, ing:[['haferflocken',60],['milch',240],['proteinpulver',25],['banane',80],['kakao',6]], s:['Haferflocken mit Milch cremig kochen.','Proteinpulver und Kakao einrühren.','Mit Banane toppen.'] },
+{ n:'Vollkorntoast mit Ei und Avocado', m:'fruh', t:12, ing:[['toastbrot',80],['ei',100],['avocado',60],['cherrytomaten',50]], s:['Ei kochen und in Scheiben schneiden.','Avocado auf den Toast streichen.','Mit Ei und Tomaten belegen.'] },
+{ n:'Chia-Pudding mit Beeren und Kokos', m:'fruh', t:5, mp:1, ing:[['chiasamen',30],['kokosmilch',110],['milch',90],['heidelbeeren',60],['kokosraspel',6]], s:['Chia mit Kokosmilch und Milch verrühren.','Über Nacht quellen lassen.','Mit Beeren und Kokos toppen.'] },
+{ n:'Erdnussbutter-Bananen-Smoothie', m:'fruh', t:5, ing:[['banane',120],['erdnussbutter',18],['milch',220],['haferflocken',20]], s:['Alle Zutaten pürieren.','In ein Glas füllen.'] },
+{ n:'Bircher Müsli mit Cranberries', m:'fruh', t:5, mp:1, ing:[['haferflocken',50],['milch',150],['naturjoghurt',80],['apfel',90],['cranberries',20]], s:['Haferflocken mit Milch und Joghurt mischen.','Apfel raspeln und unterheben.','Über Nacht ziehen lassen, mit Cranberries toppen.'] },
+{ n:'Rührei mit Tomaten und Schnittlauch', m:'fruh', t:12, ing:[['ei',150],['tomaten',80],['schnittlauch',4],['vollkornbrot',60],['butter',8]], s:['Tomaten kurz anbraten.','Eier zugeben und stocken lassen.','Mit Schnittlauch und Brot servieren.'] },
+{ n:'Quark-Beeren-Bowl mit Leinsamen', m:'fruh', t:5, ing:[['magerquark',200],['heidelbeeren',60],['leinsamen',10],['honig',10],['haferflocken',20]], s:['Quark cremig rühren.','Mit Beeren, Leinsamen und Haferflocken toppen.','Mit Honig süßen.'] },
+{ n:'Pancakes mit Banane und Beeren', m:'fruh', t:18, ing:[['mehl',60],['ei',60],['milch',110],['banane',70],['heidelbeeren',50]], s:['Teig aus Mehl, Ei und Milch anrühren.','Pancakes backen.','Mit Banane und Beeren servieren.'] },
+{ n:'Grießbrei mit Zimt und Apfel', m:'fruh', t:12, ing:[['griess',50],['milch',250],['apfel',90],['zimt',2],['honig',10]], s:['Milch aufkochen, Grieß einrühren.','Andicken lassen.','Mit Apfel, Zimt und Honig servieren.'] },
+{ n:'Avocado-Ei-Bowl mit Vollkornbrot', m:'fruh', t:14, ing:[['avocado',80],['ei',100],['cherrytomaten',60],['vollkornbrot',50],['zitrone',6]], s:['Eier kochen.','Avocado mit Zitrone zerdrücken.','Mit Tomaten und Brot anrichten.'] },
+{ n:'Kokos-Chia-Smoothie mit Ananas', m:'fruh', t:5, ing:[['ananas',100],['banane',80],['kokosmilch',80],['milch',120],['chiasamen',10]], s:['Alle Zutaten pürieren.','Kurz quellen lassen.','In ein Glas füllen.'] },
+{ n:'Haferflocken-Waffeln mit Beeren', m:'fruh', t:20, ing:[['haferflocken',60],['ei',60],['banane',70],['milch',60],['heidelbeeren',50]], s:['Alle Zutaten zum Teig mixen.','Im Waffeleisen backen.','Mit Beeren servieren.'] },
+];

@@ -1,0 +1,19 @@
+// Party & Fingerfood. Von Hand geschrieben.
+module.exports = [
+{ n:'Mini-Frikadellen mit Senfdip', m:'snack', t:25, ing:[['hackrind',130],['semmelbroesel',20],['ei',30],['senf',12],['naturjoghurt',40],['schnittlauch',3]], s:['Mini-Frikadellen formen und braten.','Senf-Joghurt-Dip anrühren.','Zusammen servieren.'] },
+{ n:'Blätterteig-Würstchen im Schlafrock', m:'snack', t:25, ing:[['blaetterteig',100],['wiener',100],['senf',10],['ei',20],['sesam',4]], s:['Würstchen in Blätterteig wickeln.','Mit Ei bestreichen und Sesam bestreuen.','Goldbraun backen.'] },
+{ n:'Gefüllte Datteln im Speckmantel', m:'snack', t:20, ing:[['datteln',80],['bacon',40],['frischkaese',40],['walnuesse',15]], s:['Datteln mit Frischkäse und Walnuss füllen.','In Speck wickeln.','Im Ofen knusprig backen.'] },
+{ n:'Tomate-Mozzarella-Spieße mit Pesto', m:'snack', t:10, ing:[['cherrytomaten',100],['mozzarella',100],['pesto',20],['basilikum',5]], s:['Tomate und Mozzarella aufspießen.','Mit Pesto beträufeln.','Mit Basilikum garnieren.'] },
+{ n:'Käse-Trauben-Igel', m:'snack', t:12, ing:[['bergkaese',100],['weintrauben',80],['gewuerzgurke',40],['oliven',30]], s:['Käse und Trauben würfeln.','Auf Spieße stecken.','Mit Gurke und Oliven anrichten.'] },
+{ n:'Hackbällchen in süß-saurer Sauce', m:'snack', t:30, ing:[['hackrind',140],['semmelbroesel',20],['ei',30],['ananas',50],['tomatenmark',15],['essig',8]], s:['Bällchen formen und braten.','Süß-saure Sauce köcheln.','Bällchen darin schwenken.'] },
+{ n:'Feta-Wassermelonen-Spieße mit Minze', m:'snack', t:10, ing:[['wassermelone',150],['feta',80],['minze',4],['olivenoel',8],['balsamico',6]], s:['Melone und Feta würfeln.','Aufspießen.','Mit Minze und Balsamico servieren.'] },
+{ n:'Ofen-Hähnchenspieße mit Erdnussdip', m:'snack', t:28, ing:[['haehnchen',150],['erdnussbutter',25],['sojasauce',10],['kokosmilch',40],['limette',6]], s:['Hähnchen auf Spieße stecken und garen.','Erdnussdip anrühren.','Zusammen servieren.'] },
+{ n:'Bruschetta mit Tomate und Knoblauch', m:'snack', t:15, ing:[['baguette',100],['tomaten',100],['knoblauch',6],['basilikum',5],['olivenoel',12]], s:['Baguette rösten.','Tomatenwürfel mit Knoblauch und Öl mischen.','Auf das Brot geben.'] },
+{ n:'Blätterteigschnecken mit Schinken und Käse', m:'snack', t:25, ing:[['blaetterteig',110],['kochschinken',50],['reibekaese',50],['ei',20]], s:['Blätterteig belegen und aufrollen.','In Scheiben schneiden.','Goldbraun backen.'] },
+{ n:'Gemüsesticks mit Avocado-Limetten-Dip', m:'snack', t:12, ing:[['moehren',80],['paprika',70],['gurke',80],['avocado',80],['limette',8],['koriandergruen',4]], s:['Gemüse in Sticks schneiden.','Avocado-Limetten-Dip anrühren.','Zusammen servieren.'] },
+{ n:'Mozzarella-Bällchen mit Tomatendip', m:'snack', t:22, ing:[['mozzarella',100],['semmelbroesel',30],['ei',40],['mehl',15],['passata',60]], s:['Mozzarella panieren.','Knusprig ausbacken.','Mit Tomatendip servieren.'] },
+{ n:'Lachs-Frischkäse-Röllchen', m:'snack', t:12, ing:[['raeucherlachs',80],['frischkaese',60],['gurke',50],['dill',3],['zitrone',6]], s:['Lachs mit Frischkäse bestreichen.','Gurke einrollen.','In Stücke schneiden.'] },
+{ n:'Ofenkartoffel-Spalten mit Sour Cream', m:'snack', t:35, ing:[['kartoffeln',250],['paprikapulver',3],['olivenoel',12],['schmand',60],['schnittlauch',4]], s:['Kartoffelspalten würzen und backen.','Sour Cream anrühren.','Zusammen servieren.'] },
+{ n:'Pikante Käse-Muffins mit Speck', m:'snack', t:30, ing:[['mehl',80],['ei',100],['milch',80],['reibekaese',60],['bacon',40],['backpulver',4]], s:['Teig mit Käse und Speck anrühren.','In Muffinformen füllen.','Backen.'] },
+{ n:'Antipasti-Spieße mit Oliven und Feta', m:'snack', t:12, ing:[['feta',80],['oliven',40],['cherrytomaten',60],['paprika',50],['olivenoel',10]], s:['Feta, Oliven, Tomaten und Paprika würfeln.','Aufspießen.','Mit Öl beträufeln.'] },
+];

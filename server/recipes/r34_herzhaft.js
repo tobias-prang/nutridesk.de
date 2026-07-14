@@ -1,0 +1,22 @@
+// Herzhafte Klassiker, Teil 2. Von Hand geschrieben.
+module.exports = [
+{ n:'Schinken-Käse-Toast mit Ei', m:'mittag', t:15, ing:[['toastbrot',80],['kochschinken',40],['gouda',40],['ei',60]], s:['Toast mit Schinken und Käse belegen.','Überbacken.','Mit Spiegelei toppen.'] },
+{ n:'Strammer Max', m:'mittag', t:15, ing:[['vollkornbrot',80],['kochschinken',50],['ei',60],['butter',8]], s:['Brot buttern und mit Schinken belegen.','Spiegelei braten.','Auf das Brot setzen.'] },
+{ n:'Käsespätzle mit Salat', m:'abend', t:30, ing:[['spaetzle',200],['gouda',60],['zwiebel',60],['salat',60],['butter',12]], s:['Zwiebeln in Butter rösten.','Spätzle mit Käse schichten.','Mit Salat servieren.'] },
+{ n:'Bratwurst mit Kartoffelpüree und Zwiebelsauce', m:'abend', t:30, ing:[['bratwurst',150],['kartoffelpueree',200],['zwiebel',60],['kochsahne',40]], s:['Bratwürste braten.','Zwiebeln anbraten und mit Sahne zur Sauce köcheln.','Mit Kartoffelpüree servieren.'] },
+{ n:'Frikadellen-Brötchen mit Senf', m:'mittag', t:25, ing:[['broetchen',90],['hackgemischt',120],['ei',20],['senf',10],['gewuerzgurke',20]], s:['Frikadelle braten.','Brötchen mit Senf bestreichen.','Mit Frikadelle und Gurke belegen.'] },
+{ n:'Kässpätzle-Auflauf', m:'abend', t:40, mp:1, ing:[['spaetzle',200],['gouda',70],['zwiebel',60],['kochsahne',60]], s:['Spätzle mit Käse und Zwiebeln schichten.','Mit Sahne übergießen.','Überbacken.'] },
+{ n:'Leberkäse-Burger', m:'abend', t:20, ing:[['burgerbun',90],['leberkaese',120],['ei',50],['gewuerzgurke',20],['senf',10]], s:['Leberkäse und Spiegelei braten.','Bun mit Senf bestreichen.','Belegen.'] },
+{ n:'Currywurst-Pfanne mit Reis', m:'mittag', t:20, ing:[['bratwurst',140],['reis',160],['passata',80],['currypul',3],['zwiebel',40]], s:['Wurst braten und in Scheiben schneiden.','Passata mit Curry würzen.','Mit Reis servieren.'] },
+{ n:'Deftiger Nudelauflauf mit Wurst', m:'abend', t:45, mp:1, ing:[['nudeln',160],['wiener',80],['passata',140],['reibekaese',50],['erbsen',50]], s:['Nudeln vorkochen.','Mit Wurst, Erbsen und Passata in eine Form geben.','Mit Käse überbacken.'] },
+{ n:'Käse-Lauch-Suppe mit Hack', m:'abend', t:35, mp:1, ing:[['hackgemischt',120],['lauch',100],['kochsahne',80],['reibekaese',50],['bruehe',350]], s:['Hack anbraten, Lauch zugeben.','Mit Brühe und Sahne köcheln.','Käse einrühren, bis er schmilzt.'] },
+{ n:'Hacktaschen mit Salat', m:'abend', t:35, mp:1, ing:[['wrap',100],['hackgemischt',120],['reibekaese',40],['zwiebel',40],['salat',50]], s:['Hack mit Zwiebel anbraten.','In Teigtaschen füllen und backen.','Mit Salat servieren.'] },
+{ n:'Schweinegeschnetzeltes mit Reis', m:'mittag', t:28, mp:1, ing:[['schweinefilet',150],['champignons',80],['kochsahne',90],['reis',160],['zwiebel',40]], s:['Fleisch anbraten.','Pilze und Zwiebel zugeben, mit Sahne köcheln.','Mit Reis servieren.'] },
+{ n:'Wurstgulasch mit Nudeln', m:'abend', t:30, mp:1, ing:[['wiener',100],['nudeln',180],['passata',120],['paprika',60],['zwiebel',40]], s:['Wurst und Zwiebel anbraten.','Paprika und Passata zugeben.','Mit Nudeln servieren.'] },
+{ n:'Käsebrötchen überbacken mit Schinken', m:'mittag', t:18, ing:[['broetchen',100],['gouda',50],['kochschinken',40],['tomaten',40]], s:['Brötchen halbieren und belegen.','Mit Käse überbacken.','Mit Tomate servieren.'] },
+{ n:'Bauernfrühstück deftig', m:'mittag', t:25, ing:[['kartoffeln',180],['ei',100],['bacon',40],['zwiebel',40],['schnittlauch',4]], s:['Kartoffeln und Speck anbraten.','Eier zugeben und stocken lassen.','Mit Schnittlauch bestreuen.'] },
+{ n:'Fleischkäse mit Bratkartoffeln', m:'abend', t:30, ing:[['leberkaese',130],['kartoffeln',200],['zwiebel',40],['olivenoel',10]], s:['Fleischkäse braten.','Kartoffeln mit Zwiebel zu Bratkartoffeln braten.','Zusammen servieren.'] },
+{ n:'Nudelpfanne mit Kochschinken und Erbsen', m:'mittag', t:20, mp:1, ing:[['nudeln',180],['kochschinken',60],['erbsen',60],['kochsahne',80],['parmesan',20]], s:['Schinken und Erbsen anbraten.','Sahne zugeben und erwärmen.','Mit Nudeln und Parmesan mischen.'] },
+{ n:'Deftige Linsensuppe mit Speck', m:'abend', t:40, mp:1, ing:[['linsen',150],['kartoffeln',120],['bacon',40],['moehren',60],['bruehe',350]], s:['Speck und Möhre anbraten.','Linsen, Kartoffeln und Brühe zugeben.','Weich köcheln.'] },
+{ n:'Schnitzel-Sandwich', m:'mittag', t:25, ing:[['broetchen',90],['schweineschnitzel',120],['salat',30],['tomaten',40],['mayo',15]], s:['Schnitzel panieren und braten.','Brötchen mit Mayo bestreichen.','Mit Schnitzel, Salat und Tomate belegen.'] },
+];

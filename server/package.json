@@ -1,0 +1,23 @@
+{
+  "name": "nutridesk-api",
+  "version": "0.1.0",
+  "description": "NutriDesk REST-API (Tauri-App <-> MariaDB)",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "content-disposition": "0.5.4",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "fints": "^0.5.0",
+    "ipaddr.js": "2.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.2.0",
+    "mysql2": "^3.11.0",
+    "sharp": "0.33.5",
+    "yauzl": "3.4.0"
+  }
+}

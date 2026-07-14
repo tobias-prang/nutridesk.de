@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NutriDesk · Finanzen (Umbau)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --acc:#a3e635; --acc-l:#bef264; --acc-mate:#2dd4bf; --acc-bg:rgba(163,230,53,.10); --acc-bd:rgba(163,230,53,.25);
+    --bg:#0f1117; --bg2:#0b0d13; --panel:#141824; --chip:#1b2130; --track:#1e2431;
+    --line:#212836; --line2:#232b39; --line3:#2a3242;
+    --ink:#e8ecf2; --ink2:#c7cedb; --ink3:#8b93a3; --mut:#5b6472; --mut2:#3f4658;
+    --wchip:rgba(255,255,255,.04); --cardbd:#212836; --cardsh:none;
+    --pos:#a3e635; --neg:#f87171; --warn:#fbbf24; --violet:#a78bfa; --orange:#fb923c;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);color:var(--ink);font-family:'Space Grotesk','Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-thumb{background:var(--line2);border-radius:6px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  svg.ic{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;display:block;}
+  .app{display:flex;width:100%;min-height:100vh;}
+  /* sidebar rail */
+  .rail{width:74px;flex:0 0 auto;background:var(--bg2);border-right:1px solid var(--chip);display:flex;flex-direction:column;align-items:center;padding:18px 0;gap:9px;position:sticky;top:0;height:100vh;z-index:30;}
+  .rail .logo{width:38px;height:38px;border-radius:12px;background:linear-gradient(135deg,var(--acc-l),var(--acc-mate));display:flex;align-items:center;justify-content:center;color:#0f1117;margin-bottom:8px;}
+  .rail .ri{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mut);transition:.15s;}
+  .rail .ri:hover{box-shadow:inset 0 0 0 999px var(--wchip);color:var(--ink2);}
+  .rail .ri.active{color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-bd);}
+  .rail .ri svg{width:22px;height:22px;}
+  /* main */
+  .main{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;}
+  .topbar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--chip);}
+  .topbar .head{display:flex;align-items:center;justify-content:space-between;padding:20px 30px 4px;gap:14px;flex-wrap:wrap;}
+  .topbar h1{font-size:23px;font-weight:700;margin:0;letter-spacing:-.01em;}
+  .topbar .sub{font-size:13px;color:var(--ink3);margin-top:4px;font-weight:500;}
+  .chippill{display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:11px;background:var(--panel);border:1px solid var(--line2);}
+  .chippill svg{width:15px;height:15px;}
+  .chippill .mono{font-size:13px;font-weight:600;}
+  .chippill span.lbl{font-size:12.5px;color:var(--ink3);}
+  .tabs{display:flex;align-items:center;gap:8px;padding:12px 30px 14px;flex-wrap:wrap;}
+  .tab{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--ink3);background:transparent;border:1px solid transparent;transition:.15s;}
+  .tab svg{width:16px;height:16px;}
+  .tab:hover{box-shadow:inset 0 0 0 999px var(--wchip);color:var(--ink2);}
+  .tab.active{color:var(--acc);background:var(--acc-bg);border-color:var(--acc-bd);}
+  .screen{padding:26px 30px 60px;max-width:1340px;margin:0 auto;width:100%;}
+  .screen[hidden]{display:none;}
+  /* generic */
+  .card{background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;}
+  .card.r16{border-radius:16px;padding:18px 20px;}
+  .sechead{display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;}
+  .sechead .kicker{font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;}
+  .sechead .rule{flex:1 1 auto;height:1px;background:var(--line2);}
+  .secsub{font-size:13px;color:var(--ink3);font-weight:500;}
+  .btn-acc{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;border:none;flex:0 0 auto;font-family:inherit;}
+  .btn-acc:hover{opacity:.9;}
+  .btn-acc svg{width:16px;height:16px;}
+  .btn-ghost{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:12px;cursor:pointer;background:transparent;font-family:inherit;}
+  .btn-ghost:hover{background:var(--chip);}
+  .btn-ghost svg{width:13px;height:13px;}
+  .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;}
+  .grid2{display:grid;grid-template-columns:1.55fr 1fr;gap:16px;margin-bottom:16px;}
+  .icotile{width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);}
+  .icotile svg{width:19px;height:19px;}
+  .icotile.chip{background:var(--chip);border:none;color:var(--ink3);}
+  .icotile.sm{width:34px;height:34px;border-radius:10px;}
+  .icotile.sm svg{width:16px;height:16px;}
+  .iconbtn{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;}
+  .iconbtn:hover{color:var(--acc);background:var(--chip);}
+  .iconbtn.del:hover{color:var(--neg);}
+  .iconbtn svg{width:14px;height:14px;}
+  .catchip{font-size:10px;font-weight:600;color:var(--ink3);background:var(--chip);padding:2px 8px;border-radius:6px;flex:0 0 auto;}
+  .track{height:8px;border-radius:5px;background:var(--track);overflow:hidden;}
+  .track > div{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc-mate));}
+  .segbox{display:flex;gap:4px;background:var(--panel);border:1px solid var(--cardbd);border-radius:12px;padding:4px;flex:0 0 auto;}
+  .seg{padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink3);background:transparent;transition:.15s;}
+  .seg:hover{box-shadow:inset 0 0 0 999px var(--wchip);}
+  .seg.active{color:var(--acc);background:var(--acc-bg);}
+  .searchbar{flex:1 1 260px;display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--cardbd);border-radius:11px;padding:10px 14px;}
+  .searchbar svg{width:16px;height:16px;color:var(--mut);flex:0 0 auto;}
+  .searchbar input{flex:1 1 auto;background:transparent;border:none;outline:none;color:var(--ink);font-size:13.5px;font-family:inherit;min-width:0;}
+  .pos{color:var(--pos);} .neg{color:var(--neg);} .warn{color:var(--warn);}
+  .cardtitle{font-size:15px;font-weight:700;}
+  .mut{color:var(--ink3);}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-salad" viewBox="0 0 24 24"><path d="M7 21h10"/><path d="M12 21a9 9 0 0 0 9-9H3a9 9 0 0 0 9 9Z"/><path d="M11.38 12a2.4 2.4 0 0 1-.4-4.77 2.4 2.4 0 0 1 3.2-2.77 2.4 2.4 0 0 1 3.47-.63 2.4 2.4 0 0 1 3.37 3.37 2.4 2.4 0 0 1-1.1 3.7"/><path d="m13 12 4-4"/></symbol>
+    <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.94 15.5A2 2 0 0 0 8.5 14.06l-6.14-1.58a.5.5 0 0 1 0-.96L8.5 9.94A2 2 0 0 0 9.94 8.5l1.58-6.14a.5.5 0 0 1 .96 0L14.06 8.5A2 2 0 0 0 15.5 9.94l6.14 1.58a.5.5 0 0 1 0 .96L15.5 14.06a2 2 0 0 0-1.44 1.44l-1.58 6.14a.5.5 0 0 1-.96 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="M8 11h8"/></symbol>
+    <symbol id="i-updown" viewBox="0 0 24 24"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="m21 8-4-4-4 4"/><path d="M17 4v16"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+    <symbol id="i-piggy" viewBox="0 0 24 24"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M16 10h.01"/><path d="M2 8v1a2 2 0 0 0 2 2h1"/></symbol>
+    <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+    <symbol id="i-cleft" viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-cright" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+    <symbol id="i-repeat" viewBox="0 0 24 24"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></symbol>
+    <symbol id="i-landmark" viewBox="0 0 24 24"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></symbol>
+    <symbol id="i-tv" viewBox="0 0 24 24"><rect width="20" height="15" x="2" y="7" rx="2"/><polyline points="17 2 12 7 7 2"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><rect width="14" height="20" x="5" y="2" rx="2"/><path d="M12 18h.01"/></symbol>
+    <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="m6.5 6.5 11 11"/><path d="m21 21-1-1"/><path d="m3 3 1 1"/><path d="m18 22 4-4"/><path d="m2 6 4-4"/><path d="m3 10 7-7"/><path d="m14 21 7-7"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+    <symbol id="i-flame" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+    <symbol id="i-calx" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="m14 14-4 4"/><path d="m10 14 4 4"/></symbol>
+    <symbol id="i-zap" viewBox="0 0 24 24"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></symbol>
+    <symbol id="i-flag" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></symbol>
+    <symbol id="i-gem" viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 13L2 9Z"/><path d="M11 3 8 9l4 13 4-13-3-6"/><path d="M2 9h20"/></symbol>
+    <symbol id="i-briefcase" viewBox="0 0 24 24"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/></symbol>
+    <symbol id="i-calc" viewBox="0 0 24 24"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></symbol>
+    <symbol id="i-percent" viewBox="0 0 24 24"><line x1="19" x2="5" y1="5" y2="19"/><circle cx="6.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="17.5" r="2.5"/></symbol>
+    <symbol id="i-gauge" viewBox="0 0 24 24"><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></symbol>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></symbol>
+    <symbol id="i-cap" viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+    <symbol id="i-pencil" viewBox="0 0 24 24"><path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/><path d="m15 5 4 4"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/></symbol>
+    <symbol id="i-party" viewBox="0 0 24 24"><path d="M5.8 11.3 2 22l10.7-3.79"/><path d="M4 3h.01"/><path d="M22 8h.01"/><path d="M15 2h.01"/><path d="M22 20h.01"/><path d="m22 2-2.24.75a2.9 2.9 0 0 0-1.96 3.12c.19 1.57-.66 3.04-2.13 3.65C13.34 10 12 12 12 12"/><path d="m11 13 9 9"/></symbol>
+    <symbol id="i-check-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-card" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></symbol>
+    <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></symbol>
+    <symbol id="i-settings2" viewBox="0 0 24 24"><path d="M14 17H5"/><path d="M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+    <symbol id="i-open" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- Sidebar rail -->
+  <nav class="rail">
+    <div class="logo"><svg class="ic" style="width:20px;height:20px;"><use href="#i-salad"/></svg></div>
+    <div class="ri" title="Ernährung"><svg class="ic"><use href="#i-salad"/></svg></div>
+    <div class="ri active" title="Finanzen"><svg class="ic"><use href="#i-wallet"/></svg></div>
+    <div class="ri" title="Cloud"><svg class="ic"><use href="#i-cloud"/></svg></div>
+    <div class="ri" title="Community"><svg class="ic"><use href="#i-users"/></svg></div>
+    <div class="ri" title="KI-Assistent"><svg class="ic"><use href="#i-sparkles"/></svg></div>
+    <div class="ri" style="margin-top:auto;" title="Suche (Strg+K)"><svg class="ic"><use href="#i-search"/></svg></div>
+    <div class="ri" title="Admin"><svg class="ic"><use href="#i-shield"/></svg></div>
+  </nav>
+
+  <div class="main">
+    <!-- Top bar with 6 segment tabs -->
+    <div class="topbar">
+      <div class="head">
+        <div>
+          <h1>Finanzen</h1>
+          <div class="sub">Juli 2026 · Konten, Cashflow &amp; Vermögen im Blick</div>
+        </div>
+        <div class="chippill"><svg class="ic" style="color:var(--acc);"><use href="#i-wallet"/></svg><span class="mono">€ 4.812,55</span><span class="lbl">Kontostand</span></div>
+      </div>
+      <div class="tabs">
+        <div class="tab active" data-tab="overview"><svg class="ic"><use href="#i-dashboard"/></svg>Übersicht</div>
+        <div class="tab" data-tab="book"><svg class="ic"><use href="#i-book"/></svg>Finanzbuch</div>
+        <div class="tab" data-tab="expenses"><svg class="ic"><use href="#i-updown"/></svg>Ausgaben</div>
+        <div class="tab" data-tab="income"><svg class="ic"><use href="#i-arrow-up"/></svg>Einnahmen</div>
+        <div class="tab" data-tab="goals"><svg class="ic"><use href="#i-piggy"/></svg>Sparziele</div>
+        <div class="tab" data-tab="tools"><svg class="ic"><use href="#i-wrench"/></svg>Werkzeuge</div>
+      </div>
+    </div>
+
+    <!-- ============ 1. ÜBERSICHT ============ -->
+    <div class="screen" data-screen="overview">
+      <div style="margin-bottom:22px;">
+        <div class="sechead"><span class="kicker">Übersicht</span><div class="rule"></div></div>
+        <div class="secsub">Juli 2026 · Konten, Cashflow &amp; Vermögen</div>
+      </div>
+
+      <div class="grid3">
+        <div class="card r16">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--ink3);font-size:12.5px;margin-bottom:11px;"><svg class="ic" style="width:15px;height:15px;color:#2dd4bf;"><use href="#i-landmark"/></svg>Kontostand</div>
+          <div class="mono" style="font-size:24px;font-weight:600;">€ 4.812,55</div>
+        </div>
+        <div class="card r16">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--ink3);font-size:12.5px;margin-bottom:11px;"><svg class="ic" style="width:15px;height:15px;color:#a78bfa;"><use href="#i-gem"/></svg>Vermögen gesamt</div>
+          <div class="mono" style="font-size:24px;font-weight:600;">€ 38.940,00</div>
+        </div>
+        <div class="card r16">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--ink3);font-size:12.5px;margin-bottom:11px;"><svg class="ic" style="width:15px;height:15px;color:var(--acc);"><use href="#i-updown"/></svg>Saldo Juli</div>
+          <div class="mono pos" style="font-size:24px;font-weight:600;">+€ 1.240,80</div>
+        </div>
+      </div>
+
+      <div class="grid2">
+        <!-- Cashflow chart -->
+        <div class="card" style="display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;"><span class="cardtitle">Cashflow</span><span class="mono" style="font-size:12px;color:var(--ink3);">letzte 6 Monate</span></div>
+          <div id="cf" style="display:flex;align-items:stretch;gap:18px;height:190px;flex:1;">
+            <!-- bars injected by script -->
+          </div>
+          <div style="display:flex;align-items:center;gap:18px;margin-top:14px;font-size:12px;color:var(--ink3);">
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:var(--acc);display:inline-block;"></span>Einnahmen</span>
+            <span style="display:flex;align-items:center;gap:6px;"><span style="width:10px;height:10px;border-radius:3px;background:#fb923c;display:inline-block;"></span>Ausgaben</span>
+            <span style="margin-left:auto;">Prognose Monatsende: <span class="mono pos">+€ 1.310,00</span></span>
+          </div>
+        </div>
+        <!-- right col -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div class="card" style="padding:20px 22px;display:flex;align-items:center;gap:18px;">
+            <div style="position:relative;width:88px;height:88px;flex:0 0 auto;">
+              <svg width="88" height="88" viewBox="0 0 88 88">
+                <circle cx="44" cy="44" r="34" fill="none" stroke="var(--track)" stroke-width="8"></circle>
+                <circle cx="44" cy="44" r="34" fill="none" stroke="var(--acc)" stroke-width="8" stroke-linecap="round" stroke-dasharray="213.6" stroke-dashoffset="49" transform="rotate(-90 44 44)"></circle>
+              </svg>
+              <div class="mono" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;">77</div>
+            </div>
+            <div style="flex:1 1 auto;min-width:0;">
+              <div style="font-size:14.5px;font-weight:700;margin-bottom:8px;">Finanz-Score <span style="color:var(--acc);">· Solide</span></div>
+              <div style="display:flex;flex-direction:column;gap:5px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-size:11.5px;color:var(--ink3);">Sparquote</span><span style="font-size:11px;font-weight:600;color:var(--acc);">gut</span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-size:11.5px;color:var(--ink3);">Notgroschen</span><span style="font-size:11px;font-weight:600;color:var(--warn);">3,2 Monate</span></div>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;"><span style="font-size:11.5px;color:var(--ink3);">Fixkostenquote</span><span style="font-size:11px;font-weight:600;color:var(--acc);">41 %</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="padding:20px 22px;">
+            <div style="font-size:14.5px;font-weight:700;margin-bottom:13px;">Nächste Zahlungen</div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;align-items:center;gap:11px;"><span class="mono" style="font-size:11.5px;color:var(--mut);width:44px;flex:0 0 auto;">15.07.</span><div class="icotile chip sm" style="width:28px;height:28px;border-radius:8px;"><svg class="ic" style="width:14px;height:14px;"><use href="#i-tv"/></svg></div><span style="font-size:12.5px;color:var(--ink2);flex:1 1 auto;min-width:0;">Netflix Premium</span><span class="mono" style="font-size:12px;">€ 19,99</span></div>
+              <div style="display:flex;align-items:center;gap:11px;"><span class="mono" style="font-size:11.5px;color:var(--mut);width:44px;flex:0 0 auto;">18.07.</span><div class="icotile chip sm" style="width:28px;height:28px;border-radius:8px;"><svg class="ic" style="width:14px;height:14px;"><use href="#i-car"/></svg></div><span style="font-size:12.5px;color:var(--ink2);flex:1 1 auto;min-width:0;">Autokredit VW</span><span class="mono" style="font-size:12px;">€ 289,00</span></div>
+              <div style="display:flex;align-items:center;gap:11px;"><span class="mono" style="font-size:11.5px;color:var(--mut);width:44px;flex:0 0 auto;">28.07.</span><div class="icotile chip sm" style="width:28px;height:28px;border-radius:8px;"><svg class="ic" style="width:14px;height:14px;"><use href="#i-home"/></svg></div><span style="font-size:12.5px;color:var(--ink2);flex:1 1 auto;min-width:0;">Miete</span><span class="mono" style="font-size:12px;">€ 940,00</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Einnahmen vs Ausgaben -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span class="cardtitle">Einnahmen &amp; Ausgaben · Juli</span>
+          <span style="font-size:13px;color:var(--ink3);">Saldo <span class="mono pos" style="font-size:15px;font-weight:600;">+€ 1.240,80</span></span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:14px;padding:16px 18px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink3);margin-bottom:8px;"><svg class="ic" style="width:15px;height:15px;color:var(--acc);"><use href="#i-arrow-up"/></svg>Einnahmen</div>
+            <div class="mono pos" style="font-size:21px;font-weight:600;">€ 3.480,00</div>
+            <div style="height:7px;border-radius:4px;background:var(--track);overflow:hidden;margin-top:12px;"><div style="height:100%;width:100%;background:var(--acc);border-radius:4px;"></div></div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:14px;padding:16px 18px;">
+            <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink3);margin-bottom:8px;"><svg class="ic" style="width:15px;height:15px;color:var(--orange);transform:rotate(180deg);"><use href="#i-arrow-up"/></svg>Ausgaben</div>
+            <div class="mono neg" style="font-size:21px;font-weight:600;">€ 2.239,20</div>
+            <div style="height:7px;border-radius:4px;background:var(--track);overflow:hidden;margin-top:12px;"><div style="height:100%;width:64%;background:#fb923c;border-radius:4px;"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vermögen -->
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span class="cardtitle">Vermögen</span>
+          <div style="display:flex;align-items:center;gap:14px;"><span style="font-size:13px;color:var(--ink3);">Gesamt <span class="mono" style="font-size:15px;font-weight:600;">€ 38.940,00</span></span><button class="btn-ghost"><svg class="ic"><use href="#i-settings2"/></svg>Verwalten</button></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:13px;">
+          <div style="display:flex;align-items:center;gap:14px;"><div class="icotile chip sm"><svg class="ic"><use href="#i-landmark"/></svg></div><span style="font-size:13.5px;color:var(--ink2);width:210px;flex:0 0 auto;">Girokonto Sparkasse</span><div style="flex:1 1 auto;height:7px;border-radius:4px;background:var(--track);overflow:hidden;"><div style="height:100%;border-radius:4px;background:var(--mut2);width:20%;"></div></div><span style="font-size:11px;font-weight:600;width:96px;text-align:right;flex:0 0 auto;color:var(--ink3);">liquide</span><span class="mono" style="font-size:13.5px;font-weight:600;width:92px;text-align:right;flex:0 0 auto;">€ 4.812,55</span></div>
+          <div style="display:flex;align-items:center;gap:14px;"><div class="icotile chip sm"><svg class="ic"><use href="#i-gem"/></svg></div><span style="font-size:13.5px;color:var(--ink2);width:210px;flex:0 0 auto;">ETF-Depot (MSCI World)</span><div style="flex:1 1 auto;height:7px;border-radius:4px;background:var(--track);overflow:hidden;"><div style="height:100%;border-radius:4px;background:var(--mut2);width:74%;"></div></div><span style="font-size:11px;font-weight:600;width:96px;text-align:right;flex:0 0 auto;color:var(--pos);">+8,4 %</span><span class="mono" style="font-size:13.5px;font-weight:600;width:92px;text-align:right;flex:0 0 auto;">€ 28.127,45</span></div>
+          <div style="display:flex;align-items:center;gap:14px;"><div class="icotile chip sm"><svg class="ic"><use href="#i-piggy"/></svg></div><span style="font-size:13.5px;color:var(--ink2);width:210px;flex:0 0 auto;">Tagesgeld</span><div style="flex:1 1 auto;height:7px;border-radius:4px;background:var(--track);overflow:hidden;"><div style="height:100%;border-radius:4px;background:var(--mut2);width:16%;"></div></div><span style="font-size:11px;font-weight:600;width:96px;text-align:right;flex:0 0 auto;color:var(--ink3);">2,1 % p.a.</span><span class="mono" style="font-size:13.5px;font-weight:600;width:92px;text-align:right;flex:0 0 auto;">€ 6.000,00</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 2. FINANZBUCH ============ -->
+    <div class="screen" data-screen="book" hidden>
+      <div style="margin-bottom:22px;">
+        <div class="sechead"><span class="kicker">Finanzbuch</span><div class="rule"></div><button class="btn-acc"><svg class="ic"><use href="#i-plus"/></svg>Buchung</button></div>
+        <div class="secsub">Alle Ein- und Ausgaben · monatsweise oder per Suche über alle Monate</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--cardbd);border-radius:11px;padding:4px;flex:0 0 auto;">
+          <div class="iconbtn" style="width:32px;height:32px;color:var(--ink3);"><svg class="ic" style="width:18px;height:18px;"><use href="#i-cleft"/></svg></div>
+          <span style="font-size:13px;font-weight:700;min-width:118px;text-align:center;">Juli 2026</span>
+          <div class="iconbtn" style="width:32px;height:32px;color:var(--ink3);"><svg class="ic" style="width:18px;height:18px;"><use href="#i-cright"/></svg></div>
+        </div>
+        <div class="searchbar"><svg class="ic"><use href="#i-search"/></svg><input placeholder="Suchen (alle Monate) …"></div>
+        <div class="segbox">
+          <div class="seg active">Alle</div>
+          <div class="seg">Einnahmen</div>
+          <div class="seg">Ausgaben</div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:8px 22px 14px;">
+        <!-- group heute -->
+        <div style="display:flex;align-items:center;gap:12px;padding:15px 2px 9px;">
+          <span style="font-size:12px;font-weight:700;color:var(--ink2);flex:0 0 auto;">Heute · 13. Juli</span>
+          <div style="flex:1 1 auto;height:1px;background:var(--line2);"></div>
+          <span class="mono neg" style="font-size:11.5px;font-weight:600;flex:0 0 auto;">- € 54,30</span>
+        </div>
+        <div class="txrow"><div class="icotile chip sm" style="width:38px;height:38px;border-radius:11px;"><svg class="ic" style="width:18px;height:18px;"><use href="#i-cart"/></svg></div><div style="flex:1 1 auto;min-width:0;"><div style="font-size:14px;font-weight:600;">REWE Markt</div><div style="margin-top:3px;"><span class="catchip">Lebensmittel</span></div></div><span class="mono neg" style="font-size:14px;font-weight:600;">- € 38,42</span></div>
+        <div class="txrow"><div class="icotile chip sm" style="width:38px;height:38px;border-radius:11px;"><svg class="ic" style="width:18px;height:18px;"><use href="#i-car"/></svg></div><div style="flex:1 1 auto;min-width:0;"><div style="font-size:14px;font-weight:600;">Aral Tankstelle</div><div style="margin-top:3px;"><span class="catchip">Mobilität</span></div></div><span class="mono neg" style="font-size:14px;font-weight:600;">- € 15,88</span></div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:15px 2px 9px;">
+          <span style="font-size:12px;font-weight:700;color:var(--ink2);flex:0 0 auto;">11. Juli</span>
+          <div style="flex:1 1 auto;height:1px;background:var(--line2);"></div>
+          <span class="mono neg" style="font-size:11.5px;font-weight:600;flex:0 0 auto;">- € 84,79</span>
+        </div>
+        <div class="txrow"><div class="icotile chip sm" style="width:38px;height:38px;border-radius:11px;"><svg class="ic" style="width:18px;height:18px;"><use href="#i-tv"/></svg></div><div style="flex:1 1 auto;min-width:0;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14px;font-weight:600;">Spotify Family</span><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:var(--wchip);border:1px solid var(--line3);color:var(--violet);">ABO</span></div><div style="margin-top:3px;"><span class="catchip">Abo</span></div></div><span class="mono neg" style="font-size:14px;font-weight:600;">- € 17,99</span></div>
+        <div class="txrow"><div class="icotile chip sm" style="width:38px;height:38px;border-radius:11px;"><svg class="ic" style="width:18px;height:18px;"><use href="#i-home"/></svg></div><div style="flex:1 1 auto;min-width:0;"><div style="font-size:14px;font-weight:600;">Stadtwerke Abschlag</div><div style="margin-top:3px;"><span class="catchip">Wohnen</span></div></div><span class="mono neg" style="font-size:14px;font-weight:600;">- € 66,80</span></div>
+
+        <div style="display:flex;align-items:center;gap:12px;padding:15px 2px 9px;">
+          <span style="font-size:12px;font-weight:700;color:var(--ink2);flex:0 0 auto;">01. Juli</span>
+          <div style="flex:1 1 auto;height:1px;background:var(--line2);"></div>
+          <span class="mono pos" style="font-size:11.5px;font-weight:600;flex:0 0 auto;">+ € 3.480,00</span>
+        </div>
+        <div class="txrow"><div class="icotile chip sm" style="width:38px;height:38px;border-radius:11px;"><svg class="ic" style="width:18px;height:18px;color:var(--acc);"><use href="#i-briefcase"/></svg></div><div style="flex:1 1 auto;min-width:0;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14px;font-weight:600;">Gehalt Mustermann GmbH</span><span style="font-size:9px;font-weight:700;padding:1px 6px;border-radius:5px;background:var(--acc-bg);border:1px solid var(--acc-bd);color:var(--acc);">GEHALT</span></div><div style="margin-top:3px;"><span class="catchip">Einkommen</span></div></div><span class="mono pos" style="font-size:14px;font-weight:600;">+ € 3.480,00</span></div>
+        <div class="txrow"><div class="icotile chip sm" style="width:38px;height:38px;border-radius:11px;"><svg class="ic" style="width:18px;height:18px;"><use href="#i-home"/></svg></div><div style="flex:1 1 auto;min-width:0;"><div style="font-size:14px;font-weight:600;">Miete Wohnung</div><div style="margin-top:3px;"><span class="catchip">Wohnen</span></div></div><span class="mono neg" style="font-size:14px;font-weight:600;">- € 940,00</span></div>
+      </div>
+    </div>
+
+    <!-- ============ 3. AUSGABEN ============ -->
+    <div class="screen" data-screen="expenses" hidden>
+      <div style="margin-bottom:20px;">
+        <div class="sechead"><span class="kicker">Ausgaben</span><div class="rule"></div></div>
+        <div class="secsub">Wiederkehrende Abos und laufende Kredite an einem Ort</div>
+      </div>
+
+      <div class="segbox" style="margin-bottom:20px;display:inline-flex;">
+        <div class="seg active" data-sub="abos">Abos &amp; Verträge</div>
+        <div class="seg" data-sub="loans">Kredite</div>
+      </div>
+
+      <!-- Sub: Abos -->
+      <div data-subscreen="abos">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
+          <div class="secsub" style="flex:1 1 auto;">6 aktive Abos · <span class="mono" style="color:var(--ink2);">€ 71,94</span> / Monat · <span class="mono" style="color:var(--ink2);">€ 863,28</span> / Jahr</div>
+          <button class="btn-acc"><svg class="ic"><use href="#i-plus"/></svg>Abo hinzufügen</button>
+        </div>
+        <div class="card" style="padding:8px 22px;">
+          <!-- abo row -->
+          <div class="aborow"><div class="icotile chip" style="width:40px;height:40px;"><svg class="ic"><use href="#i-tv"/></svg></div><div style="width:230px;flex:0 0 auto;min-width:0;"><div style="font-size:14px;font-weight:600;">Netflix Premium</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Streaming</div></div><div class="abomid"><span class="cyclechip">Monatlich</span><span style="font-size:12.5px;color:var(--ink3);">Abbuchung <span class="mono" style="color:var(--ink2);">15.</span></span><span style="font-size:12.5px;color:var(--ink3);flex:1 1 auto;text-align:right;">kündbar: <span style="color:var(--ink2);">monatlich</span></span></div><span class="mono" style="font-size:14px;font-weight:600;width:90px;text-align:right;flex:0 0 auto;">€ 19,99</span><div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div><div class="iconbtn del"><svg class="ic"><use href="#i-trash"/></svg></div></div>
+          <div class="aborow"><div class="icotile chip" style="width:40px;height:40px;"><svg class="ic"><use href="#i-music"/></svg></div><div style="width:230px;flex:0 0 auto;min-width:0;"><div style="font-size:14px;font-weight:600;">Spotify Family</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Musik</div></div><div class="abomid"><span class="cyclechip">Monatlich</span><span style="font-size:12.5px;color:var(--ink3);">Abbuchung <span class="mono" style="color:var(--ink2);">11.</span></span><span style="font-size:12.5px;color:var(--ink3);flex:1 1 auto;text-align:right;">kündbar: <span style="color:var(--ink2);">monatlich</span></span></div><span class="mono" style="font-size:14px;font-weight:600;width:90px;text-align:right;flex:0 0 auto;">€ 17,99</span><div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div><div class="iconbtn del"><svg class="ic"><use href="#i-trash"/></svg></div></div>
+          <div class="aborow"><div class="icotile chip" style="width:40px;height:40px;"><svg class="ic"><use href="#i-dumbbell"/></svg></div><div style="width:230px;flex:0 0 auto;min-width:0;"><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14px;font-weight:600;">FitX Fitnessstudio</span><span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;color:var(--warn);background:rgba(251,191,36,.10);border:1px solid rgba(251,191,36,.28);padding:2px 7px;border-radius:5px;"><svg class="ic" style="width:10px;height:10px;"><use href="#i-calx"/></svg>gekündigt</span></div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Fitness</div></div><div class="abomid" style="justify-content:center;color:var(--mut);"><svg class="ic" style="width:15px;height:15px;"><use href="#i-calx"/></svg><span style="font-size:12.5px;font-weight:600;">läuft aus zum 31.08.2026</span></div><span class="mono" style="font-size:14px;font-weight:600;width:90px;text-align:right;flex:0 0 auto;text-decoration:line-through;color:var(--mut);">€ 29,90</span><div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div><div class="iconbtn del"><svg class="ic"><use href="#i-trash"/></svg></div></div>
+          <div class="aborow"><div class="icotile chip" style="width:40px;height:40px;"><svg class="ic"><use href="#i-phone"/></svg></div><div style="width:230px;flex:0 0 auto;min-width:0;"><div style="font-size:14px;font-weight:600;">Vodafone Mobilfunk</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Handyvertrag</div></div><div class="abomid"><span class="cyclechip">Monatlich</span><span style="font-size:12.5px;color:var(--ink3);">Abbuchung <span class="mono" style="color:var(--ink2);">03.</span></span><span style="font-size:12.5px;color:var(--ink3);flex:1 1 auto;text-align:right;">kündbar: <span style="color:var(--ink2);">3 Monate</span></span></div><span class="mono" style="font-size:14px;font-weight:600;width:90px;text-align:right;flex:0 0 auto;">€ 24,99</span><div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div><div class="iconbtn del"><svg class="ic"><use href="#i-trash"/></svg></div></div>
+        </div>
+        <div style="margin-top:14px;padding:12px 16px;border-radius:11px;background:var(--panel);border:1px solid var(--cardbd);display:flex;gap:10px;align-items:center;">
+          <svg class="ic" style="width:15px;height:15px;color:var(--warn);flex:0 0 auto;"><use href="#i-bell"/></svg>
+          <span style="font-size:12.5px;color:var(--ink3);">Erinnerung <b style="color:var(--ink2);font-weight:600;">7 Tage vor Verlängerung</b> ist aktiv · alle Beträge fließen automatisch als <b style="color:var(--ink2);font-weight:600;">Abo</b> in die Buchungen.</span>
+        </div>
+      </div>
+
+      <!-- Sub: Kredite -->
+      <div data-subscreen="loans" hidden>
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;">
+          <div class="secsub" style="flex:1 1 auto;">2 laufende Kredite · Rate gesamt <span class="mono" style="color:var(--ink2);">€ 469,00</span> / Monat</div>
+          <div class="btn-acc" style="cursor:default;"><svg class="ic"><use href="#i-party"/></svg>Schuldenfrei im Mai 2029</div>
+          <button class="btn-acc"><svg class="ic"><use href="#i-plus"/></svg>Kredit hinzufügen</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
+          <div class="card" style="padding:20px 22px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <span style="font-size:14.5px;font-weight:700;">Autokredit VW</span>
+              <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;">4,9 % Zins</span><div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div></div>
+            </div>
+            <div class="mono" style="font-size:26px;font-weight:600;letter-spacing:-.02em;">€ 8.740,00</div>
+            <div style="font-size:12px;color:var(--ink3);margin-top:3px;margin-bottom:12px;">Restschuld · Rate <span class="mono" style="color:var(--ink2);">€ 289,00</span>/Monat</div>
+            <div style="display:flex;gap:14px;font-size:11.5px;color:var(--ink3);margin-bottom:12px;flex-wrap:wrap;">
+              <span>Rate <span class="mono" style="color:var(--ink2);">18</span> von <span class="mono" style="color:var(--ink2);">48</span></span>
+              <span>Laufzeit <span class="mono" style="color:var(--ink2);">48 Mon.</span></span>
+              <span style="display:inline-flex;align-items:center;gap:5px;"><svg class="ic" style="width:12px;height:12px;color:var(--acc);"><use href="#i-flag"/></svg>Abbezahlt <span class="mono" style="font-weight:600;color:var(--acc);">Mrz 2028</span></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-bottom:7px;"><span>Getilgt</span><span class="mono" style="color:var(--acc);">37 %</span></div>
+            <div class="track"><div style="width:37%;"></div></div>
+          </div>
+          <div class="card" style="padding:20px 22px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <span style="font-size:14.5px;font-weight:700;">Möbel Ratenkauf</span>
+              <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;">0,0 % Zins</span><div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div></div>
+            </div>
+            <div class="mono" style="font-size:26px;font-weight:600;letter-spacing:-.02em;">€ 2.160,00</div>
+            <div style="font-size:12px;color:var(--ink3);margin-top:3px;margin-bottom:12px;">Restschuld · Rate <span class="mono" style="color:var(--ink2);">€ 180,00</span>/Monat</div>
+            <div style="display:flex;gap:14px;font-size:11.5px;color:var(--ink3);margin-bottom:12px;flex-wrap:wrap;">
+              <span>Rate <span class="mono" style="color:var(--ink2);">6</span> von <span class="mono" style="color:var(--ink2);">18</span></span>
+              <span>Laufzeit <span class="mono" style="color:var(--ink2);">18 Mon.</span></span>
+              <span style="display:inline-flex;align-items:center;gap:5px;"><svg class="ic" style="width:12px;height:12px;color:var(--acc);"><use href="#i-flag"/></svg>Abbezahlt <span class="mono" style="font-weight:600;color:var(--acc);">Jan 2027</span></span>
+            </div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-bottom:7px;"><span>Getilgt</span><span class="mono" style="color:var(--acc);">33 %</span></div>
+            <div class="track"><div style="width:33%;"></div></div>
+          </div>
+        </div>
+        <div style="margin-top:16px;" class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <span class="cardtitle">Tilgungsplan · Autokredit VW</span>
+            <span class="mono" style="font-size:12px;color:var(--ink3);">nächste 4 Raten</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1.2fr;gap:0;font-size:11px;letter-spacing:.1em;color:var(--mut);font-weight:600;padding:0 4px 9px;border-bottom:1px solid var(--chip);">
+            <span>MONAT</span><span style="text-align:right;">RATE</span><span style="text-align:right;">ZINS</span><span style="text-align:right;">TILGUNG</span><span style="text-align:right;">RESTSCHULD</span>
+          </div>
+          <div class="tilgrow"><span style="color:var(--ink2);font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;">Aug 2026</span><span style="text-align:right;color:var(--ink2);">€ 289,00</span><span class="warn" style="text-align:right;">€ 35,68</span><span style="text-align:right;color:var(--acc);">€ 253,32</span><span style="text-align:right;color:var(--ink);">€ 8.486,68</span></div>
+          <div class="tilgrow"><span style="color:var(--ink2);font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;">Sep 2026</span><span style="text-align:right;color:var(--ink2);">€ 289,00</span><span class="warn" style="text-align:right;">€ 34,65</span><span style="text-align:right;color:var(--acc);">€ 254,35</span><span style="text-align:right;color:var(--ink);">€ 8.232,33</span></div>
+          <div class="tilgrow"><span style="color:var(--ink2);font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;">Okt 2026</span><span style="text-align:right;color:var(--ink2);">€ 289,00</span><span class="warn" style="text-align:right;">€ 33,61</span><span style="text-align:right;color:var(--acc);">€ 255,39</span><span style="text-align:right;color:var(--ink);">€ 7.976,94</span></div>
+          <div class="tilgrow"><span style="color:var(--ink2);font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;">Nov 2026</span><span style="text-align:right;color:var(--ink2);">€ 289,00</span><span class="warn" style="text-align:right;">€ 32,57</span><span style="text-align:right;color:var(--acc);">€ 256,43</span><span style="text-align:right;color:var(--ink);">€ 7.720,51</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 4. EINNAHMEN ============ -->
+    <div class="screen" data-screen="income" hidden>
+      <div style="margin-bottom:22px;">
+        <div class="sechead"><span class="kicker">Einnahmen</span><div class="rule"></div><button class="btn-acc"><svg class="ic"><use href="#i-plus"/></svg>Gehalt hinzufügen</button></div>
+        <div class="secsub">Dein monatliches Gehalt und wiederkehrende Einnahmen · wird automatisch je Zahltag verbucht.</div>
+      </div>
+
+      <div class="grid3" style="grid-template-columns:repeat(2,1fr);">
+        <div class="card r16">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--ink3);font-size:12.5px;margin-bottom:11px;"><svg class="ic" style="width:15px;height:15px;color:var(--acc);"><use href="#i-briefcase"/></svg>Gehalt gesamt / Monat</div>
+          <div class="mono pos" style="font-size:24px;font-weight:600;">€ 3.480,00</div>
+        </div>
+        <div class="card r16">
+          <div style="display:flex;align-items:center;gap:8px;color:var(--ink3);font-size:12.5px;margin-bottom:11px;"><svg class="ic" style="width:15px;height:15px;color:#2dd4bf;"><use href="#i-repeat"/></svg>Einnahmen gesamt / Jahr</div>
+          <div class="mono" style="font-size:24px;font-weight:600;">€ 42.360,00</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+        <!-- Gehalt Hauptjob -->
+        <div class="card" style="padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="icotile"><svg class="ic"><use href="#i-briefcase"/></svg></div>
+            <div style="flex:1 1 auto;min-width:0;"><div style="font-size:15px;font-weight:700;">Gehalt Hauptjob</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Mustermann GmbH</div></div>
+            <div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div><div class="iconbtn del"><svg class="ic"><use href="#i-trash"/></svg></div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px;">
+            <span class="mono pos" style="font-size:26px;font-weight:600;letter-spacing:-.02em;">€ 3.480,00</span>
+            <span style="font-size:12.5px;color:var(--ink3);">Gehalt / Monat</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink3);display:inline-flex;align-items:center;gap:7px;"><svg class="ic" style="width:14px;height:14px;color:var(--mut);"><use href="#i-cal"/></svg>Zahltag</span><span style="color:var(--ink2);font-weight:600;">1. Werktag im Monat</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink3);display:inline-flex;align-items:center;gap:7px;"><svg class="ic" style="width:14px;height:14px;color:var(--mut);"><use href="#i-clock"/></svg>Aktiv seit</span><span style="color:var(--ink2);font-weight:600;">März 2022</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink3);display:inline-flex;align-items:center;gap:7px;"><svg class="ic" style="width:14px;height:14px;color:var(--mut);"><use href="#i-repeat"/></svg>Rhythmus</span><span style="color:var(--ink2);font-weight:600;">Monatlich</span></div>
+          </div>
+          <div style="margin-top:14px;padding:10px 13px;border-radius:11px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;gap:9px;align-items:center;">
+            <svg class="ic" style="width:14px;height:14px;color:var(--acc);flex:0 0 auto;"><use href="#i-check-shield"/></svg>
+            <span style="font-size:12px;color:var(--ink2);">Nächste Buchung <b style="font-weight:600;">01.08.2026</b> automatisch als Einnahme.</span>
+          </div>
+        </div>
+
+        <!-- Nebeneinkommen -->
+        <div class="card" style="padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="icotile"><svg class="ic"><use href="#i-briefcase"/></svg></div>
+            <div style="flex:1 1 auto;min-width:0;"><div style="font-size:15px;font-weight:700;">Nebentätigkeit</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Freelance Webdesign</div></div>
+            <div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div><div class="iconbtn del"><svg class="ic"><use href="#i-trash"/></svg></div>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:14px;">
+            <span class="mono pos" style="font-size:26px;font-weight:600;letter-spacing:-.02em;">€ 450,00</span>
+            <span style="font-size:12.5px;color:var(--ink3);">Gehalt / Monat</span>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:9px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink3);display:inline-flex;align-items:center;gap:7px;"><svg class="ic" style="width:14px;height:14px;color:var(--mut);"><use href="#i-cal"/></svg>Zahltag</span><span style="color:var(--ink2);font-weight:600;">15. im Monat</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink3);display:inline-flex;align-items:center;gap:7px;"><svg class="ic" style="width:14px;height:14px;color:var(--mut);"><use href="#i-clock"/></svg>Aktiv seit</span><span style="color:var(--ink2);font-weight:600;">Jan 2025</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12.5px;"><span style="color:var(--ink3);display:inline-flex;align-items:center;gap:7px;"><svg class="ic" style="width:14px;height:14px;color:var(--mut);"><use href="#i-repeat"/></svg>Rhythmus</span><span style="color:var(--ink2);font-weight:600;">Monatlich</span></div>
+          </div>
+          <div style="margin-top:14px;padding:10px 13px;border-radius:11px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;gap:9px;align-items:center;">
+            <svg class="ic" style="width:14px;height:14px;color:var(--acc);flex:0 0 auto;"><use href="#i-check-shield"/></svg>
+            <span style="font-size:12px;color:var(--ink2);">Nächste Buchung <b style="font-weight:600;">15.07.2026</b> automatisch als Einnahme.</span>
+          </div>
+        </div>
+
+        <!-- Add card -->
+        <div class="addcard" style="min-height:230px;">
+          <svg class="ic" style="width:22px;height:22px;"><use href="#i-plus"/></svg>
+          <span style="font-size:13.5px;font-weight:600;">Weiteres Gehalt hinzufügen</span>
+          <span style="font-size:12px;color:var(--mut);text-align:center;max-width:240px;">Arbeitsstelle, Zahltag und Betrag eintragen. Wird jeden Monat automatisch verbucht.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 5. SPARZIELE ============ -->
+    <div class="screen" data-screen="goals" hidden>
+      <div style="margin-bottom:22px;">
+        <div class="sechead"><span class="kicker">Sparziele</span><div class="rule"></div><button class="btn-acc"><svg class="ic"><use href="#i-plus"/></svg>Sparziel erstellen</button></div>
+        <div class="secsub">3 aktive Ziele · Sparrate gesamt <span class="mono" style="color:var(--ink2);">€ 630,00</span> / Monat</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+        <!-- goal -->
+        <div class="card" style="padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="icotile"><svg class="ic"><use href="#i-plane"/></svg></div>
+            <div style="flex:1 1 auto;min-width:0;"><div style="font-size:15px;font-weight:700;">Urlaub Japan</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Zieldatum ≈ Apr 2027</div></div>
+            <span class="mono" style="font-size:13px;font-weight:600;color:var(--acc);">68 %</span>
+            <div class="iconbtn" style="background:var(--acc-bg);border:1px solid var(--acc-bd);color:var(--acc);"><svg class="ic"><use href="#i-plus"/></svg></div>
+            <div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div>
+          </div>
+          <div style="height:9px;border-radius:5px;background:var(--track);overflow:hidden;margin-bottom:12px;"><div style="height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc-mate));width:68%;"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span class="mono" style="font-size:15px;font-weight:600;">€ 2.720,00 <span style="color:var(--mut);font-weight:400;">/ € 4.000,00</span></span>
+            <span style="font-size:11.5px;color:var(--ink3);">Rate <span class="mono" style="color:var(--ink2);">€ 250,00</span>/M</span>
+          </div>
+        </div>
+        <div class="card" style="padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="icotile"><svg class="ic"><use href="#i-car"/></svg></div>
+            <div style="flex:1 1 auto;min-width:0;"><div style="font-size:15px;font-weight:700;">Neues Auto</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Zieldatum ≈ Dez 2028</div></div>
+            <span class="mono" style="font-size:13px;font-weight:600;color:var(--acc);">31 %</span>
+            <div class="iconbtn" style="background:var(--acc-bg);border:1px solid var(--acc-bd);color:var(--acc);"><svg class="ic"><use href="#i-plus"/></svg></div>
+            <div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div>
+          </div>
+          <div style="height:9px;border-radius:5px;background:var(--track);overflow:hidden;margin-bottom:12px;"><div style="height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc-mate));width:31%;"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span class="mono" style="font-size:15px;font-weight:600;">€ 4.650,00 <span style="color:var(--mut);font-weight:400;">/ € 15.000,00</span></span>
+            <span style="font-size:11.5px;color:var(--ink3);">Rate <span class="mono" style="color:var(--ink2);">€ 300,00</span>/M</span>
+          </div>
+        </div>
+        <div class="card" style="padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="icotile"><svg class="ic"><use href="#i-shield"/></svg></div>
+            <div style="flex:1 1 auto;min-width:0;"><div style="font-size:15px;font-weight:700;">Notgroschen</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Zieldatum ≈ Sep 2026</div></div>
+            <span class="mono" style="font-size:13px;font-weight:600;color:var(--acc);">90 %</span>
+            <div class="iconbtn" style="background:var(--acc-bg);border:1px solid var(--acc-bd);color:var(--acc);"><svg class="ic"><use href="#i-plus"/></svg></div>
+            <div class="iconbtn"><svg class="ic"><use href="#i-pencil"/></svg></div>
+          </div>
+          <div style="height:9px;border-radius:5px;background:var(--track);overflow:hidden;margin-bottom:12px;"><div style="height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc-mate));width:90%;"></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;">
+            <span class="mono" style="font-size:15px;font-weight:600;">€ 9.000,00 <span style="color:var(--mut);font-weight:400;">/ € 10.000,00</span></span>
+            <span style="font-size:11.5px;color:var(--ink3);">Rate <span class="mono" style="color:var(--ink2);">€ 80,00</span>/M</span>
+          </div>
+        </div>
+        <div class="addcard" style="min-height:150px;">
+          <svg class="ic" style="width:22px;height:22px;"><use href="#i-plus"/></svg>
+          <span style="font-size:13.5px;font-weight:600;">Eigenes Ziel erstellen</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 6. WERKZEUGE ============ -->
+    <div class="screen" data-screen="tools" hidden>
+      <div style="margin-bottom:22px;">
+        <div class="sechead"><span class="kicker">Werkzeuge</span><div class="rule"></div></div>
+        <div class="secsub">Rechner und Helfer rund um deine Finanzen · alles offline und lokal</div>
+      </div>
+
+      <div class="grid2" style="grid-template-columns:1fr 1fr;align-items:start;">
+        <!-- interactive Kreditrechner -->
+        <div class="card" style="padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="icotile"><svg class="ic"><use href="#i-calc"/></svg></div>
+            <div><div style="font-size:15px;font-weight:700;">Kreditrechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Rate und Laufzeit im Handumdrehen</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--ink3);font-weight:600;">Kreditbetrag (€)<input id="kAmount" type="number" value="15000" class="fld"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--ink3);font-weight:600;">Zinssatz (% p.a.)<input id="kRate" type="number" value="4.9" step="0.1" class="fld"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--ink3);font-weight:600;">Laufzeit (Monate)<input id="kMonths" type="number" value="48" class="fld"></label>
+            <div style="display:flex;align-items:flex-end;"><button class="btn-acc" style="width:100%;justify-content:center;" onclick="calcLoan()"><svg class="ic"><use href="#i-calc"/></svg>Berechnen</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:13px 15px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Monatsrate</div><div id="kResRate" class="mono" style="font-size:18px;font-weight:600;color:var(--acc);">€ 344,79</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:13px 15px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Zinskosten</div><div id="kResInt" class="mono warn" style="font-size:18px;font-weight:600;">€ 1.549,92</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:13px 15px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Gesamtsumme</div><div id="kResTot" class="mono" style="font-size:18px;font-weight:600;">€ 16.549,92</div></div>
+          </div>
+        </div>
+
+        <!-- interactive Zinseszins / Sparplan -->
+        <div class="card" style="padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+            <div class="icotile"><svg class="ic"><use href="#i-percent"/></svg></div>
+            <div><div style="font-size:15px;font-weight:700;">Sparplan-Rechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Zinseszins über die Jahre</div></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--ink3);font-weight:600;">Sparrate / Monat (€)<input id="sRate" type="number" value="250" class="fld"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--ink3);font-weight:600;">Rendite (% p.a.)<input id="sYield" type="number" value="6" step="0.1" class="fld"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:var(--ink3);font-weight:600;">Dauer (Jahre)<input id="sYears" type="number" value="15" class="fld"></label>
+            <div style="display:flex;align-items:flex-end;"><button class="btn-acc" style="width:100%;justify-content:center;" onclick="calcSave()"><svg class="ic"><use href="#i-percent"/></svg>Berechnen</button></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:13px 15px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Eingezahlt</div><div id="sResIn" class="mono" style="font-size:18px;font-weight:600;">€ 45.000,00</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:13px 15px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Zinsertrag</div><div id="sResGain" class="mono pos" style="font-size:18px;font-weight:600;">€ 27.588,00</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:13px 15px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Endkapital</div><div id="sResTot" class="mono" style="font-size:18px;font-weight:600;color:var(--acc);">€ 72.588,00</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- tool grid -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;">
+        <div class="toolcard">
+          <div class="icotile"><svg class="ic"><use href="#i-gauge"/></svg></div>
+          <div style="font-size:14.5px;font-weight:700;">Budget-Rechner</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.5;flex:1 1 auto;">Verteil dein Gehalt nach der 50/30/20-Regel auf Fixkosten, Wünsche und Sparen.</div>
+          <button class="btn-ghost" style="align-self:flex-start;"><svg class="ic"><use href="#i-open"/></svg>Öffnen</button>
+        </div>
+        <div class="toolcard">
+          <div class="icotile"><svg class="ic"><use href="#i-piggy"/></svg></div>
+          <div style="font-size:14.5px;font-weight:700;">Notgroschen-Planer</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.5;flex:1 1 auto;">Berechne aus deinen Fixkosten, wie viel Reserve du für 3 bis 6 Monate brauchst.</div>
+          <button class="btn-ghost" style="align-self:flex-start;"><svg class="ic"><use href="#i-open"/></svg>Öffnen</button>
+        </div>
+        <div class="toolcard">
+          <div class="icotile"><svg class="ic"><use href="#i-repeat"/></svg></div>
+          <div style="font-size:14.5px;font-weight:700;">Abo-Analyse</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.5;flex:1 1 auto;">Sieh auf einen Blick, was dich deine Abos pro Jahr kosten und wo Sparpotenzial liegt.</div>
+          <button class="btn-ghost" style="align-self:flex-start;"><svg class="ic"><use href="#i-open"/></svg>Öffnen</button>
+        </div>
+        <div class="toolcard">
+          <div class="icotile"><svg class="ic"><use href="#i-card"/></svg></div>
+          <div style="font-size:14.5px;font-weight:700;">CSV-Import</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.5;flex:1 1 auto;">Importier Kontoumsätze deiner Bank als CSV und ordne sie automatisch Kategorien zu.</div>
+          <button class="btn-ghost" style="align-self:flex-start;"><svg class="ic"><use href="#i-open"/></svg>Öffnen</button>
+        </div>
+        <div class="toolcard">
+          <div class="icotile"><svg class="ic"><use href="#i-plug"/></svg></div>
+          <div style="font-size:14.5px;font-weight:700;">Bank verbinden</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.5;flex:1 1 auto;">Hol deine Umsätze per FinTS direkt und sicher von deiner Bank in dein Finanzbuch.</div>
+          <button class="btn-ghost" style="align-self:flex-start;"><svg class="ic"><use href="#i-open"/></svg>Öffnen</button>
+        </div>
+        <div class="toolcard">
+          <div class="icotile"><svg class="ic"><use href="#i-cap"/></svg></div>
+          <div style="font-size:14.5px;font-weight:700;">Netto-Rechner</div>
+          <div style="font-size:12px;color:var(--ink3);line-height:1.5;flex:1 1 auto;">Rechne vom Brutto auf dein Netto-Gehalt - inklusive Steuerklasse und Sozialabgaben.</div>
+          <button class="btn-ghost" style="align-self:flex-start;"><svg class="ic"><use href="#i-open"/></svg>Öffnen</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .txrow{display:flex;align-items:center;gap:13px;padding:10px 8px;border-radius:11px;cursor:pointer;}
+  .txrow:hover{background:var(--wchip);}
+  .aborow{display:flex;align-items:center;gap:14px;padding:14px 12px;margin:0 -12px;border-radius:12px;border-bottom:1px solid var(--line);}
+  .aborow:last-child{border-bottom:none;}
+  .abomid{display:flex;align-items:center;gap:16px;flex:1 1 auto;min-width:0;}
+  .cyclechip{font-size:11px;font-weight:600;letter-spacing:.05em;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;flex:0 0 auto;}
+  .tilgrow{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr 1.2fr;gap:0;padding:10px 4px;border-bottom:1px solid var(--chip);font-family:'JetBrains Mono',monospace;font-size:12.5px;}
+  .addcard{border:1.5px dashed var(--line3);border-radius:18px;padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;cursor:pointer;color:var(--mut);transition:.15s;}
+  .addcard:hover{border-color:var(--acc-bd);color:var(--acc);background:var(--wchip);}
+  .toolcard{background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;}
+  .fld{background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;}
+  .fld:focus{border-color:var(--acc);}
+  @media(max-width:920px){.grid2,.grid3{grid-template-columns:1fr !important;}}
+</style>
+
+<script>
+  // Cashflow bars
+  (function(){
+    var data=[{m:'Feb',e:70,a:58,s:'+€ 420'},{m:'Mrz',e:82,a:64,s:'+€ 690'},{m:'Apr',e:70,a:76,s:'-€ 210'},{m:'Mai',e:88,a:60,s:'+€ 980'},{m:'Jun',e:74,a:66,s:'+€ 305'},{m:'Jul',e:92,a:60,s:'+€ 1.24k'}];
+    var el=document.getElementById('cf');
+    if(el){el.innerHTML=data.map(function(d){
+      var sc=d.s.indexOf('-')===0?'var(--neg)':'var(--acc)';
+      return '<div style="flex:1 1 0;display:flex;flex-direction:column;align-items:center;height:100%;">'
+        +'<div style="flex:1 1 auto;width:100%;display:flex;align-items:flex-end;justify-content:center;gap:5px;">'
+        +'<div style="width:17px;border-radius:5px 5px 0 0;height:'+d.e+'%;background:var(--acc);"></div>'
+        +'<div style="width:17px;border-radius:5px 5px 0 0;height:'+d.a+'%;background:#fb923c;opacity:.85;"></div>'
+        +'</div>'
+        +'<span style="font-size:11.5px;color:var(--ink3);margin-top:9px;">'+d.m+'</span>'
+        +'<span class="mono" style="font-size:10.5px;margin-top:2px;color:'+sc+';">'+d.s+'</span>'
+        +'</div>';
+    }).join('');}
+  })();
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(function(t){
+    t.addEventListener('click',function(){
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active');});
+      t.classList.add('active');
+      var name=t.getAttribute('data-tab');
+      document.querySelectorAll('.screen').forEach(function(s){
+        s.hidden = s.getAttribute('data-screen')!==name;
+      });
+      document.querySelector('.main').scrollIntoView({block:'start'});
+    });
+  });
+
+  // Sub-tabs (Ausgaben)
+  document.querySelectorAll('.seg[data-sub]').forEach(function(s){
+    s.addEventListener('click',function(){
+      document.querySelectorAll('.seg[data-sub]').forEach(function(x){x.classList.remove('active');});
+      s.classList.add('active');
+      var sub=s.getAttribute('data-sub');
+      document.querySelectorAll('[data-subscreen]').forEach(function(sc){
+        sc.hidden = sc.getAttribute('data-subscreen')!==sub;
+      });
+    });
+  });
+
+  // Euro format
+  function eur(n){return '€ '+n.toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2});}
+
+  function calcLoan(){
+    var P=+document.getElementById('kAmount').value||0;
+    var r=(+document.getElementById('kRate').value||0)/100/12;
+    var n=+document.getElementById('kMonths').value||1;
+    var rate = r===0 ? P/n : P*r/(1-Math.pow(1+r,-n));
+    var tot=rate*n, interest=tot-P;
+    document.getElementById('kResRate').textContent=eur(rate);
+    document.getElementById('kResInt').textContent=eur(interest);
+    document.getElementById('kResTot').textContent=eur(tot);
+  }
+  function calcSave(){
+    var m=+document.getElementById('sRate').value||0;
+    var y=(+document.getElementById('sYield').value||0)/100/12;
+    var months=(+document.getElementById('sYears').value||0)*12;
+    var fv = y===0 ? m*months : m*((Math.pow(1+y,months)-1)/y);
+    var paid=m*months, gain=fv-paid;
+    document.getElementById('sResIn').textContent=eur(paid);
+    document.getElementById('sResGain').textContent=eur(gain);
+    document.getElementById('sResTot').textContent=eur(fv);
+  }
+</script>
+</body>
+</html>

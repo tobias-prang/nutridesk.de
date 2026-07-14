@@ -1,0 +1,19 @@
+// Snacks & warme Kleinigkeiten. Von Hand geschrieben.
+module.exports = [
+{ n:'Ofen-Süßkartoffelpommes mit Guacamole', m:'snack', t:35, ing:[['suesskartoffel',200],['olivenoel',12],['paprikapulver',3],['guacamole',50]], s:['Süßkartoffel in Spalten schneiden.','Mit Öl und Paprika backen.','Mit Guacamole servieren.'] },
+{ n:'Gefüllte Champignons mit Feta und Spinat', m:'snack', t:25, ing:[['champignons',150],['feta',50],['spinat',50],['knoblauch',4],['pinienkerne',10],['olivenoel',8]], s:['Spinat andünsten und mit Feta mischen.','Champignons füllen.','Im Ofen überbacken.'] },
+{ n:'Nacho-Teller mit Käse und Bohnen', m:'snack', t:20, ing:[['tortillachips',80],['reibekaese',60],['kidneybohnen',60],['jalapeno',15],['schmand',40]], s:['Chips mit Bohnen und Käse belegen.','Überbacken.','Mit Jalapeños und Schmand servieren.'] },
+{ n:'Hummus mit Fladenbrot und Gemüse', m:'snack', t:12, ing:[['hummus',80],['fladenbrot',70],['moehren',50],['gurke',50],['paprika',50]], s:['Hummus in eine Schale geben.','Fladenbrot toasten.','Mit Gemüsesticks servieren.'] },
+{ n:'Mozzarella-Sticks mit Tomatendip', m:'snack', t:20, ing:[['mozzarella',100],['semmelbroesel',30],['ei',40],['mehl',15],['passata',60]], s:['Mozzarella panieren.','Knusprig braten.','Mit Tomatendip servieren.'] },
+{ n:'Bruschetta mit Tomate und Mozzarella', m:'snack', t:15, ing:[['baguette',90],['tomaten',90],['mozzarella',60],['basilikum',4],['olivenoel',10]], s:['Baguette rösten.','Mit Tomate und Mozzarella belegen.','Mit Basilikum und Öl servieren.'] },
+{ n:'Käsespieße mit Trauben und Nüssen', m:'snack', t:10, ing:[['bergkaese',80],['weintrauben',80],['walnuesse',20],['honig',8]], s:['Käse würfeln.','Mit Trauben aufspießen.','Mit Nüssen und Honig servieren.'] },
+{ n:'Quesadilla mit Käse und Mais', m:'snack', t:15, ing:[['wrap',100],['reibekaese',60],['mais',50],['paprika',40],['schmand',30]], s:['Wrap mit Käse, Mais und Paprika belegen.','Zusammenklappen und braten.','Mit Schmand servieren.'] },
+{ n:'Ofenkäse mit Kräuterbaguette', m:'snack', t:25, ing:[['camembert',120],['baguette',90],['knoblauch',5],['rosmarin',2],['honig',10]], s:['Camembert im Ofen backen.','Baguette mit Knoblauch rösten.','Mit Honig beträufeln.'] },
+{ n:'Edamame mit Chili, Knoblauch und Sesam', m:'snack', t:12, ing:[['edamame',150],['knoblauch',5],['chili',3],['sojasauce',8],['sesam',5]], s:['Edamame garen.','Knoblauch und Chili kurz anbraten.','Mit Sojasauce und Sesam schwenken.'] },
+{ n:'Süßkartoffel-Toast mit Frischkäse und Radieschen', m:'snack', t:20, ing:[['suesskartoffel',150],['frischkaese',40],['radieschen',40],['kresse',5],['zitrone',6]], s:['Süßkartoffelscheiben toasten.','Mit Frischkäse bestreichen.','Mit Radieschen und Kresse toppen.'] },
+{ n:'Kleine Frikadellen mit Kräuterdip', m:'snack', t:25, ing:[['hackrind',120],['semmelbroesel',20],['ei',30],['naturjoghurt',50],['schnittlauch',4]], s:['Mini-Frikadellen formen und braten.','Kräuterdip anrühren.','Zusammen servieren.'] },
+{ n:'Gebackene Feta-Päckchen mit Honig', m:'snack', t:22, ing:[['feta',100],['filoteig',60],['honig',12],['sesam',5],['thymian',2]], s:['Feta in Filoteig wickeln.','Im Ofen goldbraun backen.','Mit Honig und Sesam servieren.'] },
+{ n:'Gemüsesticks mit Erdnussdip', m:'snack', t:12, ing:[['moehren',80],['gurke',80],['paprika',60],['erdnussbutter',25],['sojasauce',8]], s:['Gemüse in Sticks schneiden.','Erdnussdip anrühren.','Zusammen servieren.'] },
+{ n:'Käse-Schinken-Röllchen mit Gurke', m:'snack', t:10, ing:[['kochschinken',60],['bergkaese',50],['frischkaese',30],['gurke',60]], s:['Schinken mit Frischkäse bestreichen.','Käse und Gurke einrollen.','In Stücke schneiden.'] },
+{ n:'Warme Oliven mit Feta und Zitrone', m:'snack', t:12, ing:[['oliven',100],['feta',60],['zitrone',10],['olivenoel',12],['rosmarin',2]], s:['Oliven mit Öl und Rosmarin erwärmen.','Feta zugeben.','Mit Zitrone servieren.'] },
+];

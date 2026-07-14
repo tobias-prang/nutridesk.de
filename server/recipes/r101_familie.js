@@ -1,0 +1,21 @@
+// Kinder- & Familienküche. Von Hand geschrieben.
+module.exports = [
+{ n:'Nudeln mit Tomatensauce und geriebenem Käse', m:'mittag', t:18, ing:[['nudeln',180],['passata',150],['moehren',40],['reibekaese',40],['olivenoel',6]], s:['Möhre fein reiben und mit Passata köcheln.','Nudeln kochen.','Mit Käse bestreuen.'] },
+{ n:'Milchreis mit Zimtzucker und Apfel', m:'mittag', t:35, ing:[['reis',80],['milch',300],['zucker',12],['zimt',2],['apfel',90]], s:['Reis in Milch weich kochen.','Apfel würfeln.','Mit Zimtzucker und Apfel servieren.'] },
+{ n:'Kartoffelpüree mit Würstchen und Erbsen', m:'abend', t:25, ing:[['kartoffelpueree',220],['wiener',90],['erbsen',80],['butter',10]], s:['Kartoffelpüree zubereiten.','Würstchen erwärmen.','Mit Erbsen servieren.'] },
+{ n:'Käsespätzle für Kinder', m:'abend', t:25, ing:[['spaetzle',180],['gouda',60],['butter',12],['schnittlauch',3]], s:['Spätzle garen.','Mit Käse schichten, bis er schmilzt.','Mit Butter und Schnittlauch servieren.'] },
+{ n:'Pfannkuchen mit Apfelmus', m:'mittag', t:20, ing:[['mehl',60],['ei',100],['milch',150],['apfelmus',90],['butter',8]], s:['Pfannkuchenteig anrühren.','Dünne Pfannkuchen backen.','Mit Apfelmus servieren.'] },
+{ n:'Frikadellen mit Kartoffelpüree und Möhren', m:'abend', t:35, mp:1, ing:[['hackgemischt',140],['ei',25],['semmelbroesel',20],['kartoffelpueree',200],['moehren',80]], s:['Frikadellen formen und braten.','Möhren dünsten.','Mit Kartoffelpüree servieren.'] },
+{ n:'Hähnchen-Nuggets mit Pommes', m:'abend', t:30, mp:1, ing:[['haehnchen',150],['panko',30],['ei',25],['pommes',180],['ketchup',20]], s:['Hähnchen in Nuggets schneiden und panieren.','Knusprig backen.','Mit Pommes und Ketchup servieren.'] },
+{ n:'Gemüsereis mit Ei kinderfreundlich', m:'mittag', t:20, ing:[['reis',180],['erbsen',60],['moehren',60],['ei',60],['butter',8]], s:['Reis mit Erbsen und Möhren kochen.','Ei unterrühren.','Mit Butter verfeinern.'] },
+{ n:'Käse-Schinken-Toast mit Ei', m:'mittag', t:14, ing:[['toastbrot',90],['schinkenwuerfel',40],['gouda',40],['ei',60]], s:['Toast mit Schinken und Käse belegen.','Überbacken.','Mit Spiegelei toppen.'] },
+{ n:'Nudelauflauf mit Schinken und Käse', m:'abend', t:40, mp:1, ing:[['nudeln',180],['schinkenwuerfel',60],['milch',120],['reibekaese',60],['ei',50]], s:['Nudeln kochen.','Mit Schinken, Ei und Milch in eine Form geben.','Mit Käse überbacken.'] },
+{ n:'Ofen-Kartoffelspalten mit Kräuterquark', m:'abend', t:40, ing:[['kartoffeln',250],['magerquark',150],['schnittlauch',5],['olivenoel',10]], s:['Kartoffelspalten mit Öl im Ofen backen.','Quark mit Schnittlauch verrühren.','Zusammen servieren.'] },
+{ n:'Rührei mit Toast und Tomaten', m:'fruh', t:12, ing:[['ei',150],['toastbrot',60],['tomaten',60],['butter',8]], s:['Rührei in Butter zubereiten.','Toast rösten.','Mit Tomaten servieren.'] },
+{ n:'Gemüse-Nudelsuppe mit Hähnchen', m:'mittag', t:30, mp:1, ing:[['haehnchen',110],['nudeln',60],['moehren',70],['erbsen',50],['bruehe',450]], s:['Hähnchen in Brühe garen und zerteilen.','Möhre und Erbsen zugeben.','Nudeln darin kochen.'] },
+{ n:'Kaiserschmarrn mit Rosinen und Apfelmus', m:'mittag', t:22, ing:[['mehl',60],['ei',100],['milch',120],['rosinen',15],['apfelmus',80]], s:['Teig anrühren und in der Pfanne stocken lassen.','Zerreißen und karamellisieren.','Mit Apfelmus servieren.'] },
+{ n:'Fischstäbchen mit Kartoffelpüree und Erbsen', m:'abend', t:28, ing:[['seelachs',140],['semmelbroesel',30],['kartoffelpueree',200],['erbsen',80],['zitrone',6]], s:['Fisch panieren und braten.','Kartoffelpüree und Erbsen zubereiten.','Mit Zitrone servieren.'] },
+{ n:'Gnocchi mit Tomatensauce und Käse', m:'mittag', t:18, ing:[['gnocchi',200],['passata',140],['reibekaese',40],['basilikum',3]], s:['Gnocchi garen.','In Tomatensauce schwenken.','Mit Käse und Basilikum servieren.'] },
+{ n:'Reis mit Hähnchen und Erbsen einfach', m:'mittag', t:24, mp:1, ing:[['haehnchen',140],['reis',170],['erbsen',70],['moehren',50],['butter',8]], s:['Hähnchen anbraten.','Reis und Gemüse garen.','Mit Butter verfeinern.'] },
+{ n:'Ofen-Hähnchenschenkel mit Kartoffeln', m:'abend', t:50, mp:1, ing:[['haehnchenkeule',180],['kartoffeln',200],['moehren',80],['olivenoel',12],['salz',1]], s:['Hähnchen und Gemüse mit Öl aufs Blech geben.','Bei 200 Grad 35 Minuten backen.','Servieren.'] },
+];

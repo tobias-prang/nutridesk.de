@@ -1,0 +1,21 @@
+// Frühstück, Teil 6 & Snacks. Von Hand geschrieben.
+module.exports = [
+{ n:'Shakshuka mit Spinat und Ei', m:'fruh', t:22, ing:[['ei',120],['passata',180],['spinat',60],['zwiebel',40],['feta',30],['fladenbrot',60]], s:['Zwiebel und Spinat andünsten.','Passata zugeben und köcheln.','Eier hineinschlagen, mit Feta und Fladenbrot servieren.'] },
+{ n:'Overnight Oats mit Kaffee und Kakao', m:'fruh', t:5, mp:1, ing:[['haferflocken',60],['milch',180],['kakao',6],['ahornsirup',12],['banane',60]], s:['Haferflocken mit Milch, Kakao und Sirup verrühren.','Über Nacht kühlen.','Mit Banane toppen.'] },
+{ n:'Protein-French-Toast', m:'fruh', t:16, ing:[['toastbrot',80],['ei',100],['milch',50],['proteinpulver',15],['zimt',2]], s:['Toast in Ei-Milch-Protein-Mischung wenden.','In der Pfanne goldbraun braten.','Mit Zimt bestreuen.'] },
+{ n:'Herzhafte Haferflocken mit Ei und Käse', m:'fruh', t:15, ing:[['haferflocken',50],['bruehe',200],['ei',60],['reibekaese',30],['spinat',40]], s:['Haferflocken in Brühe cremig kochen.','Spinat und Käse unterrühren.','Mit pochiertem Ei toppen.'] },
+{ n:'Skyr-Bowl mit Physalis und Granola', m:'fruh', t:5, ing:[['skyr',200],['physalis',60],['granola',30],['honig',8]], s:['Skyr in eine Schale geben.','Physalis und Granola daraufgeben.','Mit Honig süßen.'] },
+{ n:'Bananenbrot-Scheibe mit Quark', m:'fruh', t:8, ing:[['banane',70],['haferflocken',40],['ei',50],['magerquark',80],['walnuesse',10]], s:['Bananenbrot-Scheibe anbacken.','Mit Quark bestreichen.','Mit Walnüssen servieren.'] },
+{ n:'Grüner Protein-Smoothie', m:'fruh', t:5, ing:[['spinat',40],['banane',100],['proteinpulver',25],['mandelmilch',200],['erdnussbutter',10]], s:['Alle Zutaten in den Mixer geben.','Cremig pürieren.','In ein Glas füllen.'] },
+{ n:'Vollkornwaffeln mit Beeren und Skyr', m:'fruh', t:20, ing:[['mehl',60],['ei',60],['milch',100],['heidelbeeren',60],['skyr',80]], s:['Waffelteig anrühren und backen.','Mit Beeren belegen.','Mit Skyr servieren.'] },
+{ n:'Rührei mit Champignons und Kräutern', m:'fruh', t:14, ing:[['ei',150],['champignons',70],['petersilie',3],['vollkornbrot',60],['butter',8]], s:['Champignons anbraten.','Eier zugeben und stocken lassen.','Mit Kräutern und Brot servieren.'] },
+{ n:'Chia-Kokos-Pudding mit Mango', m:'fruh', t:5, mp:1, ing:[['chiasamen',30],['kokosmilch',110],['milch',90],['mango',80],['kokosraspel',6]], s:['Chia mit Kokosmilch und Milch verrühren.','Über Nacht quellen lassen.','Mit Mango und Kokos toppen.'] },
+{ n:'Beeren-Nuss-Snack mit Zartbitter', m:'snack', t:3, ing:[['heidelbeeren',80],['mandeln',15],['zartbitter',10]], s:['Beeren in eine Schale geben.','Mit Mandeln und Schokostückchen mischen.'] },
+{ n:'Proteinriegel mit Haferflocken', m:'snack', t:15, mp:1, ing:[['haferflocken',50],['proteinpulver',20],['erdnussbutter',22],['honig',14],['zartbitter',10]], s:['Alle Zutaten verkneten.','In eine Form drücken.','Kühlen und in Riegel schneiden.'] },
+{ n:'Gemüsesticks mit Skyr-Dip', m:'snack', t:6, ing:[['moehren',80],['gurke',80],['paprika',60],['skyr',100],['schnittlauch',4]], s:['Gemüse in Sticks schneiden.','Skyr mit Schnittlauch würzen.','Als Dip reichen.'] },
+{ n:'Apfel-Zimt-Chips', m:'snack', t:35, mp:1, ing:[['apfel',150],['zimt',2]], s:['Apfel hauchdünn hobeln.','Mit Zimt bestreuen.','Im Ofen bei 120 Grad knusprig trocknen.'] },
+{ n:'Hüttenkäse-Brot mit Radieschen', m:'snack', t:6, ing:[['vollkornbrot',60],['huettenkaese',70],['radieschen',40],['schnittlauch',4]], s:['Hüttenkäse auf das Brot streichen.','Mit Radieschen belegen.','Mit Schnittlauch bestreuen.'] },
+{ n:'Frozen Bananen-Erdnuss-Bites', m:'snack', t:5, mp:1, ing:[['banane',120],['erdnussbutter',18],['zartbitter',12]], s:['Bananenscheiben mit Erdnussbutter bestreichen.','Mit Schokolade überziehen.','Einfrieren.'] },
+{ n:'Quark-Dip mit Kräutern und Brot', m:'snack', t:6, ing:[['magerquark',120],['schnittlauch',5],['dill',3],['knaeckebrot',25]], s:['Quark mit Kräutern verrühren.','Mit Knäckebrot servieren.'] },
+{ n:'Energy-Balls mit Kakao und Nuss', m:'snack', t:15, mp:1, ing:[['datteln',55],['haferflocken',35],['kakao',8],['walnuesse',18]], s:['Datteln, Haferflocken und Walnüsse mixen.','Mit Kakao verkneten.','Zu Kugeln rollen und kühlen.'] },
+];

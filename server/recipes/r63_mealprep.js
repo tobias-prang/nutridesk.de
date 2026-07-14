@@ -1,0 +1,21 @@
+// Meal-Prep-Bowls. Von Hand geschrieben, alle gut vorzubereiten.
+module.exports = [
+{ n:'Meal-Prep Hähnchen-Quinoa-Brokkoli', m:'mittag', t:30, mp:1, ing:[['haehnchen',150],['quinoa',160],['brokkoli',100],['cherrytomaten',60],['olivenoel',8]], s:['Hähnchen und Quinoa garen.','Brokkoli dämpfen.','In Boxen mit Tomaten schichten.'] },
+{ n:'Meal-Prep Rind-Reis-Bohnen', m:'mittag', t:30, mp:1, ing:[['hackrind',130],['reis',160],['kidneybohnen',80],['mais',50],['paprika',60]], s:['Hack würzig anbraten.','Reis kochen.','Mit Bohnen, Mais und Paprika portionieren.'] },
+{ n:'Meal-Prep Falafel-Bulgur-Box', m:'mittag', t:32, mp:1, ing:[['kichererbsen',150],['bulgur',150],['gurke',60],['tomaten',60],['hummus',40]], s:['Falafel backen.','Bulgur garen.','Mit Gemüse und Hummus in Boxen füllen.'] },
+{ n:'Meal-Prep Lachs-Süßkartoffel-Bowl', m:'abend', t:35, mp:1, ing:[['lachs',140],['suesskartoffel',150],['brokkoli',90],['avocado',40],['zitrone',8]], s:['Lachs und Süßkartoffel im Ofen garen.','Brokkoli dämpfen.','Mit Avocado portionieren.'] },
+{ n:'Meal-Prep Pute-Reis-Gemüse', m:'mittag', t:28, mp:1, ing:[['pute',150],['reis',160],['moehren',60],['erbsen',60],['sojasauce',10]], s:['Pute anbraten.','Reis und Gemüse garen.','In Boxen schichten.'] },
+{ n:'Meal-Prep Tofu-Erdnuss-Reis', m:'mittag', t:26, mp:1, ing:[['tofu',150],['reis',160],['moehren',60],['paprika',60],['erdnussbutter',20],['sojasauce',12]], s:['Tofu braten.','Erdnusssauce anrühren.','Mit Reis und Gemüse portionieren.'] },
+{ n:'Meal-Prep Hähnchen-Fajita-Box', m:'mittag', t:28, mp:1, ing:[['haehnchen',150],['paprika',90],['zwiebel',50],['reis',150],['mais',50]], s:['Hähnchen und Gemüse würzig anbraten.','Reis kochen.','Mit Mais in Boxen füllen.'] },
+{ n:'Meal-Prep Linsen-Feta-Bowl', m:'mittag', t:28, mp:1, ing:[['linsen',160],['bulgur',120],['paprika',60],['feta',50],['petersilie',5],['olivenoel',8]], s:['Linsen und Bulgur garen.','Mit Paprika mischen.','Feta und Kräuter zugeben.'] },
+{ n:'Meal-Prep Rindergeschnetzeltes-Reis', m:'mittag', t:30, mp:1, ing:[['rindersteak',140],['reis',160],['paprika',70],['zwiebel',40],['sojasauce',12]], s:['Rind scharf anbraten.','Paprika und Zwiebel zugeben.','Mit Reis portionieren.'] },
+{ n:'Meal-Prep Kichererbsen-Curry-Box', m:'mittag', t:30, mp:1, ing:[['kichererbsen',160],['kokosmilch',100],['spinat',60],['currypul',3],['reis',150]], s:['Kichererbsen-Curry köcheln.','Reis kochen.','In Boxen füllen und kühlen.'] },
+{ n:'Meal-Prep Hähnchen-Nudel-Pesto', m:'mittag', t:25, mp:1, ing:[['haehnchen',140],['fusilli',170],['pesto',30],['cherrytomaten',70],['rucola',30]], s:['Hähnchen braten.','Nudeln mit Pesto mischen.','Mit Tomaten und Rucola portionieren.'] },
+{ n:'Meal-Prep Ei-Quinoa-Avocado', m:'mittag', t:25, ing:[['ei',100],['quinoa',150],['avocado',50],['cherrytomaten',60],['spinat',40]], s:['Eier und Quinoa garen.','Mit Avocado und Tomaten schichten.','In Boxen kühlen.'] },
+{ n:'Meal-Prep Hackbällchen-Reis', m:'mittag', t:32, mp:1, ing:[['hackgemischt',140],['reis',160],['passata',110],['zucchini',60],['parmesan',20]], s:['Hackbällchen in Tomatensauce garen.','Reis kochen.','Mit Zucchini portionieren.'] },
+{ n:'Meal-Prep Thunfisch-Nudel-Box', m:'mittag', t:22, mp:1, ing:[['thunfisch',100],['nudeln',170],['mais',60],['paprika',60],['naturjoghurt',60]], s:['Nudeln kochen und abkühlen.','Mit Thunfisch, Mais und Paprika mischen.','Joghurt-Dressing zugeben.'] },
+{ n:'Meal-Prep Süßkartoffel-Kichererbsen-Box', m:'mittag', t:35, mp:1, ing:[['suesskartoffel',150],['kichererbsen',110],['spinat',50],['tahin',18],['quinoa',140]], s:['Süßkartoffel und Kichererbsen rösten.','Quinoa garen.','Mit Spinat und Tahin portionieren.'] },
+{ n:'Meal-Prep Hähnchen-Reis-Curry', m:'mittag', t:30, mp:1, ing:[['haehnchen',150],['reis',160],['kokosmilch',90],['paprika',60],['currypul',3]], s:['Hähnchen-Curry köcheln.','Reis kochen.','In Boxen füllen und kühlen.'] },
+{ n:'Meal-Prep Bulgur-Halloumi-Bowl', m:'mittag', t:26, mp:1, ing:[['halloumi',110],['bulgur',150],['tomaten',60],['gurke',60],['olivenoel',8]], s:['Halloumi braten.','Bulgur garen.','Mit Gemüse portionieren.'] },
+{ n:'Meal-Prep Rind-Brokkoli-Reis', m:'mittag', t:28, mp:1, ing:[['rindersteak',140],['reis',160],['brokkoli',100],['sojasauce',12],['sesam',5]], s:['Rind scharf anbraten.','Reis und Brokkoli garen.','Mit Sesam portionieren.'] },
+];

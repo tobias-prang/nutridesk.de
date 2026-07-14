@@ -1,0 +1,23 @@
+// Frühstück, Teil 3. Von Hand geschrieben.
+module.exports = [
+{ n:'Porridge mit Birne und Walnuss', m:'fruh', t:10, ing:[['haferflocken',60],['milch',250],['birne',100],['walnuesse',15],['zimt',1]], s:['Haferflocken mit Milch kochen.','Birne würfeln und unterheben.','Mit Walnüssen und Zimt toppen.'] },
+{ n:'Skyr-Bowl mit Granatapfel', m:'fruh', t:6, ing:[['skyr',200],['granatapfel',50],['granola',30],['honig',8]], s:['Skyr in eine Schale geben.','Mit Granatapfelkernen und Granola toppen.','Mit Honig süßen.'] },
+{ n:'Overnight Oats mit Kokos und Mango', m:'fruh', t:5, mp:1, ing:[['haferflocken',60],['kokosjoghurt',100],['milch',100],['mango',80],['kokosraspel',8]], s:['Haferflocken mit Kokosjoghurt und Milch mischen.','Über Nacht kühlen.','Mit Mango und Kokos toppen.'] },
+{ n:'Eier-Muffins mit Gemüse', m:'fruh', t:25, mp:1, ing:[['ei',150],['paprika',50],['spinat',40],['reibekaese',30],['olivenoel',5]], s:['Eier mit Gemüse verquirlen.','In Muffinformen füllen.','Bei 180 Grad 18 Minuten backen.'] },
+{ n:'Vollkornbrot mit Rührei und Avocado', m:'fruh', t:14, ing:[['vollkornbrot',80],['ei',100],['avocado',50],['schnittlauch',4]], s:['Rührei zubereiten.','Avocado auf das Brot streichen.','Rührei daraufgeben.'] },
+{ n:'Beeren-Smoothie mit Haferflocken', m:'fruh', t:5, ing:[['heidelbeeren',80],['himbeeren',50],['haferflocken',20],['milch',200]], s:['Alle Zutaten pürieren.','In ein Glas füllen.'] },
+{ n:'Griechischer Joghurt mit Apfel und Nüssen', m:'fruh', t:5, ing:[['griechjoghurt',200],['apfel',80],['walnuesse',15],['honig',8]], s:['Joghurt in eine Schale geben.','Apfel würfeln und mit Nüssen daraufgeben.','Mit Honig süßen.'] },
+{ n:'Warmer Apfel-Zimt-Quark', m:'fruh', t:12, ing:[['magerquark',200],['apfel',120],['zimt',2],['honig',10],['haferflocken',20]], s:['Apfel mit Zimt kurz dünsten.','Über den Quark geben.','Mit Haferflocken bestreuen.'] },
+{ n:'Vollkorntoast mit Frischkäse und Beeren', m:'fruh', t:6, ing:[['toastbrot',60],['frischkaese',30],['heidelbeeren',50],['honig',6]], s:['Toast mit Frischkäse bestreichen.','Mit Beeren belegen.','Mit Honig beträufeln.'] },
+{ n:'Protein-Porridge mit Beeren', m:'fruh', t:10, ing:[['haferflocken',50],['milch',220],['proteinpulver',25],['himbeeren',60]], s:['Haferflocken mit Milch kochen.','Proteinpulver einrühren.','Mit Himbeeren toppen.'] },
+{ n:'Bananen-Kakao-Smoothie', m:'fruh', t:5, ing:[['banane',120],['milch',200],['kakao',6],['haferflocken',20]], s:['Alle Zutaten pürieren.','In ein Glas füllen.'] },
+{ n:'Herzhaftes Frühstücksbrot mit Ei und Tomate', m:'fruh', t:12, ing:[['vollkornbrot',80],['ei',60],['tomaten',50],['frischkaese',20]], s:['Brot mit Frischkäse bestreichen.','Mit Ei und Tomate belegen.'] },
+{ n:'Chia-Bowl mit Himbeeren', m:'fruh', t:5, mp:1, ing:[['chiasamen',30],['milch',200],['himbeeren',70],['honig',8]], s:['Chia mit Milch verrühren und quellen lassen.','Über Nacht kühlen.','Mit Himbeeren toppen.'] },
+{ n:'Overnight Oats Spekulatius', m:'fruh', t:5, mp:1, ing:[['haferflocken',60],['milch',180],['zimt',2],['apfel',80],['mandeln',15]], s:['Haferflocken mit Milch und Zimt mischen.','Über Nacht kühlen.','Mit Apfel und Mandeln toppen.'] },
+{ n:'Pancakes mit Skyr und Beeren', m:'fruh', t:18, ing:[['ei',100],['haferflocken',40],['skyr',80],['heidelbeeren',60]], s:['Ei, Haferflocken und Skyr zum Teig verrühren.','Pancakes braten.','Mit Beeren servieren.'] },
+{ n:'Grießbrei mit Apfelmus', m:'fruh', t:12, ing:[['griess',50],['milch',250],['apfel',100],['zimt',2]], s:['Grieß in Milch andicken.','Apfelmus zubereiten.','Zusammen servieren.'] },
+{ n:'Beeren-Joghurt mit Leinsamen', m:'fruh', t:5, ing:[['naturjoghurt',200],['heidelbeeren',60],['leinsamen',10],['honig',8]], s:['Joghurt in eine Schale geben.','Beeren und Leinsamen daraufgeben.','Mit Honig süßen.'] },
+{ n:'Herzhafte Frühstücks-Bowl mit Ei', m:'fruh', t:15, ing:[['ei',100],['avocado',50],['cherrytomaten',60],['spinat',40],['vollkornbrot',40]], s:['Ei kochen.','Avocado, Tomaten und Spinat anrichten.','Mit Brot servieren.'] },
+{ n:'Mandel-Porridge mit Apfel', m:'fruh', t:10, ing:[['haferflocken',60],['mandelmilch',250],['apfel',100],['mandeln',15],['zimt',1]], s:['Haferflocken mit Mandelmilch kochen.','Apfel unterheben.','Mit Mandeln und Zimt toppen.'] },
+{ n:'Bircher Müsli mit Beeren', m:'fruh', t:5, mp:1, ing:[['haferflocken',50],['milch',150],['naturjoghurt',80],['heidelbeeren',60],['haselnuesse',12]], s:['Haferflocken mit Milch und Joghurt mischen.','Über Nacht ziehen lassen.','Mit Beeren und Nüssen toppen.'] },
+];

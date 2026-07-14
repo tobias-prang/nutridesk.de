@@ -1,0 +1,19 @@
+// Frühstück, Teil 12. Von Hand geschrieben.
+module.exports = [
+{ n:'Porridge mit Feige, Honig und Pistazie', m:'fruh', t:10, ing:[['haferflocken',60],['milch',240],['feige',70],['pistazien',15],['honig',10]], s:['Haferflocken mit Milch cremig kochen.','Feige unterheben.','Mit Pistazien und Honig toppen.'] },
+{ n:'Overnight Oats mit Erdbeere und Mandel', m:'fruh', t:5, mp:1, ing:[['haferflocken',60],['milch',180],['erdbeeren',70],['mandeln',15],['honig',8]], s:['Haferflocken mit Milch verrühren.','Über Nacht kühlen.','Mit Erdbeeren und Mandeln toppen.'] },
+{ n:'Rührei mit Avocado und Cherrytomaten', m:'fruh', t:12, ing:[['ei',150],['avocado',60],['cherrytomaten',60],['vollkornbrot',60],['schnittlauch',4]], s:['Rührei zubereiten.','Avocado und Tomaten dazu.','Mit Brot servieren.'] },
+{ n:'Skyr mit Apfel, Zimt und Walnuss', m:'fruh', t:5, ing:[['skyr',200],['apfel',90],['walnuesse',15],['zimt',2],['honig',8]], s:['Skyr in eine Schale geben.','Apfel und Walnüsse daraufgeben.','Mit Zimt und Honig toppen.'] },
+{ n:'Haferflocken-Bananen-Pfannkuchen', m:'fruh', t:18, ing:[['haferflocken',50],['banane',90],['ei',100],['zimt',2],['heidelbeeren',50]], s:['Banane, Haferflocken und Ei zu Teig verrühren.','Pfannkuchen backen.','Mit Beeren servieren.'] },
+{ n:'Vollkornbrot mit Ei und Schinken', m:'fruh', t:10, ing:[['vollkornbrot',90],['ei',100],['kochschinken',40],['tomaten',40],['schnittlauch',4]], s:['Ei kochen.','Brot mit Schinken belegen.','Mit Ei und Tomate toppen.'] },
+{ n:'Chia-Kokos-Pudding mit Passionsfrucht', m:'fruh', t:5, mp:1, ing:[['chiasamen',30],['kokosmilch',110],['milch',90],['physalis',70],['kokosraspel',6]], s:['Chia mit Kokosmilch und Milch verrühren.','Über Nacht quellen lassen.','Mit Physalis toppen.'] },
+{ n:'Griechischer Joghurt mit Feige und Pistazie', m:'fruh', t:5, ing:[['griechjoghurt',200],['feige',70],['pistazien',15],['honig',10],['granola',25]], s:['Joghurt in eine Schale geben.','Feige und Pistazien daraufgeben.','Mit Granola und Honig toppen.'] },
+{ n:'Warmer Hirsebrei mit Apfel und Zimt', m:'fruh', t:25, ing:[['hirse',60],['milch',280],['apfel',90],['zimt',2],['honig',10]], s:['Hirse in Milch weich kochen.','Apfel unterheben.','Mit Zimt und Honig servieren.'] },
+{ n:'Protein-Quarkbowl mit Nüssen', m:'fruh', t:5, ing:[['magerquark',200],['proteinpulver',15],['himbeeren',60],['walnuesse',15],['haferflocken',20]], s:['Quark mit Proteinpulver verrühren.','Mit Haferflocken mischen.','Mit Beeren und Nüssen toppen.'] },
+{ n:'Spiegelei auf Vollkorntoast mit Spinat', m:'fruh', t:12, ing:[['vollkornbrot',80],['ei',60],['spinat',50],['tomaten',40],['olivenoel',8]], s:['Spinat andünsten.','Spiegelei braten.','Auf Toast mit Spinat servieren.'] },
+{ n:'Bircher Müsli mit Birne und Haselnuss', m:'fruh', t:5, mp:1, ing:[['haferflocken',50],['milch',150],['naturjoghurt',80],['birne',90],['haselnuesse',15]], s:['Haferflocken mit Milch und Joghurt mischen.','Birne raspeln und unterheben.','Über Nacht ziehen lassen.'] },
+{ n:'Frühstücks-Wrap mit Rührei und Käse', m:'fruh', t:14, ing:[['wrap',100],['ei',120],['reibekaese',40],['tomaten',40],['schnittlauch',4]], s:['Rührei mit Käse zubereiten.','In Wrap füllen.','Mit Tomate einrollen.'] },
+{ n:'Grüner Smoothie mit Spinat und Apfel', m:'fruh', t:5, ing:[['spinat',40],['apfel',100],['banane',80],['milch',180],['haferflocken',20]], s:['Alle Zutaten cremig pürieren.','In ein Glas füllen.'] },
+{ n:'Quark mit Leinöl, Tomate und Schnittlauch', m:'fruh', t:8, ing:[['magerquark',200],['leinoel',10],['tomaten',60],['schnittlauch',5],['vollkornbrot',60]], s:['Quark mit Leinöl verrühren.','Mit Tomate und Schnittlauch mischen.','Mit Brot servieren.'] },
+{ n:'Pancakes mit Ahornsirup und Banane', m:'fruh', t:20, ing:[['mehl',60],['ei',100],['milch',80],['banane',80],['ahornsirup',15],['backpulver',3]], s:['Teig anrühren.','Pancakes backen.','Mit Banane und Sirup servieren.'] },
+];

@@ -1,0 +1,21 @@
+// Pfannengerichte, Teil 2. Von Hand geschrieben.
+module.exports = [
+{ n:'Gemüsereis-Pfanne mit Cashews', m:'mittag', t:22, mp:1, ing:[['reis',180],['paprika',60],['moehren',50],['zuckerschoten',50],['cashews',25],['sojasauce',12]], s:['Gemüse anbraten.','Reis und Cashews zugeben.','Mit Sojasauce abschmecken.'] },
+{ n:'Hähnchen-Ananas-Pfanne', m:'mittag', t:24, mp:1, ing:[['haehnchen',150],['ananas',70],['paprika',70],['reis',160],['sojasauce',12]], s:['Hähnchen anbraten.','Ananas und Paprika zugeben.','Mit Sojasauce und Reis servieren.'] },
+{ n:'Kartoffel-Gemüse-Pfanne vegetarisch', m:'mittag', t:25, mp:1, ing:[['kartoffeln',200],['paprika',70],['zucchini',70],['zwiebel',40],['olivenoel',10]], s:['Kartoffeln anbraten.','Gemüse zugeben.','Würzen und durchbraten.'] },
+{ n:'Putenpfanne mit Reis und Erbsen', m:'mittag', t:24, mp:1, ing:[['pute',150],['reis',160],['erbsen',60],['moehren',50],['sojasauce',10]], s:['Pute anbraten.','Reis und Gemüse zugeben.','Mit Sojasauce abschmecken.'] },
+{ n:'Gnocchi-Pfanne mit Speck und Spinat', m:'abend', t:20, ing:[['gnocchi',200],['bacon',40],['spinat',70],['kochsahne',80],['zwiebel',40]], s:['Speck und Zwiebel anbraten.','Gnocchi zugeben.','Spinat und Sahne unterheben.'] },
+{ n:'Hackfleisch-Nudel-Pfanne', m:'mittag', t:25, mp:1, ing:[['hackgemischt',120],['nudeln',180],['passata',120],['paprika',60],['zwiebel',40]], s:['Hack mit Zwiebel und Paprika anbraten.','Passata zugeben.','Mit Nudeln mischen.'] },
+{ n:'Tofu-Reis-Pfanne mit Gemüse', m:'mittag', t:22, mp:1, ing:[['tofu',150],['reis',170],['brokkoli',70],['moehren',50],['sojasauce',12]], s:['Tofu anbraten.','Reis und Gemüse zugeben.','Mit Sojasauce abschmecken.'] },
+{ n:'Champignon-Zwiebel-Pfanne mit Kartoffeln', m:'mittag', t:25, ing:[['kartoffeln',200],['champignons',100],['zwiebel',50],['ei',50],['olivenoel',10]], s:['Kartoffeln und Champignons anbraten.','Zwiebel zugeben.','Ei unterrühren und stocken lassen.'] },
+{ n:'Hähnchen-Gemüse-Reispfanne scharf', m:'mittag', t:24, mp:1, ing:[['haehnchen',150],['paprika',70],['reis',160],['chili',5],['sojasauce',12]], s:['Hähnchen mit Chili anbraten.','Paprika zugeben.','Reis und Sojasauce unterheben.'] },
+{ n:'Reispfanne mit Kichererbsen und Feta', m:'mittag', t:22, mp:1, ing:[['reis',170],['kichererbsen',100],['paprika',60],['feta',50],['olivenoel',8]], s:['Kichererbsen und Paprika anbraten.','Reis zugeben.','Feta unterbröseln.'] },
+{ n:'Süßkartoffel-Hähnchen-Pfanne', m:'mittag', t:26, mp:1, ing:[['haehnchen',150],['suesskartoffel',150],['paprika',60],['olivenoel',10],['paprikapulver',2]], s:['Süßkartoffel anbraten.','Hähnchen und Paprika zugeben.','Würzen und durchbraten.'] },
+{ n:'Nudel-Gemüse-Pfanne mit Pesto', m:'mittag', t:20, ing:[['fusilli',180],['zucchini',70],['cherrytomaten',70],['pesto',30],['parmesan',20]], s:['Gemüse anbraten.','Nudeln und Pesto zugeben.','Mit Parmesan bestreuen.'] },
+{ n:'Rührei-Gemüse-Pfanne mit Kartoffeln', m:'mittag', t:22, ing:[['ei',150],['kartoffeln',150],['paprika',60],['zwiebel',40],['olivenoel',8]], s:['Kartoffeln und Gemüse anbraten.','Eier zugeben und stocken lassen.'] },
+{ n:'Hackfleisch-Reispfanne mexikanisch', m:'mittag', t:24, mp:1, ing:[['hackrind',120],['reis',160],['mais',50],['kidneybohnen',60],['paprikapulver',2]], s:['Hack anbraten.','Reis, Mais und Bohnen zugeben.','Mit Paprikapulver würzen.'] },
+{ n:'Gemüse-Nudel-Pfanne asiatisch', m:'mittag', t:22, mp:1, ing:[['nudeln',180],['paprika',60],['moehren',50],['weisskohl',50],['sojasauce',15]], s:['Gemüse anbraten.','Nudeln zugeben.','Mit Sojasauce abschmecken.'] },
+{ n:'Halloumi-Gemüse-Pfanne', m:'abend', t:22, ing:[['halloumi',110],['paprika',70],['zucchini',70],['couscous',150],['olivenoel',10]], s:['Halloumi anbraten.','Gemüse zugeben.','Mit Couscous servieren.'] },
+{ n:'Putengeschnetzeltes-Pfanne mit Nudeln', m:'mittag', t:25, mp:1, ing:[['pute',150],['nudeln',180],['champignons',70],['kochsahne',80],['petersilie',4]], s:['Pute und Pilze anbraten.','Mit Sahne köcheln.','Mit Nudeln mischen.'] },
+{ n:'Kartoffel-Speck-Pfanne mit Ei', m:'mittag', t:24, ing:[['kartoffeln',200],['bacon',40],['ei',100],['zwiebel',40],['schnittlauch',4]], s:['Speck und Kartoffeln anbraten.','Eier zugeben und stocken lassen.','Mit Schnittlauch bestreuen.'] },
+];

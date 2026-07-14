@@ -1,0 +1,10 @@
+node_modules/
+dist/
+src-tauri/target/
+
+# Tauri-Updater: PRIVATER Signaturschluessel niemals committen!
+src-tauri/*.key
+!src-tauri/*.key.pub
+
+.DS_Store
+Thumbs.db

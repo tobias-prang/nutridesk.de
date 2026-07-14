@@ -1,0 +1,23 @@
+// Snacks, Teil 4. Von Hand geschrieben.
+module.exports = [
+{ n:'Skyr mit Kiwi und Honig', m:'snack', t:4, ing:[['skyr',150],['kiwi',80],['honig',6]], s:['Skyr in eine Schale geben.','Kiwi in Scheiben auflegen.','Mit Honig süßen.'] },
+{ n:'Vollkorncracker mit Avocado', m:'snack', t:5, ing:[['knaeckebrot',30],['avocado',60],['cherrytomaten',40],['salz',1]], s:['Avocado zerdrücken und aufstreichen.','Mit Tomaten belegen.','Salzen.'] },
+{ n:'Protein-Milchreis', m:'snack', t:5, ing:[['magerquark',150],['reiswaffeln',15],['heidelbeeren',50],['honig',8]], s:['Quark mit zerbröselten Reiswaffeln mischen.','Beeren unterheben.','Mit Honig süßen.'] },
+{ n:'Bananen-Walnuss-Snack', m:'snack', t:3, ing:[['banane',120],['walnuesse',15]], s:['Banane in Scheiben schneiden.','Mit Walnüssen anrichten.'] },
+{ n:'Gemüsesticks mit Kräuterquark', m:'snack', t:6, ing:[['moehren',80],['gurke',80],['magerquark',100],['schnittlauch',5]], s:['Gemüse in Sticks schneiden.','Quark mit Schnittlauch verrühren.','Als Dip reichen.'] },
+{ n:'Apfel-Erdnussbutter-Toast', m:'snack', t:5, ing:[['toastbrot',50],['erdnussbutter',18],['apfel',60],['zimt',1]], s:['Toast rösten.','Erdnussbutter bestreichen.','Mit Apfelscheiben und Zimt toppen.'] },
+{ n:'Mini-Frittata-Muffins', m:'snack', t:25, mp:1, ing:[['ei',100],['paprika',40],['spinat',30],['reibekaese',25]], s:['Eier mit Gemüse verquirlen.','In Muffinformen füllen.','Bei 180 Grad backen.'] },
+{ n:'Beeren-Joghurt mit Chia', m:'snack', t:4, ing:[['naturjoghurt',150],['himbeeren',60],['chiasamen',10],['honig',6]], s:['Joghurt in eine Schale geben.','Beeren und Chia daraufgeben.','Mit Honig süßen.'] },
+{ n:'Käse-Gurken-Häppchen', m:'snack', t:5, ing:[['gouda',40],['gurke',100],['knaeckebrot',20]], s:['Knäckebrot mit Käse und Gurke belegen.'] },
+{ n:'Schoko-Protein-Shake', m:'snack', t:4, ing:[['proteinpulver',30],['milch',250],['kakao',5]], s:['Alle Zutaten mixen.','In ein Glas füllen.'] },
+{ n:'Datteln mit Walnüssen', m:'snack', t:4, ing:[['datteln',40],['walnuesse',15]], s:['Datteln entkernen.','Mit Walnüssen füllen.'] },
+{ n:'Reiswaffeln mit Skyr und Beeren', m:'snack', t:4, ing:[['reiswaffeln',20],['skyr',80],['heidelbeeren',50]], s:['Reiswaffeln mit Skyr bestreichen.','Mit Beeren belegen.'] },
+{ n:'Ofen-Kichererbsen würzig', m:'snack', t:25, mp:1, ing:[['kichererbsen',150],['olivenoel',6],['paprikapulver',2],['kreuzkuemmel',1]], s:['Kichererbsen mit Öl und Gewürzen mischen.','Bei 200 Grad 20 Minuten rösten.'] },
+{ n:'Quark mit Nüssen und Honig', m:'snack', t:4, ing:[['magerquark',150],['mandeln',15],['honig',10]], s:['Quark in eine Schale geben.','Mit Mandeln und Honig toppen.'] },
+{ n:'Tomate-Mozzarella-Häppchen', m:'snack', t:5, ing:[['cherrytomaten',80],['mozzarella',50],['basilikum',3],['olivenoel',4]], s:['Tomaten und Mozzarella anrichten.','Mit Basilikum und Öl beträufeln.'] },
+{ n:'Bananen-Kakao-Shake', m:'snack', t:4, ing:[['banane',120],['milch',200],['kakao',5]], s:['Alle Zutaten mixen.','In ein Glas füllen.'] },
+{ n:'Gefüllte Paprika-Häppchen mit Frischkäse', m:'snack', t:8, ing:[['paprika',100],['frischkaese',40],['schnittlauch',4]], s:['Paprika in Stücke schneiden.','Mit Frischkäse füllen.','Mit Schnittlauch bestreuen.'] },
+{ n:'Apfel-Zimt-Quark-Becher', m:'snack', t:4, ing:[['magerquark',150],['apfel',90],['zimt',1],['honig',8]], s:['Apfel raspeln und unter den Quark rühren.','Mit Zimt und Honig abschmecken.'] },
+{ n:'Hummus mit Möhrensticks', m:'snack', t:5, ing:[['hummus',60],['moehren',120]], s:['Möhren in Sticks schneiden.','Mit Hummus dippen.'] },
+{ n:'Kokos-Dattel-Kugeln', m:'snack', t:15, mp:1, ing:[['datteln',60],['haferflocken',30],['kokosraspel',15]], s:['Datteln und Haferflocken mixen.','Zu Kugeln rollen.','In Kokosraspeln wälzen.'] },
+];

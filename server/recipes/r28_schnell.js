@@ -1,0 +1,22 @@
+// Schnelle Feierabendküche (unter 20 Minuten). Von Hand geschrieben.
+module.exports = [
+{ n:'Schnelle Tomatennudeln', m:'mittag', t:15, ing:[['spaghetti',180],['passata',150],['knoblauch',6],['olivenoel',8],['parmesan',20]], s:['Nudeln kochen.','Passata mit Knoblauch in Öl erwärmen.','Mit Nudeln mischen und Parmesan bestreuen.'] },
+{ n:'Rührei-Wrap schnell', m:'mittag', t:12, ing:[['wrap',80],['ei',100],['reibekaese',30],['tomaten',40]], s:['Rührei zubereiten.','Wrap mit Ei, Käse und Tomate füllen.','Einrollen.'] },
+{ n:'Käse-Quesadilla mit Bohnen', m:'mittag', t:15, ing:[['wrap',100],['reibekaese',50],['kidneybohnen',60],['mais',40]], s:['Wrap mit Käse, Bohnen und Mais belegen.','Zusammenklappen.','In der Pfanne knusprig backen.'] },
+{ n:'Thunfisch-Nudeln schnell', m:'mittag', t:15, mp:1, ing:[['penne',180],['thunfisch',100],['passata',120],['zwiebel',30],['olivenoel',8]], s:['Nudeln kochen.','Thunfisch mit Passata und Zwiebel erwärmen.','Mit Nudeln mischen.'] },
+{ n:'Gnocchi mit Tomate und Mozzarella', m:'mittag', t:15, ing:[['gnocchi',200],['passata',120],['mozzarella',60],['basilikum',4]], s:['Gnocchi garen.','In Passata schwenken.','Mit Mozzarella und Basilikum servieren.'] },
+{ n:'Couscous-Pfanne mit Kichererbsen', m:'mittag', t:15, mp:1, ing:[['couscous',160],['kichererbsen',100],['paprika',60],['olivenoel',8],['kreuzkuemmel',2]], s:['Kichererbsen und Paprika anbraten.','Couscous quellen lassen.','Zusammen mischen.'] },
+{ n:'Omelett mit Käse und Schinken', m:'mittag', t:12, ing:[['ei',150],['gouda',40],['kochschinken',40],['olivenoel',6]], s:['Eier verquirlen und angießen.','Schinken und Käse darauf verteilen.','Zusammenklappen.'] },
+{ n:'Pesto-Nudeln mit Tomaten', m:'mittag', t:15, ing:[['fusilli',180],['pesto',35],['cherrytomaten',80],['parmesan',20]], s:['Nudeln kochen.','Mit Pesto und Tomaten mischen.','Mit Parmesan bestreuen.'] },
+{ n:'Wrap mit Hähnchen und Frischkäse', m:'mittag', t:15, ing:[['wrap',80],['haehnchen',110],['frischkaese',25],['salat',30],['tomaten',40]], s:['Hähnchen braten.','Wrap mit Frischkäse bestreichen.','Mit Hähnchen und Gemüse füllen.'] },
+{ n:'Schnelle Gemüsepfanne mit Ei', m:'mittag', t:15, ing:[['paprika',80],['zucchini',80],['ei',100],['reibekaese',30],['olivenoel',8]], s:['Gemüse anbraten.','Eier zugeben und stocken lassen.','Käse unterrühren.'] },
+{ n:'Nudeln mit Frischkäse und Spinat', m:'mittag', t:15, ing:[['penne',180],['frischkaese',50],['spinat',60],['knoblauch',5]], s:['Nudeln kochen.','Spinat mit Knoblauch dünsten.','Frischkäse unterrühren und mit Nudeln mischen.'] },
+{ n:'Tomate-Mozzarella-Ciabatta', m:'mittag', t:12, ing:[['broetchen',90],['tomaten',80],['mozzarella',60],['basilikum',4],['olivenoel',6]], s:['Brötchen aufschneiden.','Mit Tomate und Mozzarella belegen.','Mit Öl und Basilikum servieren.'] },
+{ n:'Reispfanne mit Ei schnell', m:'mittag', t:15, ing:[['reis',200],['ei',60],['erbsen',50],['sojasauce',12]], s:['Reis anbraten.','Erbsen und Ei zugeben.','Mit Sojasauce abschmecken.'] },
+{ n:'Hähnchen-Wrap mit Gemüse schnell', m:'mittag', t:18, ing:[['wrap',80],['haehnchen',110],['paprika',40],['salat',30],['naturjoghurt',30]], s:['Hähnchen braten.','Wrap mit Joghurt bestreichen.','Mit Hähnchen und Gemüse füllen.'] },
+{ n:'Schneller Nudelsalat mit Mais', m:'mittag', t:18, mp:1, ing:[['nudeln',160],['mais',60],['paprika',50],['naturjoghurt',60],['schnittlauch',4]], s:['Nudeln kochen und abkühlen.','Mit Mais und Paprika mischen.','Joghurt-Dressing unterheben.'] },
+{ n:'Ofen-Wrap mit Käse und Schinken', m:'mittag', t:15, ing:[['wrap',80],['gouda',40],['kochschinken',40],['tomaten',40]], s:['Wrap mit Käse, Schinken und Tomate belegen.','Zusammenklappen.','Kurz überbacken.'] },
+{ n:'Bohnen-Mais-Pfanne schnell', m:'mittag', t:15, mp:1, ing:[['kidneybohnen',120],['mais',60],['paprika',60],['reis',150],['kreuzkuemmel',2]], s:['Paprika anbraten.','Bohnen und Mais zugeben.','Mit Reis servieren.'] },
+{ n:'Nudeln mit Brokkoli und Parmesan', m:'mittag', t:18, ing:[['penne',180],['brokkoli',120],['knoblauch',6],['olivenoel',10],['parmesan',25]], s:['Nudeln und Brokkoli kochen.','Mit Knoblauchöl schwenken.','Mit Parmesan bestreuen.'] },
+{ n:'Schnelles Käse-Omelett mit Tomaten', m:'mittag', t:12, ing:[['ei',150],['tomaten',60],['reibekaese',40],['schnittlauch',4],['olivenoel',6]], s:['Tomaten anbraten.','Eier zugeben und mit Käse bestreuen.','Zusammenklappen.'] },
+];

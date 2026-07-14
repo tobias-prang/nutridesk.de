@@ -1,0 +1,23 @@
+// Snacks, Teil 5. Von Hand geschrieben.
+module.exports = [
+{ n:'Edamame mit Chili und Salz', m:'snack', t:8, ing:[['edamame',150],['chiliflocken',1],['salz',2]], s:['Edamame in Salzwasser garen.','Abgießen.','Mit Chiliflocken und Salz bestreuen.'] },
+{ n:'Guacamole mit Gemüsesticks', m:'snack', t:10, ing:[['avocado',80],['tomaten',40],['limette',6],['moehren',80],['paprika',60]], s:['Avocado mit Tomate und Limette zerdrücken.','Gemüse in Sticks schneiden.','Als Dip servieren.'] },
+{ n:'Protein-Bites mit Erdnuss', m:'snack', t:15, mp:1, ing:[['haferflocken',50],['erdnussbutter',25],['proteinpulver',20],['honig',12],['zartbitter',10]], s:['Alle Zutaten verkneten.','Zu Kugeln rollen.','Kühl stellen.'] },
+{ n:'Oliven-Feta-Schale', m:'snack', t:5, ing:[['oliven',50],['feta',50],['cherrytomaten',60],['olivenoel',6],['oregano',1]], s:['Feta würfeln.','Mit Oliven und Tomaten anrichten.','Mit Öl und Oregano abschmecken.'] },
+{ n:'Joghurt-Bark mit Beeren', m:'snack', t:6, mp:1, ing:[['griechjoghurt',150],['heidelbeeren',50],['erdbeeren',50],['honig',10]], s:['Joghurt mit Honig verrühren und dünn ausstreichen.','Mit Beeren belegen.','Einfrieren und in Stücke brechen.'] },
+{ n:'Hummus-Bowl mit Paprika', m:'snack', t:8, ing:[['hummus',70],['paprika',80],['gurke',60],['knaeckebrot',20]], s:['Hummus in eine Schale geben.','Mit Paprika und Gurke servieren.','Knäckebrot dazu reichen.'] },
+{ n:'Matcha-Bananen-Shake', m:'snack', t:4, ing:[['banane',120],['milch',220],['haferflocken',15]], s:['Alle Zutaten pürieren.','In ein Glas füllen.'] },
+{ n:'Gefüllte Datteln mit Mandelmus', m:'snack', t:6, ing:[['datteln',45],['mandelmus',18],['kokosraspel',6]], s:['Datteln entkernen.','Mit Mandelmus füllen.','In Kokosraspeln wälzen.'] },
+{ n:'Cottage-Cheese mit Ananas', m:'snack', t:4, ing:[['huettenkaese',170],['ananas',80],['leinsamen',8]], s:['Hüttenkäse in eine Schale geben.','Mit Ananas toppen.','Mit Leinsamen bestreuen.'] },
+{ n:'Reiswaffeln mit Avocado und Tomate', m:'snack', t:6, ing:[['reiswaffeln',20],['avocado',50],['cherrytomaten',40],['salz',1]], s:['Avocado auf Reiswaffeln streichen.','Mit Tomaten belegen.','Leicht salzen.'] },
+{ n:'Geröstete Edamame-Kichererbsen-Mix', m:'snack', t:25, mp:1, ing:[['kichererbsen',90],['edamame',60],['olivenoel',6],['paprikapulver',2]], s:['Kichererbsen und Edamame trocknen.','Mit Öl und Gewürzen mischen.','Im Ofen knusprig rösten.'] },
+{ n:'Skyr-Snack mit Granola und Birne', m:'snack', t:4, ing:[['skyr',150],['granola',25],['birne',80]], s:['Skyr in eine Schale geben.','Birne würfeln und daraufgeben.','Mit Granola bestreuen.'] },
+{ n:'Bruschetta-Häppchen', m:'snack', t:10, ing:[['broetchen',60],['tomaten',80],['basilikum',4],['knoblauch',4],['olivenoel',8]], s:['Brot rösten und mit Knoblauch einreiben.','Tomaten würfeln und würzen.','Auf das Brot geben.'] },
+{ n:'Protein-Schoko-Mousse', m:'snack', t:5, ing:[['magerquark',180],['kakao',6],['proteinpulver',15],['honig',10],['himbeeren',40]], s:['Quark mit Kakao, Proteinpulver und Honig cremig rühren.','In eine Schale geben.','Mit Himbeeren toppen.'] },
+{ n:'Apfel-Nussbutter-Sandwich', m:'snack', t:5, ing:[['apfel',150],['mandelmus',20],['zimt',1]], s:['Apfel in dicke Scheiben schneiden.','Mit Mandelmus bestreichen.','Zu Sandwiches zusammensetzen.'] },
+{ n:'Gemüse-Tempura-Snack', m:'snack', t:20, ing:[['zucchini',70],['moehren',60],['mehl',25],['ei',25],['rapsoel',8]], s:['Gemüse in Streifen schneiden.','In dünnem Teig wenden.','Knusprig ausbacken.'] },
+{ n:'Bananen-Erdnuss-Reiswaffeln', m:'snack', t:5, ing:[['reiswaffeln',20],['erdnussbutter',20],['banane',60],['zimt',1]], s:['Reiswaffeln mit Erdnussbutter bestreichen.','Mit Banane belegen.','Mit Zimt bestreuen.'] },
+{ n:'Feta-Wassermelonen-Spieße', m:'snack', t:6, ing:[['ananas',120],['feta',30],['minze',3]], s:['Ananas würfeln.','Mit Feta auf Spieße stecken.','Mit Minze garnieren.'] },
+{ n:'Quark-Beeren-Eis', m:'snack', t:5, mp:1, ing:[['magerquark',150],['heidelbeeren',70],['honig',12]], s:['Quark mit Beeren und Honig verrühren.','In eine Form geben.','Einfrieren und portionieren.'] },
+{ n:'Kichererbsen-Rosmarin-Snack', m:'snack', t:25, mp:1, ing:[['kichererbsen',150],['olivenoel',6],['rosmarin',2],['salz',1]], s:['Kichererbsen trocken tupfen.','Mit Öl, Rosmarin und Salz mischen.','Im Ofen knusprig rösten.'] },
+];

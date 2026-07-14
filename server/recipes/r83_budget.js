@@ -1,0 +1,21 @@
+// Günstige Studenten- & Alltagsküche. Von Hand geschrieben.
+module.exports = [
+{ n:'Nudeln mit Tomatensauce und Käse', m:'mittag', t:18, ing:[['nudeln',180],['passata',150],['zwiebel',40],['reibekaese',40],['olivenoel',8]], s:['Zwiebel anbraten, Passata zugeben.','Nudeln kochen.','Mit Käse bestreuen.'] },
+{ n:'Eierreis mit Erbsen', m:'mittag', t:18, ing:[['reis',190],['ei',100],['erbsen',70],['sojasauce',12],['zwiebel',40]], s:['Reis anbraten.','Ei und Erbsen zugeben.','Mit Sojasauce abschmecken.'] },
+{ n:'Linseneintopf einfach', m:'mittag', t:35, mp:1, ing:[['linsen',160],['kartoffeln',150],['moehren',80],['zwiebel',50],['bruehe',400]], s:['Zwiebel und Möhre andünsten.','Linsen und Kartoffeln in Brühe garen.','Abschmecken.'] },
+{ n:'Kartoffel-Ei-Pfanne mit Zwiebel', m:'mittag', t:22, ing:[['kartoffeln',220],['ei',100],['zwiebel',50],['olivenoel',10],['schnittlauch',3]], s:['Kartoffeln anbraten.','Ei und Zwiebel zugeben.','Stocken lassen.'] },
+{ n:'Milchreis mit Zimt und Apfelmus', m:'mittag', t:35, ing:[['reis',80],['milch',300],['zucker',12],['zimt',2],['apfelmus',80]], s:['Reis in Milch weich kochen.','Mit Zucker süßen.','Mit Zimt und Apfelmus servieren.'] },
+{ n:'Bohnen-Reis-Pfanne', m:'mittag', t:22, mp:1, ing:[['reis',170],['kidneybohnen',120],['passata',90],['zwiebel',40],['paprikapulver',2]], s:['Zwiebel anbraten.','Reis, Bohnen und Passata zugeben.','Würzig einkochen.'] },
+{ n:'Käse-Nudel-Auflauf einfach', m:'abend', t:35, mp:1, ing:[['nudeln',180],['milch',120],['reibekaese',60],['ei',50],['zwiebel',40]], s:['Nudeln kochen.','Mit Milch, Ei und Käse in eine Form geben.','Überbacken.'] },
+{ n:'Haferflocken-Gemüse-Bratlinge', m:'mittag', t:28, mp:1, ing:[['haferflocken',60],['ei',60],['moehren',80],['zwiebel',40],['olivenoel',10]], s:['Haferflocken mit Ei und geraspeltem Gemüse mischen.','Zu Bratlingen formen.','In Öl braten.'] },
+{ n:'Kartoffelsuppe mit Würstchen einfach', m:'mittag', t:35, mp:1, ing:[['kartoffeln',220],['wiener',80],['moehren',60],['zwiebel',50],['bruehe',400]], s:['Gemüse und Kartoffeln in Brühe garen.','Teilweise pürieren.','Wurstscheiben zugeben.'] },
+{ n:'Spaghetti mit Knoblauch und Öl', m:'mittag', t:16, ing:[['spaghetti',180],['knoblauch',12],['olivenoel',18],['petersilie',4],['chili',4]], s:['Knoblauch und Chili in Öl anbraten.','Spaghetti unterschwenken.','Mit Petersilie servieren.'] },
+{ n:'Gemüsepfanne mit Reis günstig', m:'mittag', t:22, mp:1, ing:[['reis',180],['moehren',70],['erbsen',60],['zwiebel',40],['sojasauce',12]], s:['Gemüse anbraten.','Reis zugeben.','Mit Sojasauce abschmecken.'] },
+{ n:'Brot-Auflauf herzhaft (Arme Ritter deftig)', m:'abend', t:35, mp:1, ing:[['toastbrot',100],['ei',100],['milch',120],['reibekaese',50],['zwiebel',40]], s:['Brot würfeln und in eine Form geben.','Mit Ei-Milch übergießen, Käse und Zwiebel zugeben.','Überbacken.'] },
+{ n:'Kichererbsen-Nudel-Pfanne', m:'mittag', t:20, mp:1, ing:[['nudeln',170],['kichererbsen',120],['passata',110],['zwiebel',40],['olivenoel',8]], s:['Zwiebel und Kichererbsen anbraten.','Passata zugeben.','Mit Nudeln mischen.'] },
+{ n:'Rührei mit Kartoffeln und Speck günstig', m:'mittag', t:22, ing:[['kartoffeln',200],['ei',100],['bacon',40],['zwiebel',40]], s:['Kartoffeln und Speck anbraten.','Eier zugeben und stocken lassen.'] },
+{ n:'Reispfanne mit Thunfisch und Mais', m:'mittag', t:18, mp:1, ing:[['reis',180],['thunfisch',100],['mais',60],['erbsen',50],['sojasauce',10]], s:['Reis anbraten.','Thunfisch, Mais und Erbsen zugeben.','Würzen.'] },
+{ n:'Gebackene Bohnen auf Toast', m:'mittag', t:15, ing:[['weissebohnen',180],['passata',90],['toastbrot',80],['zwiebel',30],['reibekaese',30]], s:['Bohnen in Tomatensauce erwärmen.','Toast rösten.','Bohnen darauf geben und mit Käse bestreuen.'] },
+{ n:'Nudelsalat einfach mit Mais und Erbsen', m:'mittag', t:20, mp:1, ing:[['nudeln',170],['mais',60],['erbsen',60],['naturjoghurt',60],['schnittlauch',4]], s:['Nudeln kochen und abkühlen.','Mit Mais und Erbsen mischen.','Joghurt-Dressing zugeben.'] },
+{ n:'Grießbrei mit Beeren günstig', m:'fruh', t:12, ing:[['griess',50],['milch',250],['zucker',10],['heidelbeeren',60]], s:['Milch aufkochen, Grieß einrühren.','Andicken lassen.','Mit Beeren servieren.'] },
+];

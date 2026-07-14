@@ -1,0 +1,23 @@
+// Snacks, Teil 3. Von Hand geschrieben.
+module.exports = [
+{ n:'Skyr mit Erdbeeren und Basilikum', m:'snack', t:4, ing:[['skyr',150],['erdbeeren',80],['honig',6]], s:['Skyr in eine Schale geben.','Erdbeeren daraufgeben.','Mit Honig süßen.'] },
+{ n:'Bananen-Erdnussbutter-Toast', m:'snack', t:5, ing:[['toastbrot',50],['erdnussbutter',18],['banane',60],['zimt',1]], s:['Toast rösten.','Erdnussbutter bestreichen.','Mit Banane und Zimt toppen.'] },
+{ n:'Gemüsesticks mit Guacamole', m:'snack', t:8, ing:[['moehren',80],['gurke',80],['paprika',60],['guacamole',50]], s:['Gemüse in Sticks schneiden.','Guacamole als Dip reichen.'] },
+{ n:'Käse-Nuss-Snack', m:'snack', t:3, ing:[['gouda',40],['walnuesse',15],['weintrauben',60]], s:['Käse würfeln.','Mit Nüssen und Trauben anrichten.'] },
+{ n:'Protein-Pudding mit Kakao', m:'snack', t:4, ing:[['magerquark',200],['proteinpulver',15],['kakao',6],['honig',10]], s:['Quark mit Proteinpulver, Kakao und Honig cremig rühren.'] },
+{ n:'Apfelringe mit Mandelmus', m:'snack', t:4, ing:[['apfel',120],['mandelmus',18]], s:['Apfel in Ringe schneiden.','Mit Mandelmus bestreichen.'] },
+{ n:'Beeren-Bowl mit Kokosjoghurt', m:'snack', t:4, ing:[['kokosjoghurt',120],['heidelbeeren',60],['granola',20]], s:['Kokosjoghurt in eine Schale geben.','Beeren und Granola daraufgeben.'] },
+{ n:'Hummus-Teller mit Fladenbrot', m:'snack', t:6, ing:[['hummus',60],['fladenbrot',50],['paprika',50]], s:['Hummus in eine Schale geben.','Fladenbrot und Paprika zum Dippen reichen.'] },
+{ n:'Quark-Dip mit Möhren', m:'snack', t:6, ing:[['magerquark',120],['schnittlauch',5],['moehren',120]], s:['Quark mit Schnittlauch verrühren.','Möhren dippen.'] },
+{ n:'Overnight Oats to go', m:'snack', t:5, mp:1, ing:[['haferflocken',50],['milch',150],['banane',60],['chiasamen',10]], s:['Alle Zutaten in ein Glas geben.','Über Nacht kühlen.'] },
+{ n:'Käsecracker mit Weintrauben', m:'snack', t:4, ing:[['knaeckebrot',30],['gouda',30],['weintrauben',70]], s:['Knäckebrot mit Käse belegen.','Mit Trauben servieren.'] },
+{ n:'Zartbitter-Nuss-Snack', m:'snack', t:2, ing:[['zartbitter',15],['mandeln',15],['haselnuesse',10]], s:['Schokolade und Nüsse mischen.'] },
+{ n:'Skyr-Beeren-Eis am Stiel', m:'snack', t:6, mp:1, ing:[['skyr',150],['heidelbeeren',60],['honig',10]], s:['Skyr, Beeren und Honig mixen.','In Formen füllen.','Einfrieren.'] },
+{ n:'Vollkornbrot mit Hüttenkäse', m:'snack', t:5, ing:[['vollkornbrot',50],['huettenkaese',60],['cherrytomaten',40]], s:['Hüttenkäse auf das Brot geben.','Mit Tomaten belegen.'] },
+{ n:'Bananen-Hafer-Cookies', m:'snack', t:20, mp:1, ing:[['banane',100],['haferflocken',60],['zartbitter',15]], s:['Banane zerdrücken und mit Haferflocken und Schokostückchen mischen.','Kekse formen.','Bei 180 Grad backen.'] },
+{ n:'Möhren-Apfel-Snack', m:'snack', t:4, ing:[['moehren',100],['apfel',100]], s:['Möhre und Apfel in Sticks schneiden.','Zusammen anrichten.'] },
+{ n:'Protein-Beeren-Shake', m:'snack', t:4, ing:[['proteinpulver',30],['heidelbeeren',80],['milch',220]], s:['Alle Zutaten mixen.','In ein Glas füllen.'] },
+{ n:'Gefüllte Datteln mit Erdnussbutter', m:'snack', t:6, ing:[['datteln',40],['erdnussbutter',15],['mandeln',10]], s:['Datteln entkernen.','Mit Erdnussbutter füllen.','Mandel hineinsetzen.'] },
+{ n:'Reiswaffeln mit Avocado und Ei', m:'snack', t:8, ing:[['reiswaffeln',20],['avocado',50],['ei',50]], s:['Avocado auf Reiswaffeln streichen.','Mit Eischeiben belegen.'] },
+{ n:'Melone mit Feta', m:'snack', t:5, ing:[['ananas',120],['feta',30],['minze',2]], s:['Ananas würfeln.','Mit Feta und Minze mischen.'] },
+];

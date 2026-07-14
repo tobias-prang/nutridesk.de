@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "renderer-static",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "renderer", "-p", "8123", "-c-1", "--silent"],
+      "port": 8123
+    },
+    {
+      "name": "nutridesk-website",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/tobia/Documents/Projekte/nutridesk.de/server.js"],
+      "port": 3181
+    }
+  ]
+}
