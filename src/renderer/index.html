@@ -799,8 +799,8 @@
           </div>
           <div style="display:flex;flex-direction:column;flex:1;max-height:290px;overflow:auto;">
             <sc-for list="{{ botView }}" as="b" hint-placeholder-count="2">
-              <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 2px;border-bottom:1px solid var(--chip);">
-                <div style="width:34px;height:34px;border-radius:11px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><i data-lucide="{{ b.icon }}" style="width:16px;height:16px;color:{{ b.color }};"></i></div>
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 2px;border-bottom:1px solid var(--chip);opacity:{{ b.op }};">
+                <div style="width:34px;height:34px;border-radius:11px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 auto;position:relative;"><i data-lucide="{{ b.icon }}" style="width:16px;height:16px;color:{{ b.color }};"></i><span style="display:{{ b.dotD }};position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:var(--acc);border:2px solid var(--panel);"></span></div>
                 <div style="flex:1 1 auto;min-width:0;"><div style="font-size:13px;font-weight:600;color:var(--ink);">{{ b.title }}</div><div style="font-size:11.5px;color:var(--ink3);margin-top:2px;line-height:1.5;display:{{ b.textShow }};">{{ b.text }}</div></div>
                 <span style="font-size:10.5px;color:var(--mut);white-space:nowrap;flex:0 0 auto;">{{ b.time }}</span>
               </div>
@@ -3245,16 +3245,23 @@
         </sc-if>
 
         <sc-if value="{{ kiIsChat }}">
-        <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);overflow:hidden;">
-          <div style="flex:0 0 auto;border-bottom:1px solid var(--line);padding:9px 12px;display:flex;align-items:center;gap:6px;overflow-x:auto;">
-            <sc-for list="{{ kiSessionsView }}" as="se" hint-placeholder-count="0">
-              <div onclick="{{ kiSwitchSession }}" data-sid="{{ se.sid }}" style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;background:{{ se.bg }};border:1px solid {{ se.bd }};cursor:pointer;flex:0 0 auto;max-width:170px;" style-hover="border-color:var(--acc-bd);">
-                <span style="font-size:12px;font-weight:600;color:{{ se.col }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ se.title }}</span>
-                <div onclick="{{ kiDeleteSession }}" data-sid="{{ se.sid }}" title="Chat löschen" style="width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--mut);flex:0 0 auto;" style-hover="color:#f87171;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
-              </div>
-            </sc-for>
-            <div onclick="{{ kiNewChat }}" title="Neuer Chat" style="display:{{ kiNewD }};align-items:center;gap:5px;padding:6px 11px;border-radius:9px;border:1px dashed var(--line3);color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="plus" style="width:13px;height:13px;"></i>Neu</div>
+        <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:row;background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);overflow:hidden;">
+          <div style="width:190px;flex:0 0 auto;border-right:1px solid var(--line);display:flex;flex-direction:column;min-width:0;background:var(--bg2);">
+            <div style="flex:0 0 auto;padding:12px 12px 8px;">
+              <div onclick="{{ kiNewChat }}" title="Neuer Chat" style="display:{{ kiNewD }};align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:10px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="plus" style="width:15px;height:15px;"></i>Neuer Chat</div>
+            </div>
+            <div style="flex:1 1 auto;overflow:auto;padding:2px 8px 10px;display:flex;flex-direction:column;gap:4px;">
+              <sc-for list="{{ kiSessionsView }}" as="se" hint-placeholder-count="0">
+                <div onclick="{{ kiSwitchSession }}" data-sid="{{ se.sid }}" style="display:flex;align-items:center;gap:7px;padding:9px 10px;border-radius:9px;background:{{ se.bg }};border:1px solid {{ se.bd }};cursor:pointer;" style-hover="border-color:var(--acc-bd);">
+                  <i data-lucide="message-circle" style="width:13px;height:13px;color:{{ se.col }};flex:0 0 auto;"></i>
+                  <span style="flex:1 1 auto;min-width:0;font-size:12.5px;font-weight:600;color:{{ se.col }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ se.title }}</span>
+                  <div onclick="{{ kiDeleteSession }}" data-sid="{{ se.sid }}" title="Chat löschen" style="width:18px;height:18px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:var(--mut);flex:0 0 auto;" style-hover="color:#f87171;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+                </div>
+              </sc-for>
+              <sc-if value="{{ kiNoSessions }}"><div style="font-size:11.5px;color:var(--mut);text-align:center;padding:16px 8px;line-height:1.5;">Noch keine Chats. Schreib unten los, dann erscheint dein erster Chat hier.</div></sc-if>
+            </div>
           </div>
+          <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;">
           <div id="nd-ki-scroll" style="flex:1 1 auto;min-height:0;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:13px;">
             <sc-for list="{{ kiMsgsView }}" as="m" hint-placeholder-count="2">
               <div style="display:flex;justify-content:{{ m.justify }};">
@@ -3271,6 +3278,7 @@
           <div style="flex:0 0 auto;border-top:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:flex-end;">
             <textarea value="{{ kiInput }}" onchange="{{ kiSetInput }}" oninput="{{ kiSetInput }}" onkeydown="{{ kiKey }}" placeholder="Frag mich etwas, oder sag mir, was ich eintragen soll …" rows="1" style="flex:1 1 auto;min-width:0;background:var(--bg2);border:1px solid var(--line3);border-radius:12px;padding:11px 14px;color:var(--ink);font-size:13.5px;font-family:'Space Grotesk',sans-serif;outline:none;resize:none;max-height:120px;box-sizing:border-box;" style-focus="border-color:var(--acc);"></textarea>
             <div onclick="{{ kiSend }}" style="width:42px;height:42px;border-radius:12px;background:var(--acc);color:#0f1117;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;" style-hover="opacity:.9;"><i data-lucide="send" style="width:18px;height:18px;"></i></div>
+          </div>
           </div>
         </div>
         </sc-if>
@@ -7366,7 +7374,8 @@ class Component extends DCLogic {
   };
   markBotRead = async () => {
     try { await this.api('/bot/read', { method:'POST' }); } catch (e) {}
-    this.setState({ botMsgs: [], botUnread: 0 });
+    // Sichtbar lassen, nur als gelesen markieren (Punkt aus), nicht wegräumen.
+    this.setState(st => ({ botMsgs: (st.botMsgs || []).map(m => ({ ...m, is_read: 1 })), botUnread: 0 }));
   };
   goInsightsFromBot = () => { this.setState({ modal:'' }); this.goInsights(); };
   openSearch = () => this.setState({ modal:'search', searchQ:'' });
@@ -9659,7 +9668,7 @@ class Component extends DCLogic {
       kiShowChat: this.kiShowChat, kiShowTickets: this.kiShowTickets,
       kiNewChat: this.kiNewChat, kiSwitchSession: this.kiSwitchSession, kiDeleteSession: this.kiDeleteSession,
       kiSessionsView: (s.kiSessions || []).map(se => ({ sid: se.session_id, title: (se.title || 'Neuer Chat').slice(0, 22), active: se.session_id === s.kiSession, bg: se.session_id === s.kiSession ? 'var(--acc-bg)' : 'var(--bg2)', bd: se.session_id === s.kiSession ? 'var(--acc-bd)' : 'var(--line3)', col: se.session_id === s.kiSession ? 'var(--acc)' : 'var(--ink2)' })),
-      kiHasSessions: (s.kiSessions || []).length > 0, kiNewD: (s.kiSessions || []).length >= 5 ? 'none' : 'flex',
+      kiHasSessions: (s.kiSessions || []).length > 0, kiNoSessions: (s.kiSessions || []).length === 0, kiNewD: (s.kiSessions || []).length >= 5 ? 'none' : 'flex',
       kiToggleMute: this.kiToggleMute, kiMuteIcon: s.ttsRead ? 'volume-2' : 'volume-x',
       kiMuteBg: s.ttsRead ? 'var(--acc-bg)' : 'var(--chip)', kiMuteC: s.ttsRead ? 'var(--acc)' : 'var(--ink3)',
       kiSpeak: this.kiSpeak,
@@ -9716,7 +9725,7 @@ class Component extends DCLogic {
         icon: m.icon || 'sparkles', color: m.color || '#a78bfa',
         title: m.title, text: m.text || '', textShow: m.text ? 'block' : 'none',
         time: this._relTime(m.created_at),
-        dot: m.is_read ? 0 : 1,
+        dotD: m.is_read ? 'none' : 'block', op: m.is_read ? '.55' : '1',
       })),
       goLife: this.goLife, lbBack: this.lbBack,
       showLifeHome: false,
