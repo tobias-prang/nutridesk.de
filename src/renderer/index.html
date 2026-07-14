@@ -5473,6 +5473,7 @@ class Component extends DCLogic {
         savUntil: (data.aiCooldowns && data.aiCooldowns.savings) || '',
         aiAvail: !(data.aiCooldowns && data.aiCooldowns.available === false),
       });
+      if (s.tts_read && Number(s.cloud_tts_enabled) !== 1) this._ensureCloudVoice();
       this.loadBot();
       this.loadNotes();
       this._prefetch();
@@ -6683,7 +6684,11 @@ class Component extends DCLogic {
   kiSetTReply = (e) => { this.setState({ kiTReply: e.target.value }); };
   kiShowChat = () => this.setState({ kiView:'chat', kiTicketId:0, kiTicket:null });
   kiShowTickets = () => { this.setState({ kiView:'tickets', kiTicketId:0, kiTicket:null }); this._loadKiTickets(); };
-  kiToggleMute = () => this.toggleTts();
+  kiToggleMute = () => { const turningOn = !this.state.ttsRead; this.toggleTts(); if (turningOn) this._ensureCloudVoice(); };
+  _ensureCloudVoice = async () => {
+    if (this.state.cloudTts) return;
+    try { const r = await this.api('/bot/tts-settings', { method:'POST', body:{ cloud_tts_enabled: true } }); if (r && r.settings && Number(r.settings.cloud_tts_enabled) === 1) this.setState({ cloudTts: true }); } catch (e) {}
+  };
   kiKey = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.kiSend(); } };
   kiQuick = (e) => { const t = e.currentTarget.dataset.send; if (t) this._kiSendText(t); };
   kiSend = () => { const t = (this.state.kiInput || '').trim(); if (!t) return; this.setState({ kiInput:'' }); this._kiSendText(t); };
