@@ -619,12 +619,11 @@
     <div style="position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--chip);">
       <div style="max-width:1340px;margin:0 auto;padding:12px 30px;display:flex;align-items:center;gap:7px;flex-wrap:wrap;">
         <div onclick="{{ fOver }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tOver.c }};background:{{ tOver.bg }};border:1px solid {{ tOver.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>Übersicht</div>
-        <div onclick="{{ fIncome }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tInc.c }};background:{{ tInc.bg }};border:1px solid {{ tInc.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="wallet" style="width:16px;height:16px;"></i>Mon. Einkommen</div>
         <div onclick="{{ fTx }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tTx.c }};background:{{ tTx.bg }};border:1px solid {{ tTx.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="book-text" style="width:16px;height:16px;"></i>Finanzbuch</div>
-        <div onclick="{{ fAbos }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tAbos.c }};background:{{ tAbos.bg }};border:1px solid {{ tAbos.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="repeat" style="width:16px;height:16px;"></i>Abos &amp; Verträge</div>
-        <div onclick="{{ fLoans }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tLoan.c }};background:{{ tLoan.bg }};border:1px solid {{ tLoan.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="landmark" style="width:16px;height:16px;"></i>Kredite</div>
+        <div onclick="{{ fExpenses }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tExp.c }};background:{{ tExp.bg }};border:1px solid {{ tExp.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="arrow-down-up" style="width:16px;height:16px;"></i>Ausgaben</div>
+        <div onclick="{{ fIncome }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tInc.c }};background:{{ tInc.bg }};border:1px solid {{ tInc.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="trending-up" style="width:16px;height:16px;"></i>Einnahmen</div>
         <div onclick="{{ fGoals }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tGoals.c }};background:{{ tGoals.bg }};border:1px solid {{ tGoals.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="piggy-bank" style="width:16px;height:16px;"></i>Sparziele</div>
-        <div onclick="{{ fBud }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tBud.c }};background:{{ tBud.bg }};border:1px solid {{ tBud.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="gauge" style="width:16px;height:16px;"></i>Budget</div>
+        <div onclick="{{ fTools }}" style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;cursor:pointer;color:{{ tTools.c }};background:{{ tTools.bg }};border:1px solid {{ tTools.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="wrench" style="width:16px;height:16px;"></i>Werkzeuge</div>
         <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);">{{ todayShort }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mut);opacity:.7;">{{ buildLabel }}</span></div>
       </div>
     </div>
@@ -1323,9 +1322,9 @@
     <div data-screen-label="Einkommen" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
       <div style="margin-bottom:22px;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;">
-          <span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Monatliches Einkommen</span>
+          <span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Einnahmen</span>
           <div style="flex:1 1 auto;height:1px;background:var(--line2);"></div>
-          <div onclick="{{ openIncome }}" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;flex:0 0 auto;" style-hover="opacity:.9;"><i data-lucide="plus" style="width:16px;height:16px;"></i>Einkommen hinzufügen</div>
+          <div onclick="{{ openIncome }}" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;flex:0 0 auto;" style-hover="opacity:.9;"><i data-lucide="plus" style="width:16px;height:16px;"></i>Gehalt hinzufügen</div>
         </div>
         <div style="font-size:13px;color:var(--ink3);font-weight:500;">Gehälter &amp; wiederkehrende Einnahmen · {{ incomeMonthLabel }} · wird automatisch je Zahltag in Übersicht &amp; Cashflow verbucht.</div>
       </div>
@@ -1477,6 +1476,10 @@
 
     <sc-if value="{{ showAbos }}">
     <div data-screen-label="Abos" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
+      <div style="display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--cardbd);border-radius:12px;padding:4px;margin-bottom:20px;">
+        <div onclick="{{ fExpAbos }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubAbos.c }};background:{{ tSubAbos.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Abos &amp; Verträge</div>
+        <div onclick="{{ fExpLoans }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubLoans.c }};background:{{ tSubLoans.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Kredite</div>
+      </div>
       <div style="margin-bottom:22px;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;">
           <span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Abos &amp; Verträge</span>
@@ -1528,6 +1531,10 @@
     
     <sc-if value="{{ showLoans }}">
     <div data-screen-label="Kredite" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
+      <div style="display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--cardbd);border-radius:12px;padding:4px;margin-bottom:20px;">
+        <div onclick="{{ fExpAbos }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubAbos.c }};background:{{ tSubAbos.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Abos &amp; Verträge</div>
+        <div onclick="{{ fExpLoans }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubLoans.c }};background:{{ tSubLoans.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Kredite</div>
+      </div>
       <div style="margin-bottom:22px;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;">
           <span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Kredite</span>
@@ -1564,7 +1571,7 @@
             <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:20px 22px;">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
                 <span style="font-size:14.5px;font-weight:700;">{{ ln.name }}</span>
-                <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;">{{ ln.zins }} Zins</span><div onclick="{{ openLoanEdit }}" data-id="{{ ln.id }}" title="Bearbeiten" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);background:var(--chip);"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div onclick="{{ delLoan }}" data-id="{{ ln.id }}" title="Löschen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+                <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;">{{ ln.zins }} Zins</span><div onclick="{{ openLoanPay }}" data-id="{{ ln.id }}" title="Sondertilgung erfassen" style="width:28px;height:28px;border-radius:8px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);cursor:pointer;" style-hover="opacity:.8;"><i data-lucide="plus" style="width:14px;height:14px;"></i></div><div onclick="{{ openLoanEdit }}" data-id="{{ ln.id }}" title="Bearbeiten" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);background:var(--chip);"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div onclick="{{ delLoan }}" data-id="{{ ln.id }}" title="Löschen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;letter-spacing:-.02em;">{{ ln.rest }}</div>
               <div style="font-size:12px;color:var(--ink3);margin-top:3px;margin-bottom:12px;">Restschuld · Rate <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.rate }}</span>/Monat</div>
@@ -1611,6 +1618,10 @@
     
     <sc-if value="{{ showGoals }}">
     <div data-screen-label="Sparziele" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
+      <div style="display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--cardbd);border-radius:12px;padding:4px;margin-bottom:20px;">
+        <div onclick="{{ fGoalsList }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubGoals.c }};background:{{ tSubGoals.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Sparziele</div>
+        <div onclick="{{ fGoalsEmg }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubEmg.c }};background:{{ tSubEmg.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Notgroschen</div>
+      </div>
       <div style="margin-bottom:22px;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Sparziele</span><div style="flex:1 1 auto;height:1px;background:var(--line2);"></div><div onclick="{{ openGoal }}" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;flex:0 0 auto;" style-hover="opacity:.9;"><i data-lucide="plus" style="width:16px;height:16px;"></i>Sparziel erstellen</div></div><div style="font-size:13px;color:var(--ink3);font-weight:500;">{{ goalCountLabel }} · Sparrate gesamt <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ goalRateTotal }}</span> / Monat</div>
       </div>
@@ -1640,6 +1651,83 @@
     </sc-if>
 
     
+    <sc-if value="{{ showEmergency }}">
+    <div data-screen-label="Notgroschen" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
+      <div style="display:inline-flex;gap:4px;background:var(--panel);border:1px solid var(--cardbd);border-radius:12px;padding:4px;margin-bottom:20px;">
+        <div onclick="{{ fGoalsList }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubGoals.c }};background:{{ tSubGoals.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Sparziele</div>
+        <div onclick="{{ fGoalsEmg }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ tSubEmg.c }};background:{{ tSubEmg.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">Notgroschen</div>
+      </div>
+      <div style="margin-bottom:22px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Notgroschen</span><div style="flex:1 1 auto;height:1px;background:var(--line2);"></div></div>
+        <div style="font-size:13px;color:var(--ink3);font-weight:500;">Deine eiserne Reserve für Notfälle. Leg zurück, was du entbehren kannst.</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:24px;display:flex;flex-direction:column;">
+          <div style="display:flex;align-items:center;gap:10px;color:var(--ink3);font-size:13px;margin-bottom:14px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="shield" style="width:19px;height:19px;"></i></div>Aktueller Notgroschen</div>
+          <div style="font-family:'JetBrains Mono',monospace;font-size:34px;font-weight:600;letter-spacing:-.02em;margin-bottom:20px;">{{ emgTotalLabel }}</div>
+          <div style="display:flex;gap:10px;margin-top:auto;">
+            <div onclick="{{ openEmgDep }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="plus" style="width:16px;height:16px;"></i>Einzahlen</div>
+            <div onclick="{{ openEmgWd }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 16px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:var(--chip);"><i data-lucide="minus" style="width:16px;height:16px;"></i>Entnehmen</div>
+          </div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+          <div style="font-size:14.5px;font-weight:700;margin-bottom:13px;">Verlauf</div>
+          <sc-if value="{{ emgNoLog }}"><div style="display:flex;flex-direction:column;align-items:center;gap:7px;padding:24px 12px;text-align:center;color:var(--mut);"><i data-lucide="history" style="width:19px;height:19px;"></i><span style="font-size:12.5px;">Noch keine Bewegungen. Zahl deine erste Reserve ein.</span></div></sc-if>
+          <sc-for list="{{ emgLog }}" as="e" hint-placeholder-count="4">
+            <div style="display:flex;align-items:center;gap:12px;padding:9px 2px;border-bottom:1px solid var(--chip);">
+              <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mut);width:74px;flex:0 0 auto;">{{ e.date }}</span>
+              <span style="font-size:12.5px;color:var(--ink2);flex:1 1 auto;min-width:0;">{{ e.note }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;color:{{ e.c }};">{{ e.amt }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ showTools }}">
+    <div data-screen-label="Werkzeuge" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
+      <div style="margin-bottom:22px;">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Werkzeuge</span><div style="flex:1 1 auto;height:1px;background:var(--line2);"></div></div>
+        <div style="font-size:13px;color:var(--ink3);font-weight:500;">Rechner und Helfer rund um deine Finanzen · alles offline und lokal</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="calculator" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Kreditrechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Rate und Zinskosten sofort</div></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Betrag €<input value="{{ kAmount }}" onchange="{{ setKAmount }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Zins % p.a.<input value="{{ kRate }}" onchange="{{ setKRate }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Monate<input value="{{ kMonths }}" onchange="{{ setKMonths }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Monatsrate</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--acc);">{{ kResRate }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Zinskosten</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:#fbbf24;">{{ kResInt }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Gesamt</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;">{{ kResTot }}</div></div>
+          </div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="percent" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Sparplan-Rechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Zinseszins über die Jahre</div></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Rate €/M<input value="{{ sRate }}" onchange="{{ setSRate }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Rendite %<input value="{{ sYield }}" onchange="{{ setSYield }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Jahre<input value="{{ sYears }}" onchange="{{ setSYears }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Eingezahlt</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;">{{ sResIn }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Zinsertrag</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--acc);">{{ sResGain }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Endkapital</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--acc);">{{ sResTot }}</div></div>
+          </div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;">
+        <div onclick="{{ toolBudget }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="gauge" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">Budgets</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Setz dir Monatslimits pro Kategorie und behalte deine Ausgaben im Griff.</div></div>
+        <div onclick="{{ toolCsv }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="credit-card" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">CSV-Import</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Importier Kontoumsätze als CSV ins Finanzbuch, direkt und lokal.</div></div>
+        <div onclick="{{ toolBank }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="banknote" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">Bank verbinden</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Hol deine Umsätze per FinTS sicher von deiner Bank ins Finanzbuch.</div></div>
+        <div onclick="{{ toolSoon }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;color:var(--ink3);"><i data-lucide="graduation-cap" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">Netto-Rechner</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Vom Brutto aufs Netto, mit Steuerklasse und Sozialabgaben. Kommt bald.</div></div>
+      </div>
+    </div>
+    </sc-if>
+
     <sc-if value="{{ showBud }}">
     <div data-screen-label="Budget" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
       <div style="margin-bottom:22px;">
@@ -4048,6 +4136,46 @@
   </sc-if>
 
   
+  <sc-if value="{{ modLoanPay }}">
+  <div onclick="{{ eatClick }}" style="position:fixed;inset:0;background:rgba(5,7,11,.78);z-index:100;display:flex;align-items:center;justify-content:center;padding:30px;">
+    <div onclick="{{ eatClick }}" style="width:400px;max-width:100%;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:17px;font-weight:700;">Sondertilgung</span>
+        <div onclick="{{ closeModal }}" style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);background:var(--bg2);color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="corner-down-left" style="width:13px;height:13px;"></i><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.16em;">ESC</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--ink3);margin-bottom:16px;">Auf deinen Kredit <b style="color:var(--acc);font-weight:600;">{{ lnPayName }}</b> · Restschuld <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ lnPayBalance }}</span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+        <input value="{{ lnPayAmt }}" onchange="{{ setLnPayAmt }}" placeholder="0,00" style="flex:1 1 auto;min-width:0;background:var(--bg2);border:1px solid var(--line3);border-radius:12px;padding:14px 16px;color:var(--ink);font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;outline:none;text-align:center;" style-focus="border-color:var(--acc);">
+        <span style="font-size:14px;font-weight:600;color:var(--ink3);flex:0 0 auto;">€</span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <div onclick="{{ closeModal }}" style="padding:10px 16px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:var(--chip);">Abbrechen</div>
+        <div onclick="{{ saveLoanPay }}" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="landmark" style="width:16px;height:16px;"></i>Tilgen</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ modEmergency }}">
+  <div onclick="{{ eatClick }}" style="position:fixed;inset:0;background:rgba(5,7,11,.78);z-index:100;display:flex;align-items:center;justify-content:center;padding:30px;">
+    <div onclick="{{ eatClick }}" style="width:400px;max-width:100%;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span style="font-size:17px;font-weight:700;">{{ emgTitle }}</span>
+        <div onclick="{{ closeModal }}" style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);background:var(--bg2);color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="corner-down-left" style="width:13px;height:13px;"></i><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.16em;">ESC</span></div>
+      </div>
+      <div style="font-size:12.5px;color:var(--ink3);margin-bottom:16px;">{{ emgSubtitle }}</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+        <input value="{{ emgAmt }}" onchange="{{ setEmgAmt }}" placeholder="0,00" style="flex:1 1 auto;min-width:0;background:var(--bg2);border:1px solid var(--line3);border-radius:12px;padding:14px 16px;color:var(--ink);font-size:22px;font-weight:600;font-family:'JetBrains Mono',monospace;outline:none;text-align:center;" style-focus="border-color:var(--acc);">
+        <span style="font-size:14px;font-weight:600;color:var(--ink3);flex:0 0 auto;">€</span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <div onclick="{{ closeModal }}" style="padding:10px 16px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:var(--chip);">Abbrechen</div>
+        <div onclick="{{ saveEmg }}" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="shield" style="width:16px;height:16px;"></i>{{ emgBtnLabel }}</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ modAdminNew }}">
   <div onclick="{{ eatClick }}" style="position:fixed;inset:0;background:rgba(5,7,11,.78);z-index:100;display:flex;align-items:center;justify-content:center;padding:30px;">
     <div onclick="{{ eatClick }}" style="width:480px;max-width:100%;max-height:85vh;overflow:auto;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);">
@@ -5997,6 +6125,78 @@ class Component extends DCLogic {
   fLoans = () => this.setState({ finTab:'loans' });
   fGoals = () => this.setState({ finTab:'goals' });
   fBud = () => this.setState({ finTab:'budget' });
+  fExpenses = () => this.setState({ finTab:'expenses', expSub: this.state.expSub || 'abos' });
+  fTools = () => this.setState({ finTab:'tools' });
+  fExpAbos = () => this.setState({ expSub:'abos' });
+  fExpLoans = () => this.setState({ expSub:'loans' });
+  fGoalsList = () => this.setState({ goalSub:'list' });
+  fGoalsEmg = () => { this.setState({ goalSub:'emergency' }); this.loadEmergency(); };
+  loadEmergency = async () => { try { const r = await this.api('/emergency'); this.setState({ emgTotal: Number(r.total) || 0, emgLog: r.log || [] }); } catch (e) {} };
+  _emgDate(v) { if (!v) return ''; const p = String(v).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : ''; }
+  _emgVals(s) {
+    const total = Number(s.emgTotal) || 0;
+    const log = (s.emgLog || []).map(e => {
+      const d = Number(e.delta) || 0;
+      return { id: e.id, amt: (d >= 0 ? '+ ' : '− ') + '€ ' + this.fmt(Math.abs(d)), c: d >= 0 ? 'var(--acc)' : 'var(--neg)', note: e.note || (d >= 0 ? 'Einzahlung' : 'Entnahme'), date: this._emgDate(e.created_at) };
+    });
+    return { emgTotalLabel: '€ ' + this.fmt(total), emgLog: log, emgHasLog: log.length > 0, emgNoLog: log.length === 0,
+      openEmgDep: this.openEmgDep, openEmgWd: this.openEmgWd };
+  }
+  setEmgAmt = (e) => this.setState({ emgAmt: e.target.value });
+  openEmgDep = () => this.setState({ modal:'emergency', emgKind:'deposit', emgAmt:'' });
+  openEmgWd = () => this.setState({ modal:'emergency', emgKind:'withdraw', emgAmt:'' });
+  saveEmg = async () => {
+    const s = this.state;
+    const amt = parseFloat((s.emgAmt || '0').replace(',', '.')) || 0;
+    if (amt <= 0) { this._toast('Bitte einen Betrag eingeben'); return; }
+    const kind = s.emgKind === 'withdraw' ? 'withdraw' : 'deposit';
+    this.setState({ modal:'' });
+    try {
+      const r = await this.api('/emergency', { method:'POST', body:{ amount: amt, kind } });
+      this.setState({ emgTotal: Number(r.total) || 0 });
+      this.loadEmergency();
+      this._toast(kind === 'withdraw' ? '€ ' + this.fmt(amt) + ' entnommen' : '€ ' + this.fmt(amt) + ' in den Notgroschen');
+    } catch (e) { this._toast(e.message); }
+  };
+  openLoanPay = (e) => { e.stopPropagation(); this.setState({ modal:'loanpay', lnPayId: parseInt(e.currentTarget.dataset.id) || 0, lnPayAmt:'' }); };
+  setLnPayAmt = (e) => this.setState({ lnPayAmt: e.target.value });
+  saveLoanPay = async () => {
+    const s = this.state;
+    const amt = parseFloat((s.lnPayAmt || '0').replace(',', '.')) || 0;
+    const loan = (s.data.loans || []).find(l => l.id === s.lnPayId);
+    if (!loan) { this.setState({ modal:'' }); return; }
+    if (amt <= 0) { this._toast('Bitte einen Betrag eingeben'); return; }
+    this.setState({ modal:'' });
+    try {
+      await this.api('/loans/' + loan.id + '/payment', { method:'POST', body:{ amount: amt } });
+      this._toast('€ ' + this.fmt(amt) + ' auf „' + loan.name + '“ getilgt');
+      this.refresh();
+    } catch (e) { this._toast(e.message); }
+  };
+  setKAmount = (e) => this.setState({ kAmount: e.target.value });
+  setKRate = (e) => this.setState({ kRate: e.target.value });
+  setKMonths = (e) => this.setState({ kMonths: e.target.value });
+  setSRate = (e) => this.setState({ sRate: e.target.value });
+  setSYield = (e) => this.setState({ sYield: e.target.value });
+  setSYears = (e) => this.setState({ sYears: e.target.value });
+  _toolSoon = () => this._toast('Dieser Rechner öffnet sich hier bald');
+  _toolVals(s) {
+    const n = (x, d) => { const v = parseFloat(String(x == null ? '' : x).replace(',', '.')); return isFinite(v) ? v : d; };
+    const P = n(s.kAmount, 15000), kr = n(s.kRate, 4.9) / 100 / 12, km = Math.max(1, n(s.kMonths, 48));
+    const kRateM = kr === 0 ? P / km : P * kr / (1 - Math.pow(1 + kr, -km));
+    const kTot = kRateM * km, kInt = kTot - P;
+    const m = n(s.sRate, 250), sy = n(s.sYield, 6) / 100 / 12, syrs = Math.max(0, n(s.sYears, 15)), months = syrs * 12;
+    const fv = sy === 0 ? m * months : m * ((Math.pow(1 + sy, months) - 1) / sy), paid = m * months, gain = fv - paid;
+    return {
+      kAmount: s.kAmount == null ? '15000' : s.kAmount, kRate: s.kRate == null ? '4.9' : s.kRate, kMonths: s.kMonths == null ? '48' : s.kMonths,
+      setKAmount: this.setKAmount, setKRate: this.setKRate, setKMonths: this.setKMonths,
+      kResRate: '€ ' + this.fmt(kRateM), kResInt: '€ ' + this.fmt(kInt), kResTot: '€ ' + this.fmt(kTot),
+      sRate: s.sRate == null ? '250' : s.sRate, sYield: s.sYield == null ? '6' : s.sYield, sYears: s.sYears == null ? '15' : s.sYears,
+      setSRate: this.setSRate, setSYield: this.setSYield, setSYears: this.setSYears,
+      sResIn: '€ ' + this.fmt(paid), sResGain: '€ ' + this.fmt(gain), sResTot: '€ ' + this.fmt(fv),
+      toolBudget: this.fBud, toolCsv: this.fTx, toolBank: this.fTx, toolSoon: this._toolSoon,
+    };
+  }
   sProf = () => this.setState({ setTab:'profile' });
   sDes = () => this.setState({ setTab:'design' });
   sPrivacy = () => { this.setState({ setTab:'privacy' }); this.loadBotMemory(); };
@@ -9440,17 +9640,24 @@ class Component extends DCLogic {
       tTrack: pill(isNutri && s.nutriTab==='tracker'), tPlan: pill(isNutri && s.nutriTab==='plan'),
       tStat: pill(isNutri && s.nutriTab==='stats'), tRec: pill(isNutri && s.nutriTab==='recipes'),
       tOver: pill(isFin && s.finTab==='overview'), tTx: pill(isFin && s.finTab==='tx'), tInc: pill(isFin && s.finTab==='income'),
-      fIncome: this.fIncome,
+      tExp: pill(isFin && s.finTab==='expenses'), tTools: pill(isFin && s.finTab==='tools'),
+      fIncome: this.fIncome, fExpenses: this.fExpenses, fTools: this.fTools,
       tAbos: pill(isFin && s.finTab==='abos'), tLoan: pill(isFin && s.finTab==='loans'),
       tGoals: pill(isFin && s.finTab==='goals'), tBud: pill(isFin && s.finTab==='budget'),
+      tSubAbos: pill((s.expSub||'abos')==='abos'), tSubLoans: pill((s.expSub||'abos')==='loans'),
+      tSubGoals: pill((s.goalSub||'list')!=='emergency'), tSubEmg: pill((s.goalSub||'list')==='emergency'),
+      fExpAbos: this.fExpAbos, fExpLoans: this.fExpLoans, fGoalsList: this.fGoalsList, fGoalsEmg: this.fGoalsEmg,
       nTrack:this.nTrack, nPlan:this.nPlan, nStats:this.nStats, nRecipes:this.nRecipes,
       ...this._recipeVals(s),
+      ...this._emgVals(s), ...this._toolVals(s),
       fOver:this.fOver, fTx:this.fTx, fAbos:this.fAbos, fLoans:this.fLoans, fGoals:this.fGoals, fBud:this.fBud,
       showTracker: isNutri && s.nutriTab==='tracker', showPlan: isNutri && s.nutriTab==='plan',
       showStats: isNutri && s.nutriTab==='stats', showRecipes: isNutri && s.nutriTab==='recipes',
       showOver: isFin && s.finTab==='overview', showTx: isFin && s.finTab==='tx', showIncome: isFin && s.finTab==='income',
-      showAbos: isFin && s.finTab==='abos', showLoans: isFin && s.finTab==='loans',
-      showGoals: isFin && s.finTab==='goals', showBud: isFin && s.finTab==='budget',
+      showAbos: isFin && s.finTab==='expenses' && (s.expSub||'abos')==='abos', showLoans: isFin && s.finTab==='expenses' && (s.expSub||'abos')==='loans',
+      showExp: isFin && s.finTab==='expenses',
+      showGoals: isFin && s.finTab==='goals' && (s.goalSub||'list')!=='emergency', showEmergency: isFin && s.finTab==='goals' && (s.goalSub||'list')==='emergency',
+      showTools: isFin && s.finTab==='tools', showBud: isFin && s.finTab==='budget',
 
       goalLabel: fmt0(goal), remainLabel: fmt0(remain), pctLabel: pct + '%', ringOff, ringOffS,
       homeKcalNote: eaten <= 0 ? 'Noch nichts geloggt.' : (pct + '% vom Tagesziel'),
@@ -9625,6 +9832,13 @@ class Component extends DCLogic {
       modDeposit: s.modal === 'deposit',
       depGoalName: (() => { const g = d.goals.find(x => x.id === s.depGoalId); return g ? g.name : ''; })(),
       depAmt: s.depAmt, setDepAmt: this.setDepAmt, saveDeposit: this.saveDeposit, openDeposit: this.openDeposit,
+      openLoanPay: this.openLoanPay, modLoanPay: s.modal === 'loanpay', lnPayAmt: s.lnPayAmt || '', setLnPayAmt: this.setLnPayAmt, saveLoanPay: this.saveLoanPay,
+      lnPayName: (() => { const l = (d.loans || []).find(x => x.id === s.lnPayId); return l ? l.name : ''; })(),
+      lnPayBalance: (() => { const l = (d.loans || []).find(x => x.id === s.lnPayId); return l ? '€ ' + this.fmt(Number(l.balance) || 0) : ''; })(),
+      modEmergency: s.modal === 'emergency', saveEmg: this.saveEmg, setEmgAmt: this.setEmgAmt, emgAmt: s.emgAmt || '',
+      emgTitle: s.emgKind === 'withdraw' ? 'Aus Notgroschen entnehmen' : 'In den Notgroschen einzahlen',
+      emgSubtitle: s.emgKind === 'withdraw' ? 'Betrag, den du aus der Reserve nimmst.' : 'Betrag, den du zurücklegst.',
+      emgBtnLabel: s.emgKind === 'withdraw' ? 'Entnehmen' : 'Einzahlen',
       goals: goalsView, goalCountLabel: d.goals.length + (d.goals.length === 1 ? ' aktives Ziel' : ' aktive Ziele'),
       goalRateTotal:'€ ' + fmt0(goalRateTotal),
       openGoal: this.openGoal, saveGoal: this.saveGoal, pickGoalIcon: this.pickGoalIcon, delGoal: this.delGoal,
