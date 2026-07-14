@@ -1740,12 +1740,29 @@
             <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Wertverlust</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--neg);">{{ infResLoss }}</div></div>
           </div>
         </div>
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="briefcase" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Netto-Rechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Brutto zu Netto, grobe Schätzung</div></div></div>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;margin-bottom:14px;">Brutto / Monat €<input value="{{ netBrutto }}" onchange="{{ setNetBrutto }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Netto ca.</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--acc);">{{ netResNet }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Sozialabg.</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;">{{ netResSocial }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Steuer ca.</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:#fbbf24;">{{ netResTax }}</div></div>
+          </div>
+          <div style="font-size:11px;color:var(--mut);line-height:1.4;">Grobe Schätzung (ESt-Grundtarif, ~20% Sozialabgaben). Ohne Steuerklasse, Kirchensteuer und Freibeträge, kein Ersatz für eine echte Abrechnung.</div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="clock" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Arbeitszeit-Rechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Was kostet dich das in Arbeitszeit?</div></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Preis €<input value="{{ azPrice }}" onchange="{{ setAzPrice }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Netto-Stundenlohn €<input value="{{ azWage }}" onchange="{{ setAzWage }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:14px 16px;text-align:center;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Dafür arbeitest du</div><div style="font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:600;color:var(--acc);">{{ azResult }}</div></div>
+        </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;">
         <div onclick="{{ toolBudget }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="gauge" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">Budgets</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Setz dir Monatslimits pro Kategorie und behalte deine Ausgaben im Griff.</div></div>
         <div onclick="{{ toolCsv }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="credit-card" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">CSV-Import</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Importier Kontoumsätze als CSV ins Finanzbuch, direkt und lokal.</div></div>
         <div onclick="{{ toolBank }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="banknote" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">Bank verbinden</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Hol deine Umsätze per FinTS sicher von deiner Bank ins Finanzbuch.</div></div>
-        <div onclick="{{ toolSoon }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:11px;cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:40px;height:40px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;color:var(--ink3);"><i data-lucide="graduation-cap" style="width:19px;height:19px;"></i></div><div style="font-size:14.5px;font-weight:700;">Netto-Rechner</div><div style="font-size:12px;color:var(--ink3);line-height:1.5;">Vom Brutto aufs Netto, mit Steuerklasse und Sozialabgaben. Kommt bald.</div></div>
       </div>
     </div>
     </sc-if>
@@ -6502,6 +6519,9 @@ class Component extends DCLogic {
   setInfAmt = (e) => this.setState({ infAmt: e.target.value });
   setInfRate = (e) => this.setState({ infRate: e.target.value });
   setInfYears = (e) => this.setState({ infYears: e.target.value });
+  setNetBrutto = (e) => this.setState({ netBrutto: e.target.value });
+  setAzPrice = (e) => this.setState({ azPrice: e.target.value });
+  setAzWage = (e) => this.setState({ azWage: e.target.value });
   _toolSoon = () => this._toast('Dieser Rechner öffnet sich hier bald');
   _toolVals(s) {
     const n = (x, d) => { const v = parseFloat(String(x == null ? '' : x).replace(',', '.')); return isFinite(v) ? v : d; };
@@ -6515,7 +6535,14 @@ class Component extends DCLogic {
     const infAmt = n(s.infAmt, 1000), infRate = n(s.infRate, 3) / 100, infYears = Math.max(0, n(s.infYears, 10));
     const infFactor = Math.pow(1 + infRate, infYears);
     const infFuture = infAmt * infFactor, infPower = infAmt / infFactor, infLoss = infAmt - infPower;
+    const estTax = (zve) => { if (zve <= 11604) return 0; if (zve <= 17005) { const y = (zve - 11604) / 10000; return (922.98 * y + 1400) * y; } if (zve <= 66760) { const z = (zve - 17005) / 10000; return (181.19 * z + 2397) * z + 1025.38; } if (zve <= 277825) return 0.42 * zve - 10602.13; return 0.45 * zve - 18936.88; };
+    const netB = n(s.netBrutto, 3500), netSocial = netB * 0.20, netTax = estTax(Math.max(0, (netB - netSocial) * 12)) / 12, netNet = Math.max(0, netB - netSocial - netTax);
+    const azP = n(s.azPrice, 100), azW = Math.max(0.01, n(s.azWage, 15)), azH = azP / azW, azHh = Math.floor(azH), azMm = Math.round((azH - azHh) * 60);
     return {
+      netBrutto: s.netBrutto == null ? '3500' : s.netBrutto, setNetBrutto: this.setNetBrutto,
+      netResNet: '€ ' + this.fmt(netNet), netResSocial: '€ ' + this.fmt(netSocial), netResTax: '€ ' + this.fmt(netTax),
+      azPrice: s.azPrice == null ? '100' : s.azPrice, azWage: s.azWage == null ? '15' : s.azWage, setAzPrice: this.setAzPrice, setAzWage: this.setAzWage,
+      azResult: (azHh > 999 ? '999+' : azHh) + ' Std ' + azMm + ' Min',
       npExp: s.npExp == null ? '1500' : s.npExp, setNpExp: this.setNpExp,
       npRes3: '€ ' + this.fmt(npR3), npRes6: '€ ' + this.fmt(npR6),
       infAmt: s.infAmt == null ? '1000' : s.infAmt, infRate: s.infRate == null ? '3' : s.infRate, infYears: s.infYears == null ? '10' : s.infYears,
