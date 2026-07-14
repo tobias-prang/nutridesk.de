@@ -120,6 +120,9 @@ Kein einzelner Rechner baut alles. Verteilung:
 2. **GitHub Actions** Windows-Runner (empfohlen, baut auf echtem Windows). 
 **TODO morgen am Mac:** cargo-xwin testen; klappt es sauber → Mac-only; sonst GitHub Actions einrichten.
 
+### GitHub-Actions-CI (fertig vorbereitet)
+`.github/workflows/release.yml` existiert bereits: baut bei `git push` eines Tags `v*` **Windows + macOS + Linux gleichzeitig** (via `tauri-apps/tauri-action`) und legt ein **Draft-Release** mit allen Installern + `.sig` an. Damit ist der Windows-PC überflüssig, der Windows-Runner baut die `.exe` auf echtem Windows. **Nötige Repo-Secrets** (in GitHub unter Settings → Secrets → Actions anlegen): `TAURI_SIGNING_PRIVATE_KEY` = Inhalt von `src-tauri/nutridesk.key`, `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` = `""` (leer). Danach: `git tag v1.0.1 && git push origin v1.0.1`. Der Updater-Feed auf nutridesk.de wird davon noch NICHT automatisch befüllt (das macht weiter `npm run release`, oder man ergänzt später einen scp-Upload-Step in der CI).
+
 ---
 
 ## 5. Infrastruktur / VPS (`vmd197921`, root-Zugang via SSH-Alias)

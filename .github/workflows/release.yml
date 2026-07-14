@@ -1,0 +1,70 @@
+name: release
+
+# Baut NutriDesk fuer Windows + macOS + Linux gleichzeitig, sobald ein Tag v* gepusht wird.
+# Damit brauchst du keinen Windows-PC mehr: der Windows-Runner baut die .exe auf echtem Windows.
+# Voraussetzung: In den Repo-Secrets muessen liegen:
+#   TAURI_SIGNING_PRIVATE_KEY           = Inhalt von src-tauri/nutridesk.key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  = "" (leer, der Key hat kein Passwort)
+# Aufruf: git tag v1.0.1 && git push origin v1.0.1   (oder manuell ueber "Run workflow")
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--target universal-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: ''
+          - platform: 'windows-latest'
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Rust einrichten
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust-Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Linux-Abhaengigkeiten
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: NPM-Abhaengigkeiten
+        run: npm ci
+
+      - name: Bauen + Draft-Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'NutriDesk ${{ github.ref_name }}'
+          releaseBody: 'Automatisch gebaut fuer Windows, macOS und Linux.'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
