@@ -746,7 +746,7 @@
         <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink3);flex:0 0 auto;">Organisieren</span>
         <div style="flex:1 1 auto;height:1px;background:var(--line2);"></div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-items:start;">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;align-items:stretch;">
         <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <span style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;"><i data-lucide="list-checks" style="width:17px;height:17px;color:var(--acc);"></i>To-dos</span>
@@ -777,7 +777,7 @@
               <div onclick="{{ openAppt }}" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;background:var(--acc);color:#0f1117;font-size:12px;font-weight:600;cursor:pointer;" style-hover="opacity:.85;"><i data-lucide="plus" style="width:13px;height:13px;"></i>Neu</div>
             </div>
           </div>
-          <div style="display:flex;flex-direction:column;max-height:260px;overflow:auto;">
+          <div style="display:flex;flex-direction:column;flex:1;max-height:260px;overflow:auto;">
             <sc-for list="{{ apptsView }}" as="ap" hint-placeholder-count="3">
               <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 2px;border-bottom:1px solid var(--chip);">
                 <span style="flex:0 0 auto;min-width:104px;font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:600;color:{{ ap.dC }};padding-top:2px;">{{ ap.dateLabel }}</span>
@@ -792,12 +792,12 @@
           </div>
         </div>
 
-        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:12px;min-height:340px;">
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;display:flex;flex-direction:column;gap:12px;">
           <div style="display:flex;align-items:center;justify-content:space-between;">
             <span style="display:flex;align-items:center;gap:9px;font-size:15px;font-weight:700;"><i data-lucide="bell" style="width:17px;height:17px;color:var(--acc);"></i>Neuigkeiten</span>
             <div onclick="{{ markBotRead }}" style="display:{{ botMarkShow }};align-items:center;gap:6px;padding:6px 11px;border-radius:9px;font-size:11.5px;font-weight:600;color:var(--ink3);cursor:pointer;" style-hover="background:var(--chip);color:var(--ink2);"><i data-lucide="check-check" style="width:13px;height:13px;"></i>Gelesen</div>
           </div>
-          <div style="display:flex;flex-direction:column;max-height:270px;overflow:auto;">
+          <div style="display:flex;flex-direction:column;flex:1;max-height:290px;overflow:auto;">
             <sc-for list="{{ botView }}" as="b" hint-placeholder-count="2">
               <div style="display:flex;align-items:flex-start;gap:12px;padding:11px 2px;border-bottom:1px solid var(--chip);">
                 <div style="width:34px;height:34px;border-radius:11px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><i data-lucide="{{ b.icon }}" style="width:16px;height:16px;color:{{ b.color }};"></i></div>
@@ -817,6 +817,7 @@
             </div>
             </sc-if>
           </div>
+          <div onclick="{{ openBot }}" style="display:{{ botMoreShow }};align-items:center;justify-content:center;gap:7px;margin-top:auto;padding:10px;border-radius:10px;border:1px solid var(--line3);color:var(--ink3);font-weight:600;font-size:12.5px;cursor:pointer;" style-hover="background:var(--chip);color:var(--ink2);"><i data-lucide="layers" style="width:14px;height:14px;"></i>{{ botMoreLabel }}</div>
         </div>
       </div>
     </div>
@@ -1716,6 +1717,27 @@
             <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Eingezahlt</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;">{{ sResIn }}</div></div>
             <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Zinsertrag</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--acc);">{{ sResGain }}</div></div>
             <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Endkapital</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--acc);">{{ sResTot }}</div></div>
+          </div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="shield" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Notgroschen-Planer</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Wie viel Reserve du brauchst</div></div></div>
+          <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;margin-bottom:14px;">Monatliche Fixkosten €<input value="{{ npExp }}" onchange="{{ setNpExp }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">3 Monate (Minimum)</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:#fbbf24;">{{ npRes3 }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">6 Monate (empfohlen)</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--acc);">{{ npRes6 }}</div></div>
+          </div>
+        </div>
+        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="trending-down" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Inflationsrechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Kaufkraft über die Jahre</div></div></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Betrag €<input value="{{ infAmt }}" onchange="{{ setInfAmt }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Inflation %<input value="{{ infRate }}" onchange="{{ setInfRate }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Jahre<input value="{{ infYears }}" onchange="{{ setInfYears }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Kostet dann</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:#fbbf24;">{{ infResFuture }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Kaufkraft dann</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;">{{ infResPower }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:12px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:5px;">Wertverlust</div><div style="font-family:'JetBrains Mono',monospace;font-size:17px;font-weight:600;color:var(--neg);">{{ infResLoss }}</div></div>
           </div>
         </div>
       </div>
@@ -3075,7 +3097,7 @@
           <div id="nd-ki-scroll" style="flex:1 1 auto;min-height:0;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:13px;">
             <sc-for list="{{ kiMsgsView }}" as="m" hint-placeholder-count="2">
               <div style="display:flex;justify-content:{{ m.justify }};">
-                <div style="max-width:80%;background:{{ m.bg }};color:{{ m.c }};border:1px solid {{ m.bd }};border-radius:{{ m.radius }};padding:11px 15px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;">{{ m.text }}<div style="display:{{ m.srcD }};margin-top:7px;padding-top:6px;border-top:1px solid var(--line3);font-size:11px;color:var(--ink3);"><i data-lucide="book-open" style="width:11px;height:11px;vertical-align:-1px;"></i> {{ m.src }}</div><div onclick="{{ kiSpeak }}" data-i="{{ m.i }}" title="Vorlesen" style="display:{{ m.playD }};align-items:center;gap:5px;margin-top:8px;font-size:11px;font-weight:600;color:var(--ink3);cursor:pointer;width:max-content;" style-hover="color:var(--acc);"><i data-lucide="volume-2" style="width:13px;height:13px;"></i>Vorlesen</div></div>
+                <div style="max-width:80%;background:{{ m.bg }};color:{{ m.c }};border:1px solid {{ m.bd }};border-radius:{{ m.radius }};padding:11px 15px;font-size:13.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;">{{ m.text }}<div style="display:{{ m.srcD }};margin-top:7px;padding-top:6px;border-top:1px solid var(--line3);font-size:11px;color:var(--ink3);"><i data-lucide="book-open" style="width:11px;height:11px;vertical-align:-1px;"></i> {{ m.src }}</div></div>
               </div>
             </sc-for>
             <sc-if value="{{ kiSending }}"><div style="display:flex;justify-content:flex-start;"><div style="background:var(--chip);border-radius:14px;padding:11px 16px;color:var(--ink3);font-size:13px;">Ich denke nach …</div></div></sc-if>
@@ -6179,6 +6201,10 @@ class Component extends DCLogic {
   setSRate = (e) => this.setState({ sRate: e.target.value });
   setSYield = (e) => this.setState({ sYield: e.target.value });
   setSYears = (e) => this.setState({ sYears: e.target.value });
+  setNpExp = (e) => this.setState({ npExp: e.target.value });
+  setInfAmt = (e) => this.setState({ infAmt: e.target.value });
+  setInfRate = (e) => this.setState({ infRate: e.target.value });
+  setInfYears = (e) => this.setState({ infYears: e.target.value });
   _toolSoon = () => this._toast('Dieser Rechner öffnet sich hier bald');
   _toolVals(s) {
     const n = (x, d) => { const v = parseFloat(String(x == null ? '' : x).replace(',', '.')); return isFinite(v) ? v : d; };
@@ -6187,7 +6213,17 @@ class Component extends DCLogic {
     const kTot = kRateM * km, kInt = kTot - P;
     const m = n(s.sRate, 250), sy = n(s.sYield, 6) / 100 / 12, syrs = Math.max(0, n(s.sYears, 15)), months = syrs * 12;
     const fv = sy === 0 ? m * months : m * ((Math.pow(1 + sy, months) - 1) / sy), paid = m * months, gain = fv - paid;
+    const npExp = n(s.npExp, 1500);
+    const npR3 = npExp * 3, npR6 = npExp * 6;
+    const infAmt = n(s.infAmt, 1000), infRate = n(s.infRate, 3) / 100, infYears = Math.max(0, n(s.infYears, 10));
+    const infFactor = Math.pow(1 + infRate, infYears);
+    const infFuture = infAmt * infFactor, infPower = infAmt / infFactor, infLoss = infAmt - infPower;
     return {
+      npExp: s.npExp == null ? '1500' : s.npExp, setNpExp: this.setNpExp,
+      npRes3: '€ ' + this.fmt(npR3), npRes6: '€ ' + this.fmt(npR6),
+      infAmt: s.infAmt == null ? '1000' : s.infAmt, infRate: s.infRate == null ? '3' : s.infRate, infYears: s.infYears == null ? '10' : s.infYears,
+      setInfAmt: this.setInfAmt, setInfRate: this.setInfRate, setInfYears: this.setInfYears,
+      infResFuture: '€ ' + this.fmt(infFuture), infResPower: '€ ' + this.fmt(infPower), infResLoss: '€ ' + this.fmt(infLoss),
       kAmount: s.kAmount == null ? '15000' : s.kAmount, kRate: s.kRate == null ? '4.9' : s.kRate, kMonths: s.kMonths == null ? '48' : s.kMonths,
       setKAmount: this.setKAmount, setKRate: this.setKRate, setKMonths: this.setKMonths,
       kResRate: '€ ' + this.fmt(kRateM), kResInt: '€ ' + this.fmt(kInt), kResTot: '€ ' + this.fmt(kTot),
@@ -6365,8 +6401,9 @@ class Component extends DCLogic {
       const bot = { role:'bot', text: r.reply || '…', sources: r.sources || [], message_id: r.message_id || null };
       this.setState({ kiMsgs: [...msgs, bot], kiQuicks: r.quicks || [], kiSending: false, kiSession: r.session_id || this.state.kiSession });
       this._kiScroll();
-      // SEC-003: KEIN automatisches Cloud-Vorlesen mehr. Vorlesen nur per expliziter Nutzeraktion,
-      // serverseitig klassifiziert (message_id, kein Rohtext). UI-Button + Einstellung folgen im Frontend-Batch.
+      // Anja spricht die Antwort automatisch (ElevenLabs, serverseitig per message_id), sofern der
+      // Lautsprecher im KI-Kopf an ist (ttsRead). Bei Blockade/Fehler lokaler Fallback in _speakCloud.
+      if (this.state.ttsRead) { if (bot.message_id) this._speakCloud(bot); else this._speakLocal(bot.text); }
       // Nach einer ausgefuehrten Aktion (Buchung/Essen/Termin/Todo/Gewicht) die App-Daten neu laden, damit es sofort sichtbar ist.
       if (r.intent && r.intent.indexOf('action_done') === 0 && typeof this.refresh === 'function') this.refresh();
     } catch (err) {
@@ -9206,6 +9243,8 @@ class Component extends DCLogic {
       botInsShow: (s.insights || []).length > 0, botInsLabel: (s.insights || []).length + ((s.insights || []).length === 1 ? ' neue Erkenntnis' : ' neue Erkenntnisse'),
       botEmpty: !s.botMsgs || !s.botMsgs.length,
       botMarkShow: (s.botMsgs && s.botMsgs.length) ? 'flex' : 'none',
+      botMoreShow: (((s.botMsgs || []).length) + ((s.insights || []).length)) > 3 ? 'flex' : 'none',
+      botMoreLabel: 'Alle anzeigen (' + (((s.botMsgs || []).length) + ((s.insights || []).length)) + ')',
       botCardEmpty: !(s.botMsgs && s.botMsgs.length) && !((s.insights || []).length),
       botView: (s.botMsgs || []).map(m => ({
         icon: m.icon || 'sparkles', color: m.color || '#a78bfa',
