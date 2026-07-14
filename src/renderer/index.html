@@ -5272,7 +5272,8 @@
 </x-dc>
 <script type="text/x-dc" data-dc-script="">
 
-const API_BASE = 'https://ifasy.com/nutridesk-api';
+// Standard-API; per Build/Deploy uebersteuerbar (window.__API_BASE, z.B. fuer Dev/Staging), sonst Produktion.
+const API_BASE = (typeof window !== 'undefined' && window.__API_BASE) || 'https://ifasy.com/nutridesk-api';
 
 class Component extends DCLogic {
   constructor(props) {
