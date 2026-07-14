@@ -3246,6 +3246,15 @@
 
         <sc-if value="{{ kiIsChat }}">
         <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);overflow:hidden;">
+          <div style="flex:0 0 auto;border-bottom:1px solid var(--line);padding:9px 12px;display:flex;align-items:center;gap:6px;overflow-x:auto;">
+            <sc-for list="{{ kiSessionsView }}" as="se" hint-placeholder-count="0">
+              <div onclick="{{ kiSwitchSession }}" data-sid="{{ se.sid }}" style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:9px;background:{{ se.bg }};border:1px solid {{ se.bd }};cursor:pointer;flex:0 0 auto;max-width:170px;" style-hover="border-color:var(--acc-bd);">
+                <span style="font-size:12px;font-weight:600;color:{{ se.col }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ se.title }}</span>
+                <div onclick="{{ kiDeleteSession }}" data-sid="{{ se.sid }}" title="Chat löschen" style="width:16px;height:16px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--mut);flex:0 0 auto;" style-hover="color:#f87171;"><i data-lucide="x" style="width:12px;height:12px;"></i></div>
+              </div>
+            </sc-for>
+            <div onclick="{{ kiNewChat }}" title="Neuer Chat" style="display:{{ kiNewD }};align-items:center;gap:5px;padding:6px 11px;border-radius:9px;border:1px dashed var(--line3);color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="plus" style="width:13px;height:13px;"></i>Neu</div>
+          </div>
           <div id="nd-ki-scroll" style="flex:1 1 auto;min-height:0;overflow:auto;padding:20px 22px;display:flex;flex-direction:column;gap:13px;">
             <sc-for list="{{ kiMsgsView }}" as="m" hint-placeholder-count="2">
               <div style="display:flex;justify-content:{{ m.justify }};">
@@ -5466,7 +5475,7 @@ class Component extends DCLogic {
       scanStatus:'idle', scanErr:'', scanResult:null, scanManual:'',
       insights:[], insBusy:false, insErr:'', insUntil:'', savUntil:'', aiAvail:true,
       botMsgs:[], botUnread:0, botBusy:false,
-      kiMsgs:[], kiInput:'', kiSending:false, kiSession:'', kiMuted:false, kiView:'chat', kiQuicks:[], kiTickets:[], kiTicketId:0, kiTicket:null, kiTReply:'',
+      kiMsgs:[], kiInput:'', kiSending:false, kiSession:'', kiMuted:false, kiView:'chat', kiQuicks:[], kiTickets:[], kiTicketId:0, kiTicket:null, kiTReply:'', kiSessions:[],
       aiCfg:null, aiProvSel:'gemini', aiModelInput:'', aiKeyInput:'', aiBusy:false, aiTest:null,
       admFoods:[], admFoodTotal:0, admFoodQ:'',
       fId:0, fName:'', fBrand:'', fBarcode:'', fKcalV:'', fCarbsV:'', fProteinV:'', fFatV:'',
@@ -6803,7 +6812,7 @@ class Component extends DCLogic {
     }
   };
 
-  goInsights = () => { this.setState({ area:'insights' }); this._kiInit(); };
+  goInsights = () => { this.setState({ area:'insights' }); this._kiInit(); this._loadKiSessions(); };
   _kiInit = () => {
     if (!this.state.kiSession) {
       const sid = 'ki' + Math.random().toString(36).slice(2, 12);
@@ -6814,8 +6823,12 @@ class Component extends DCLogic {
   };
   kiSetInput = (e) => { this.setState({ kiInput: e.target.value }); };
   kiSetTReply = (e) => { this.setState({ kiTReply: e.target.value }); };
-  kiShowChat = () => this.setState({ kiView:'chat', kiTicketId:0, kiTicket:null });
+  kiShowChat = () => { this.setState({ kiView:'chat', kiTicketId:0, kiTicket:null }); this._loadKiSessions(); };
   kiShowTickets = () => { this.setState({ kiView:'tickets', kiTicketId:0, kiTicket:null }); this._loadKiTickets(); };
+  _loadKiSessions = async () => { try { const s = await this.api('/bot/sessions'); this.setState({ kiSessions: Array.isArray(s) ? s : [] }); } catch (e) {} };
+  kiNewChat = () => { if ((this.state.kiSessions || []).length >= 5) { this._toast('Maximal 5 Chats. Lösche einen, um einen neuen zu starten.'); return; } this.setState({ kiView:'chat', kiSession:'', kiMsgs:[], kiQuicks:[], kiTicketId:0, kiTicket:null }); };
+  kiSwitchSession = async (e) => { const sid = e.currentTarget.dataset.sid; if (!sid || sid === this.state.kiSession) { this.setState({ kiView:'chat' }); return; } try { const h = await this.api('/bot/history/' + sid); const msgs = (h || []).map(m => ({ role: m.role === 'user' ? 'user' : 'bot', text: m.text, message_id: null })); this.setState({ kiView:'chat', kiSession: sid, kiMsgs: msgs, kiQuicks: [], kiTicketId: 0 }); this._kiScroll(); } catch (er) {} };
+  kiDeleteSession = async (e) => { const sid = e.currentTarget.dataset.sid; if (!sid) return; try { await this.api('/bot/sessions/' + sid, { method:'DELETE' }); const wasCur = sid === this.state.kiSession; await this._loadKiSessions(); if (wasCur) this.setState({ kiSession:'', kiMsgs:[], kiQuicks:[] }); } catch (er) {} };
   kiToggleMute = () => { const turningOn = !this.state.ttsRead; this.toggleTts(); if (turningOn) this._ensureCloudVoice(); };
   _ensureCloudVoice = async () => {
     if (this.state.cloudTts) return;
@@ -6834,6 +6847,7 @@ class Component extends DCLogic {
       const bot = { role:'bot', text: r.reply || '…', sources: r.sources || [], message_id: r.message_id || null };
       this.setState({ kiMsgs: [...msgs, bot], kiQuicks: r.quicks || [], kiSending: false, kiSession: r.session_id || this.state.kiSession });
       this._kiScroll();
+      this._loadKiSessions();
       // Anja spricht die Antwort automatisch (ElevenLabs, serverseitig per message_id), sofern der
       // Lautsprecher im KI-Kopf an ist (ttsRead). Bei Blockade/Fehler lokaler Fallback in _speakCloud.
       if (this.state.ttsRead) { if (bot.message_id) this._speakCloud(bot); else this._speakLocal(bot.text); }
@@ -9648,6 +9662,9 @@ class Component extends DCLogic {
       kiChatBg: !kiTix ? 'var(--panel)' : 'transparent', kiChatC: !kiTix ? 'var(--ink)' : 'var(--ink3)',
       kiTixBg: kiTix ? 'var(--panel)' : 'transparent', kiTixC: kiTix ? 'var(--ink)' : 'var(--ink3)',
       kiShowChat: this.kiShowChat, kiShowTickets: this.kiShowTickets,
+      kiNewChat: this.kiNewChat, kiSwitchSession: this.kiSwitchSession, kiDeleteSession: this.kiDeleteSession,
+      kiSessionsView: (s.kiSessions || []).map(se => ({ sid: se.session_id, title: (se.title || 'Neuer Chat').slice(0, 22), active: se.session_id === s.kiSession, bg: se.session_id === s.kiSession ? 'var(--acc-bg)' : 'var(--bg2)', bd: se.session_id === s.kiSession ? 'var(--acc-bd)' : 'var(--line3)', col: se.session_id === s.kiSession ? 'var(--acc)' : 'var(--ink2)' })),
+      kiHasSessions: (s.kiSessions || []).length > 0, kiNewD: (s.kiSessions || []).length >= 5 ? 'none' : 'flex',
       kiToggleMute: this.kiToggleMute, kiMuteIcon: s.ttsRead ? 'volume-2' : 'volume-x',
       kiMuteBg: s.ttsRead ? 'var(--acc-bg)' : 'var(--chip)', kiMuteC: s.ttsRead ? 'var(--acc)' : 'var(--ink3)',
       kiSpeak: this.kiSpeak,

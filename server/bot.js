@@ -482,6 +482,8 @@ module.exports = function registerBot(app, deps) {
     const settings = await getSettings(req.uid);
     const sid = await ensureSession(req.uid, req.body.session_id, settings.share_chats);
     await saveChat(sid, req.uid, 'user', text, null);
+    // Auto-Titel: erste Nutzernachricht wird zum Chat-Titel (falls noch keiner gesetzt).
+    pool.execute("UPDATE bot_sessions SET title=? WHERE session_id=? AND (title IS NULL OR title='')", [text.slice(0, 60), sid]).catch(() => {});
     scanMemory(req.uid, text).catch(() => {});
     // Support-Ticket-Direktstart
     if (/support.?ticket|ticket erstellen|hilfe vom support|an den support/.test(text.toLowerCase()) && !flows.get(fkey(req.uid, sid))) {
@@ -504,6 +506,18 @@ module.exports = function registerBot(app, deps) {
     const sid = vStr(req.params.sid, 'Session', 40);
     const [rows] = await pool.execute('SELECT role, text, created_at FROM bot_chat WHERE session_id=? AND user_id=? ORDER BY id ASC LIMIT 200', [sid, req.uid]);
     res.json(rows);
+  }));
+
+  // Multi-Chat: Liste der eigenen Chats + Loeschen
+  app.get('/bot/sessions', auth, asyncRoute(async (req, res) => {
+    const [rows] = await pool.execute("SELECT session_id, COALESCE(NULLIF(title,''),'Neuer Chat') AS title, msg_count, last_at FROM bot_sessions WHERE user_id=? AND msg_count>0 ORDER BY last_at DESC LIMIT 20", [req.uid]);
+    res.json(rows);
+  }));
+  app.delete('/bot/sessions/:sid', auth, asyncRoute(async (req, res) => {
+    const sid = vStr(req.params.sid, 'Session', 40);
+    await pool.execute('DELETE FROM bot_chat WHERE session_id=? AND user_id=?', [sid, req.uid]);
+    await pool.execute('DELETE FROM bot_sessions WHERE session_id=? AND user_id=?', [sid, req.uid]);
+    res.json({ ok: true });
   }));
 
   // Bot-Gedächtnis: ansehen + löschen (DSGVO)
