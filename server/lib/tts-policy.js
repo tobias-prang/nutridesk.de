@@ -67,12 +67,14 @@ function redactTtsContent(text) {
 
 // Darf der Text ueber Cloud-TTS (ElevenLabs) ausgegeben werden? (nur Nutzer-Ebene; global/version in decideTts)
 function isCloudTtsAllowed(userSettings, classification, explicitRequest) {
-  if (classification === 'SENSITIVE') return { allowed: false, reason: 'class_sensitive' };
+  // STRICTLY_SENSITIVE (Passwoerter, Gesundheitsdaten Art.9) NIE ueber Cloud. SENSITIVE (Finanzen/Nutzeraktionen)
+  // ist erlaubt, weil der Nutzer die Cloud-Stimme ausdruecklich aktiviert + das Risiko uebernommen hat; kritische
+  // Muster (IBAN/Mail/Telefon/Kartennummer) werden vor dem Versand redigiert (redact).
   if (classification === 'STRICTLY_SENSITIVE') return { allowed: false, reason: 'class_strictly_sensitive' };
   const enabled = !!(userSettings && Number(userSettings.cloud_tts_enabled) === 1);
   if (!enabled) return { allowed: false, reason: 'no_opt_in' };
   if (!explicitRequest) return { allowed: false, reason: 'no_explicit_request' };
-  return { allowed: true, reason: 'allowed', redact: classification === 'PRIVATE' };
+  return { allowed: true, reason: 'allowed', redact: classification === 'PRIVATE' || classification === 'SENSITIVE' };
 }
 
 // Grundsaetzliche lokale Zulaessigkeit (netzfrei). Ob eine verifiziert lokale Stimme existiert, entscheidet der Renderer (SEC-003B).
