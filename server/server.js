@@ -640,7 +640,7 @@ app.delete('/admin/recipes/:id', auth, requireAdmin, asyncRoute(async (req, res)
 
 // ---------- Profil & Einstellungen ----------
 app.get('/me', auth, asyncRoute(async (req, res) => {
-  const [[user]] = await pool.execute('SELECT id, email, username, name, first_name, last_name, admin, developer, created_at FROM users WHERE id = ?', [req.uid]);
+  const [[user]] = await pool.execute('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, created_at FROM users WHERE id = ?', [req.uid]);
   const [[settings]] = await pool.execute('SELECT * FROM user_settings WHERE user_id = ?', [req.uid]);
   const settingsSafe = settings ? { ...settings, avatar: cleanAvatar(settings.avatar) } : settings;
   res.json({ user, settings: settingsSafe });
@@ -653,6 +653,12 @@ app.put('/me/profile', auth, rateLimitUser('me-profile', 40), asyncRoute(async (
   if (b.name !== undefined) { sets.push('name = ?'); vals.push(vStr(b.name, 'Anzeigename', 60)); }
   if (b.first_name !== undefined) { sets.push('first_name = ?'); vals.push(b.first_name === null || b.first_name === '' ? null : vStr(b.first_name, 'Vorname', 60)); }
   if (b.last_name !== undefined) { sets.push('last_name = ?'); vals.push(b.last_name === null || b.last_name === '' ? null : vStr(b.last_name, 'Nachname', 60)); }
+  if (b.birthday !== undefined) { sets.push('birthday = ?'); vals.push(b.birthday === null || b.birthday === '' ? null : vDate(b.birthday, 'Geburtstag')); }
+  if (b.phone !== undefined) { sets.push('phone = ?'); vals.push(b.phone === null || b.phone === '' ? null : vStr(b.phone, 'Telefon', 40)); }
+  if (b.street !== undefined) { sets.push('street = ?'); vals.push(b.street === null || b.street === '' ? null : vStr(b.street, 'Straße', 120)); }
+  if (b.zip !== undefined) { sets.push('zip = ?'); vals.push(b.zip === null || b.zip === '' ? null : vStr(b.zip, 'PLZ', 20)); }
+  if (b.city !== undefined) { sets.push('city = ?'); vals.push(b.city === null || b.city === '' ? null : vStr(b.city, 'Ort', 80)); }
+  if (b.country !== undefined) { sets.push('country = ?'); vals.push(b.country === null || b.country === '' ? null : vStr(b.country, 'Land', 60)); }
   if (b.username !== undefined) {
     if (b.username === null || b.username === '') { sets.push('username = ?'); vals.push(null); }
     else {
@@ -667,7 +673,7 @@ app.put('/me/profile', auth, rateLimitUser('me-profile', 40), asyncRoute(async (
   vals.push(req.uid);
   try { await pool.execute('UPDATE users SET ' + sets.join(', ') + ' WHERE id = ?', vals); }
   catch (e) { if (e.code === 'ER_DUP_ENTRY') throw bad('Dieser Benutzername ist bereits vergeben'); throw e; }
-  const [[user]] = await pool.execute('SELECT id, email, username, name, first_name, last_name, admin, developer FROM users WHERE id = ?', [req.uid]);
+  const [[user]] = await pool.execute('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer FROM users WHERE id = ?', [req.uid]);
   res.json({ ok: true, user });
 }));
 
@@ -1806,7 +1812,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
   const q = (sql, params = []) => pool.execute(sql, [uid, ...params]).then(([rows]) => rows);
   const [user, settings, weights, water, foodLog, dishes, plan, shopping,
     transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, cooldowns] = await Promise.all([
-    q('SELECT id, email, username, name, first_name, last_name, admin, developer, created_at FROM users WHERE id = ?').then(r => r[0]),
+    q('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, created_at FROM users WHERE id = ?').then(r => r[0]),
     q('SELECT * FROM user_settings WHERE user_id = ?').then(r => r[0]),
     q('SELECT id, `date`, kg FROM weights WHERE user_id = ? ORDER BY `date` ASC'),
     q('SELECT `date`, glasses FROM water_log WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)'),

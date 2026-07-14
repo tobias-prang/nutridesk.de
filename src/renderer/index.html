@@ -1931,6 +1931,36 @@
                   <div style="font-size:11px;color:var(--mut);margin-top:6px;">Kein Passwort nötig, du bist ja angemeldet.</div>
                 </div>
                 <div style="height:1px;background:var(--track);margin:5px 0;"></div>
+                <div style="font-size:13px;font-weight:700;">Persönliche Angaben <span style="font-weight:500;color:var(--ink3);font-size:11.5px;">optional</span></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+                  <div>
+                    <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Geburtstag</span>
+                    <input type="date" value="{{ acBirthday }}" onchange="{{ setAcBirthday }}" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
+                  </div>
+                  <div>
+                    <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Telefon</span>
+                    <input value="{{ acPhone }}" onchange="{{ setAcPhone }}" placeholder="optional" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
+                  </div>
+                </div>
+                <div>
+                  <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Straße &amp; Hausnummer</span>
+                  <input value="{{ acStreet }}" onchange="{{ setAcStreet }}" placeholder="optional" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 2fr 1.5fr;gap:14px;">
+                  <div>
+                    <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">PLZ</span>
+                    <input value="{{ acZip }}" onchange="{{ setAcZip }}" placeholder="optional" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
+                  </div>
+                  <div>
+                    <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Ort</span>
+                    <input value="{{ acCity }}" onchange="{{ setAcCity }}" placeholder="optional" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
+                  </div>
+                  <div>
+                    <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Land</span>
+                    <input value="{{ acCountry }}" onchange="{{ setAcCountry }}" placeholder="optional" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
+                  </div>
+                </div>
+                <div style="height:1px;background:var(--track);margin:5px 0;"></div>
                 <div style="font-size:13px;font-weight:700;">Passwort ändern <span style="font-weight:500;color:var(--ink3);font-size:11.5px;">optional, nur ausfüllen zum Wechseln</span></div>
                 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;">
                   <div>
@@ -5426,7 +5456,7 @@ class Component extends DCLogic {
       bgIcon:'shopping-basket', bgCategory:'Lebensmittel', bgLimit:'',
       expSel:{ tx:true, abos:true, loans:true, tracker:true, plan:false, shop:false, profil:false }, expFmt:'csv', expRange:'Dieser Monat',
       pwOld:'', pwNew:'', pwNew2:'', pwBusy:false, emailPw:'',
-      uname:'', acUser:'', acFirst:'', acLast:'',
+      uname:'', acUser:'', acFirst:'', acLast:'', acBirthday:'', acPhone:'', acStreet:'', acZip:'', acCity:'', acCountry:'',
       depGoalId:0, depAmt:'',
       appVersion:'', updStatus:'idle', updVersion:'', updPct:0, updErr:'', updChannel:'stable',
       targetWeight:'',
@@ -5505,6 +5535,7 @@ class Component extends DCLogic {
         onboard: s.onboarded ? 0 : 1,
         uname: data.user.name, email: data.user.email,
         acUser: data.user.username || '', acFirst: data.user.first_name || '', acLast: data.user.last_name || '',
+        acBirthday: data.user.birthday ? String(data.user.birthday).slice(0, 10) : '', acPhone: data.user.phone || '', acStreet: data.user.street || '', acZip: data.user.zip || '', acCity: data.user.city || '', acCountry: data.user.country || '',
         height: s.height_cm != null ? String(parseFloat(s.height_cm)).replace('.', ',') : '',
         weight: lastW != null ? this.fmtKg(lastW) : '',
         age: s.age != null ? String(s.age) : '',
@@ -6644,13 +6675,20 @@ class Component extends DCLogic {
   setAcUser = (e) => this.setState({ acUser: e.target.value });
   setAcFirst = (e) => this.setState({ acFirst: e.target.value });
   setAcLast = (e) => this.setState({ acLast: e.target.value });
+  setAcBirthday = (e) => this.setState({ acBirthday: e.target.value });
+  setAcPhone = (e) => this.setState({ acPhone: e.target.value });
+  setAcStreet = (e) => this.setState({ acStreet: e.target.value });
+  setAcZip = (e) => this.setState({ acZip: e.target.value });
+  setAcCity = (e) => this.setState({ acCity: e.target.value });
+  setAcCountry = (e) => this.setState({ acCountry: e.target.value });
+  _profileBody = () => { const s = this.state; return { name: s.uname.trim(), username: (s.acUser || '').trim() || null, first_name: (s.acFirst || '').trim() || null, last_name: (s.acLast || '').trim() || null, birthday: s.acBirthday || null, phone: (s.acPhone || '').trim() || null, street: (s.acStreet || '').trim() || null, zip: (s.acZip || '').trim() || null, city: (s.acCity || '').trim() || null, country: (s.acCountry || '').trim() || null }; };
   saveAccount = async () => {
     const s = this.state;
     if (!s.uname || !s.uname.trim()) { this._toast('Bitte einen Anzeigenamen eingeben'); return; }
     try {
-      const r = await this.api('/me/profile', { method:'PUT', body:{ name: s.uname.trim(), username: s.acUser.trim() || null, first_name: s.acFirst.trim() || null, last_name: s.acLast.trim() || null } });
+      const r = await this.api('/me/profile', { method:'PUT', body: this._profileBody() });
       const u = r.user || {};
-      this.setState({ data: { ...s.data, user: { ...s.data.user, name: u.name, username: u.username, first_name: u.first_name, last_name: u.last_name } }, uname: u.name || s.uname, acUser: u.username || '', acFirst: u.first_name || '', acLast: u.last_name || '' });
+      this.setState({ data: { ...s.data, user: { ...s.data.user, ...u } }, uname: u.name || s.uname, acUser: u.username || '', acFirst: u.first_name || '', acLast: u.last_name || '', acBirthday: u.birthday ? String(u.birthday).slice(0, 10) : '', acPhone: u.phone || '', acStreet: u.street || '', acZip: u.zip || '', acCity: u.city || '', acCountry: u.country || '' });
       this._toast('Profil gespeichert');
     } catch (e) { this._toast(e.message); }
   };
@@ -6666,7 +6704,7 @@ class Component extends DCLogic {
     }
     this._accBusy = true;
     try {
-      const r = await this.api('/me/profile', { method:'PUT', body:{ name: s.uname.trim(), username: s.acUser.trim() || null, first_name: s.acFirst.trim() || null, last_name: s.acLast.trim() || null } });
+      const r = await this.api('/me/profile', { method:'PUT', body: this._profileBody() });
       const u = r.user || {};
       const curEmail = (s.data && s.data.user && s.data.user.email) || '';
       let newEmail = curEmail;
@@ -6678,8 +6716,9 @@ class Component extends DCLogic {
         await this.api('/me/password', { method:'PUT', body:{ old_password: s.pwOld, new_password: s.pwNew } });
       }
       this.setState({
-        data: { ...s.data, user: { ...s.data.user, name: u.name, username: u.username, first_name: u.first_name, last_name: u.last_name, email: newEmail } },
+        data: { ...s.data, user: { ...s.data.user, ...u, email: newEmail } },
         uname: u.name || s.uname, acUser: u.username || '', acFirst: u.first_name || '', acLast: u.last_name || '',
+        acBirthday: u.birthday ? String(u.birthday).slice(0, 10) : '', acPhone: u.phone || '', acStreet: u.street || '', acZip: u.zip || '', acCity: u.city || '', acCountry: u.country || '',
         email: newEmail, pwOld:'', pwNew:'', pwNew2:'', emailPw:'',
       });
       this._toast('Konto gespeichert');
@@ -10378,6 +10417,7 @@ class Component extends DCLogic {
       sysIsUpdates: (s.sysTab||'updates')==='updates', sysIsChangelog: s.sysTab==='changelog', sysIsExport: s.sysTab==='export',
       devTabD: (d.user && d.user.developer) ? 'flex' : 'none',
       acUser: s.acUser, setAcUser: this.setAcUser, acFirst: s.acFirst, setAcFirst: this.setAcFirst, acLast: s.acLast, setAcLast: this.setAcLast, saveAccount: this.saveAccount,
+      acBirthday: s.acBirthday, setAcBirthday: this.setAcBirthday, acPhone: s.acPhone, setAcPhone: this.setAcPhone, acStreet: s.acStreet, setAcStreet: this.setAcStreet, acZip: s.acZip, setAcZip: this.setAcZip, acCity: s.acCity, setAcCity: this.setAcCity, acCountry: s.acCountry, setAcCountry: this.setAcCountry,
       sSupport:this.sSupport, stSupport: pill(s.setTab==='support'), showSupport: isSet && s.setTab==='support',
       supTabNew:this.supTabNew, supTabMine:this.supTabMine, supIsNew: (s.supTab||'new')==='new', supIsMine: s.supTab==='mine',
       segSupNew: seg((s.supTab||'new')==='new'), segSupMine: seg(s.supTab==='mine'),
