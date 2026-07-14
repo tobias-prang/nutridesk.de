@@ -1012,6 +1012,68 @@ app.post('/emergency', auth, emergencyLimit, asyncRoute(async (req, res) => {
   } catch (e) { try { await conn.rollback(); } catch (_) {} throw e; } finally { conn.release(); }
 }));
 
+// ---------- Spiele: XP / Nutris / Level + rotierende Tagesquest ----------
+const GAME_XP_CAP = 500;
+const QUESTS = [
+  { id: 'quiz_win', title: 'Quiz-Champion', desc: 'Beende ein Quiz mit mindestens 4 richtigen Antworten.', target: 4, reward: 60, kind: 'quiz_correct' },
+  { id: 'arcade_score', title: 'Frucht-Jäger', desc: 'Erreiche 60 Punkte in Fruit Rush.', target: 60, reward: 60, kind: 'arcade_score' },
+  { id: 'play_any', title: 'Warmspielen', desc: 'Spiele heute 3 Runden, egal welches Spiel.', target: 3, reward: 50, kind: 'rounds' },
+  { id: 'quiz_food', title: 'Ernährungs-Profi', desc: 'Beantworte 6 Lebensmittel-Fragen richtig.', target: 6, reward: 70, kind: 'food_correct' },
+];
+function gLevel(xp) { let l = 1; while (100 * l * (l + 1) <= xp) l++; return l; }
+function gXpForLevel(l) { return 100 * l * (l - 1); }
+function gToday() { return new Date().toISOString().slice(0, 10); }
+function gQuest() { return QUESTS[Math.floor(Date.now() / 86400000) % QUESTS.length]; }
+async function gEnsure(uid) {
+  await pool.execute('INSERT IGNORE INTO user_settings (user_id) VALUES (?)', [uid]);
+  const today = gToday(), q = gQuest();
+  const [[s]] = await pool.execute('SELECT xp, nutris, xp_today, xp_today_date, quest_date, quest_prog, quest_claimed FROM user_settings WHERE user_id=?', [uid]);
+  let xpToday = s.xp_today, prog = s.quest_prog, claimed = s.quest_claimed;
+  const xpDay = s.xp_today_date ? String(s.xp_today_date).slice(0, 10) : null;
+  const qDay = s.quest_date ? String(s.quest_date).slice(0, 10) : null;
+  if (xpDay !== today) { xpToday = 0; await pool.execute('UPDATE user_settings SET xp_today=0, xp_today_date=? WHERE user_id=?', [today, uid]); }
+  if (qDay !== today) { prog = 0; claimed = 0; await pool.execute('UPDATE user_settings SET quest_date=?, quest_prog=0, quest_claimed=0 WHERE user_id=?', [today, uid]); }
+  return { xp: s.xp, nutris: s.nutris, xpToday, prog, claimed, quest: q };
+}
+function gStateObj(g) {
+  const level = gLevel(g.xp), base = gXpForLevel(level), next = gXpForLevel(level + 1);
+  return {
+    xp: g.xp, nutris: g.nutris, level, levelXp: g.xp - base, levelNeed: next - base,
+    xpToday: g.xpToday, xpCap: GAME_XP_CAP,
+    quest: { id: g.quest.id, title: g.quest.title, desc: g.quest.desc, target: g.quest.target, reward: g.quest.reward, prog: Math.min(g.prog, g.quest.target), done: g.prog >= g.quest.target, claimed: !!g.claimed },
+  };
+}
+app.get('/games/state', auth, asyncRoute(async (req, res) => { res.json(gStateObj(await gEnsure(req.uid))); }));
+app.post('/games/reward', auth, rateLimitUser('game-reward', 120, 60000), asyncRoute(async (req, res) => {
+  const game = vEnum(req.body.game, 'Spiel', ['quiz', 'arcade']);
+  const correct = vInt(req.body.correct, 'Richtige', 0, 100, { optional: true }) || 0;
+  const score = vInt(req.body.score, 'Punkte', 0, 100000, { optional: true }) || 0;
+  const category = vStr(req.body.category, 'Kategorie', 20, { optional: true }) || '';
+  const g = await gEnsure(req.uid);
+  let xpEarn = game === 'quiz' ? correct * 12 : Math.floor(score / 2);
+  let nutEarn = game === 'quiz' ? correct * 4 : Math.floor(score / 4);
+  const room = Math.max(0, GAME_XP_CAP - g.xpToday);
+  const capped = xpEarn > room;
+  xpEarn = Math.min(xpEarn, room);
+  const q = g.quest; let prog = g.prog;
+  if (q.kind === 'quiz_correct' && game === 'quiz') prog += correct;
+  else if (q.kind === 'food_correct' && game === 'quiz' && category === 'food') prog += correct;
+  else if (q.kind === 'arcade_score' && game === 'arcade') prog = Math.max(prog, score);
+  else if (q.kind === 'rounds') prog += 1;
+  const newXp = g.xp + xpEarn, newNut = g.nutris + nutEarn, newToday = g.xpToday + xpEarn;
+  await pool.execute('UPDATE user_settings SET xp=?, nutris=?, xp_today=?, xp_today_date=?, quest_prog=?, quest_date=? WHERE user_id=?',
+    [newXp, newNut, newToday, gToday(), prog, gToday(), req.uid]);
+  res.json({ earned: { xp: xpEarn, nutris: nutEarn }, capped, state: gStateObj({ xp: newXp, nutris: newNut, xpToday: newToday, prog, claimed: g.claimed, quest: q }) });
+}));
+app.post('/games/quest/claim', auth, asyncRoute(async (req, res) => {
+  const g = await gEnsure(req.uid);
+  if (g.prog < g.quest.target) return res.status(400).json({ error: 'Quest noch nicht erfüllt.' });
+  if (g.claimed) return res.status(400).json({ error: 'Belohnung schon abgeholt.' });
+  const newNut = g.nutris + g.quest.reward;
+  await pool.execute('UPDATE user_settings SET nutris=?, quest_claimed=1, quest_date=? WHERE user_id=?', [newNut, gToday(), req.uid]);
+  res.json({ reward: g.quest.reward, state: gStateObj({ ...g, nutris: newNut, claimed: 1 }) });
+}));
+
 // ---------- Finanzbuch: nicht gebuchte Transaktionen (CSV-/Bank-Import) ----------
 // Der Client parst die CSV lokal (Datenschutz) und schickt normalisierte Zeilen als EINEN Bulk-Request.
 const STAGING_CAP = 5000;
