@@ -1,6 +1,6 @@
 name: release
 
-# Baut NutriDesk fuer Windows + macOS + Linux gleichzeitig, sobald ein Tag v* gepusht wird.
+# Baut NutriDesk fuer Windows + macOS gleichzeitig, sobald ein Tag v* gepusht wird.
 # Damit brauchst du keinen Windows-PC mehr: der Windows-Runner baut die .exe auf echtem Windows.
 # Voraussetzung: In den Repo-Secrets muessen liegen:
 #   TAURI_SIGNING_PRIVATE_KEY           = Inhalt von src-tauri/nutridesk.key
@@ -23,8 +23,6 @@ jobs:
         include:
           - platform: 'macos-latest'
             args: '--target universal-apple-darwin'
-          - platform: 'ubuntu-22.04'
-            args: ''
           - platform: 'windows-latest'
             args: ''
     runs-on: ${{ matrix.platform }}
@@ -46,12 +44,6 @@ jobs:
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Linux-Abhaengigkeiten
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-
       - name: NPM-Abhaengigkeiten
         run: npm ci
 
@@ -64,7 +56,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'NutriDesk ${{ github.ref_name }}'
-          releaseBody: 'Automatisch gebaut fuer Windows, macOS und Linux.'
+          releaseBody: 'Automatisch gebaut fuer Windows und macOS.'
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
