@@ -169,7 +169,8 @@ ASVS-L2-Härtungsplan, 2-Pass-Audit. **KEINE großen Änderungen vor dem 2. Beri
 **Migration/Build (das ist der Grund für den Mac, siehe §12):**
 - [ ] Am Mac: macOS/iOS/Android nativ bauen + Windows-Lücke schließen (cargo-xwin ODER GitHub Actions, siehe §4/§12)
 - [ ] CSP scharf setzen (aktuell `null`). **ACHTUNG:** Training-Spiel lädt MediaPipe von `https://nutridesk.de/assets/mp/` → CSP muss `connect-src`/`script-src` `https://nutridesk.de` + `blob:` + `wasm-unsafe-eval` erlauben, sonst bricht die Kamera-Übungserkennung.
-- [ ] Ggf. GitHub-Actions-Pipeline (Repo auf GitHub, Account `nyazukix`); `.github/workflows/release.yml` existiert schon (nur Secrets fehlen)
+- [x] Repo auf GitHub angelegt: **`tobias-prang/NutriDesk`** (privat, Default-Branch `main`), Remote `origin` per HTTPS + gh-Credential-Helper. Auth via `gh` (Account `tobias-prang`, Token-Scopes u.a. `repo`, `workflow`).
+- [ ] GitHub-Actions-Pipeline scharf schalten: `.github/workflows/release.yml` liegt im Repo, es fehlen nur noch die Secrets `TAURI_SIGNING_PRIVATE_KEY` (Inhalt von `src-tauri/nutridesk.key`) und `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (leer). ACHTUNG: damit landet der private Signing-Key in den GitHub-Actions-Secrets, bewusste Entscheidung von Tobias nötig.
 
 **Produkt (erledigt seit letztem Stand ist in §11 dokumentiert):**
 - [x] Finanz-Umbau auf 6-Tab-Struktur (FERTIG, E2E verifiziert)
