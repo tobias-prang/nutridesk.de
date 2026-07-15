@@ -2859,7 +2859,7 @@
             </div>
             <div onclick="{{ openFitness }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;overflow:hidden;cursor:pointer;" style-hover="border-color:var(--acc-bd);">
               <div style="height:96px;background:#0b0d13 url('assets/game-training.jpg') center/cover no-repeat;"></div>
-              <div style="padding:16px 18px;"><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Training</div><div style="font-size:12.5px;color:var(--ink3);line-height:1.5;">Übungen per Kamera erkannt (Kniebeugen, Hampelmann, Knieheben, Arm-Heben). XP fürs echte Training.</div></div>
+              <div style="padding:16px 18px;"><div style="font-size:15px;font-weight:700;margin-bottom:4px;">Training</div><div style="font-size:12.5px;color:var(--ink3);line-height:1.5;">6 Übungen per Kamera erkannt, vom Kniebeugen bis Boxen. Schaff dein Wiederholungsziel und hol dir XP fürs echte Training.</div></div>
             </div>
           </div>
         </div>
@@ -4181,18 +4181,20 @@
         <div onclick="{{ closeModal }}" style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);background:var(--bg2);color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="corner-down-left" style="width:13px;height:13px;"></i><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.16em;">ESC</span></div>
       </div>
       <sc-if value="{{ fitIsMenu }}">
-      <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Wähle eine Übung. Deine Kamera zählt die Wiederholungen automatisch. 60 Sekunden pro Runde, jede erkannte Wiederholung gibt XP + Nutris.</div>
+      <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Wähle eine Übung. Deine Kamera zählt die Wiederholungen automatisch. Schaff das Ziel, um die Challenge abzuschließen, jede erkannte Wiederholung gibt XP + Nutris.</div>
       <div style="display:flex;flex-direction:column;gap:11px;">
         <sc-for list="{{ fitList }}" as="fx" hint-placeholder-count="4">
-          <div onclick="{{ fitPick }}" data-id="{{ fx.id }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg2);border:1px solid var(--line3);cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:46px;height:46px;border-radius:12px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:var(--violet);flex:0 0 auto;"><i data-lucide="{{ fx.icon }}" style="width:22px;height:22px;"></i></div><div><div style="font-size:15px;font-weight:700;margin-bottom:2px;">{{ fx.name }}</div><div style="font-size:12px;color:var(--ink3);line-height:1.45;">{{ fx.hint }}</div></div></div>
+          <div onclick="{{ fitPick }}" data-id="{{ fx.id }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg2);border:1px solid var(--line3);cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:46px;height:46px;border-radius:12px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:var(--violet);flex:0 0 auto;"><i data-lucide="{{ fx.icon }}" style="width:22px;height:22px;"></i></div><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:700;margin-bottom:2px;">{{ fx.name }}</div><div style="font-size:12px;color:var(--ink3);line-height:1.45;">{{ fx.hint }}</div></div><div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 12px;border-radius:10px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.24);"><div style="font-size:17px;font-weight:800;color:var(--violet);line-height:1;">{{ fx.goal }}</div><div style="font-size:9.5px;color:var(--ink3);font-weight:600;letter-spacing:.03em;">WDH</div></div></div>
         </sc-for>
       </div>
+      <div onclick="{{ fitCamTest }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg2);border:1px dashed var(--line3);cursor:pointer;margin-top:12px;" style-hover="border-color:#2dd4bf;"><div style="width:46px;height:46px;border-radius:12px;background:rgba(45,212,191,.14);border:1px solid rgba(45,212,191,.3);display:flex;align-items:center;justify-content:center;color:#2dd4bf;flex:0 0 auto;"><i data-lucide="scan-face" style="width:22px;height:22px;"></i></div><div><div style="font-size:15px;font-weight:700;margin-bottom:2px;">Kamera-Test</div><div style="font-size:12px;color:var(--ink3);line-height:1.45;">Prüf, ob die Kamera dich sieht: Körper, Arme, Hände, Kopf &amp; Augen werden live markiert.</div></div></div>
       </sc-if>
       <sc-if value="{{ fitIsIntro }}">
       <div style="text-align:center;padding:4px 0;">
         <div style="width:66px;height:66px;border-radius:16px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:var(--violet);margin:0 auto 14px;"><i data-lucide="{{ fitExIcon }}" style="width:32px;height:32px;"></i></div>
         <div style="font-size:19px;font-weight:700;margin-bottom:8px;">{{ fitExName }}</div>
-        <div style="font-size:13.5px;color:var(--ink3);line-height:1.6;margin-bottom:16px;">{{ fitExHint }}</div>
+        <div style="font-size:13.5px;color:var(--ink3);line-height:1.6;margin-bottom:12px;">{{ fitExHint }}</div>
+        <div style="display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:999px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.3);color:var(--violet);font-size:13px;font-weight:700;margin-bottom:16px;"><i data-lucide="target" style="width:15px;height:15px;"></i>Ziel: {{ fitExGoal }} Wiederholungen</div>
         <div style="display:flex;align-items:flex-start;gap:9px;text-align:left;padding:13px 15px;border-radius:12px;background:var(--bg2);border:1px solid var(--line3);margin-bottom:18px;"><i data-lucide="shield-check" style="width:17px;height:17px;color:var(--acc);flex:0 0 auto;margin-top:1px;"></i><span style="font-size:12.5px;color:var(--ink3);line-height:1.55;">Die Kamera läuft <b style="color:var(--ink2);">nur lokal auf deinem Gerät</b>. Es wird kein Video aufgenommen, gespeichert oder übertragen. Sorg für gutes Licht und stell dich so hin, dass dein ganzer Körper ins Bild passt.</span></div>
         <div style="display:flex;gap:10px;">
           <div onclick="{{ fitMenu }}" style="flex:0 0 auto;display:flex;align-items:center;justify-content:center;padding:13px 18px;border-radius:12px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:var(--chip);"><i data-lucide="arrow-left" style="width:16px;height:16px;"></i></div>
@@ -4213,6 +4215,16 @@
       </div>
       <div style="display:flex;justify-content:center;margin-top:14px;">
         <div onclick="{{ fitStop }}" style="display:flex;align-items:center;gap:8px;padding:11px 22px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="border-color:#f87171;color:#f87171;"><i data-lucide="square" style="width:15px;height:15px;"></i>Beenden</div>
+      </div>
+      </sc-if>
+      <sc-if value="{{ fitIsCamTest }}">
+      <div style="position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line3);background:#0b0d13;">
+        <video id="fit-video" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" muted playsinline autoplay></video>
+        <canvas id="fit-canvas" width="640" height="480" style="display:block;width:100%;height:auto;"></canvas>
+      </div>
+      <div style="font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px;line-height:1.5;">Beweg dich vor der Kamera. Die farbigen Punkte zeigen, was erkannt wird, die Häkchen unten links, welche Körperteile sichtbar sind.</div>
+      <div style="display:flex;justify-content:center;margin-top:12px;">
+        <div onclick="{{ fitMenu }}" style="display:flex;align-items:center;gap:8px;padding:11px 22px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="arrow-left" style="width:15px;height:15px;"></i>Zurück</div>
       </div>
       </sc-if>
       <sc-if value="{{ fitIsError }}">
@@ -5911,39 +5923,55 @@ class Component extends DCLogic {
   };
   _fitCdn = 'https://nutridesk.de/assets/mp';
   _FITX = [
-    { id:'squat', icon:'chevrons-down', name:'Kniebeugen', hint:'Steh mittig ins Bild, Beine hüftbreit. Geh in die Knie bis die Oberschenkel etwa waagerecht sind, dann kontrolliert wieder hoch.' },
-    { id:'jack', icon:'move', name:'Hampelmann', hint:'Ganzer Körper ins Bild. Arme und Beine gleichzeitig öffnen (Hände über den Kopf) und wieder schließen.' },
-    { id:'knees', icon:'footprints', name:'Knieheben', hint:'Lauf auf der Stelle und zieh die Knie abwechselnd bis etwa auf Hüfthöhe hoch.' },
-    { id:'arms', icon:'move-vertical', name:'Arm-Heben', hint:'Arme seitlich von unten bis über Schulterhöhe heben und wieder senken. Oberkörper sichtbar.' },
+    { id:'squat', icon:'chevrons-down', name:'Kniebeugen', goal:15, hint:'Steh mittig ins Bild, Beine hüftbreit. Geh in die Knie bis die Oberschenkel etwa waagerecht sind, dann kontrolliert wieder hoch.' },
+    { id:'jack', icon:'move', name:'Hampelmann', goal:25, hint:'Ganzer Körper ins Bild. Arme und Beine gleichzeitig öffnen (Hände über den Kopf) und wieder schließen.' },
+    { id:'knees', icon:'footprints', name:'Knieheben', goal:30, hint:'Lauf auf der Stelle und zieh die Knie abwechselnd bis etwa auf Hüfthöhe hoch.' },
+    { id:'arms', icon:'move-vertical', name:'Arm-Heben', goal:20, hint:'Arme seitlich von unten bis über Schulterhöhe heben und wieder senken. Oberkörper sichtbar.' },
+    { id:'side', icon:'move-horizontal', name:'Seitneigung', goal:20, hint:'Steh aufrecht, Füße hüftbreit. Neig den Oberkörper abwechselnd nach links und rechts und komm jedes Mal zurück zur Mitte.' },
+    { id:'punch', icon:'zap', name:'Boxen', goal:30, hint:'Fäuste auf Kinnhöhe, Oberkörper im Bild. Stoß abwechselnd mit links und rechts nach vorne oben und zieh die Faust wieder zurück.' },
   ];
   openFitness = () => { this._fitStopCam(); this.setState({ modal:'fitness', fitView:'menu', fitEx:null, fitReps:0, fitErr:'', fitReward:null }); };
   fitPick = (e) => { const id = e.currentTarget.dataset.id; const ex = this._FITX.find(x => x.id === id); if (ex) this.setState({ fitEx: ex, fitView:'intro' }); };
   fitMenu = () => { this._fitStopCam(); this.setState({ fitView:'menu', fitEx:null }); };
+  _fitStreamGet = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw { name:'Unsupported' };
+    this._fitStream = await navigator.mediaDevices.getUserMedia({ video:{ width:{ ideal:640 }, height:{ ideal:480 }, facingMode:'user' }, audio:false });
+  };
+  _fitLm = async (cls, model, extra) => {
+    const mp = this._mpMod || (this._mpMod = await this._fitLoadMp());
+    const fileset = this._fitFileset || (this._fitFileset = await mp.FilesetResolver.forVisionTasks(this._fitCdn + '/wasm'));
+    const opts = (delegate) => Object.assign({ baseOptions:{ modelAssetPath: this._fitCdn + '/' + model, delegate }, runningMode:'VIDEO' }, extra);
+    try { return await mp[cls].createFromOptions(fileset, opts('GPU')); }
+    catch (e) { return await mp[cls].createFromOptions(fileset, opts('CPU')); }
+  };
+  _fitOpenCamera = async () => {
+    await this._fitStreamGet();
+    if (!this._poseLandmarker) this._poseLandmarker = await this._fitLm('PoseLandmarker', 'pose_landmarker_full.task', { numPoses:1, minPoseDetectionConfidence:0.5, minTrackingConfidence:0.5 });
+  };
+  _fitCamError = (e) => {
+    this._fitStopCam();
+    let msg = 'Kamera oder Bewegungsmodell konnte nicht geladen werden. Prüfe deine Internetverbindung und versuch es erneut.';
+    if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) msg = 'Kein Kamerazugriff. Erlaube NutriDesk die Kamera in den macOS-Einstellungen (Datenschutz > Kamera) und starte erneut.';
+    else if (e && e.name === 'NotFoundError') msg = 'Es wurde keine Kamera gefunden.';
+    else if (e && e.name === 'NotReadableError') msg = 'Die Kamera wird schon von einem anderen Programm benutzt.';
+    else if (e && e.name === 'Unsupported') msg = 'Dieses Gerät unterstützt keinen Kamerazugriff.';
+    this.setState({ fitView:'error', fitErr: msg });
+  };
   fitStart = async () => {
     if (!this.state.fitEx) return;
     this.setState({ fitView:'loading', fitErr:'' });
+    try { await this._fitOpenCamera(); this.setState({ fitView:'play', fitReps:0 }); setTimeout(() => this._fitBegin(), 90); }
+    catch (e) { this._fitCamError(e); }
+  };
+  fitCamTest = async () => {
+    this._fitStopCam();
+    this.setState({ fitView:'loading', fitErr:'' });
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw { name:'Unsupported' };
-      const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:{ ideal:640 }, height:{ ideal:480 }, facingMode:'user' }, audio:false });
-      this._fitStream = stream;
-      if (!this._poseLandmarker) {
-        const mp = this._mpMod || (this._mpMod = await this._fitLoadMp());
-        const fileset = await mp.FilesetResolver.forVisionTasks(this._fitCdn + '/wasm');
-        const opts = (delegate) => ({ baseOptions:{ modelAssetPath: this._fitCdn + '/pose_landmarker_lite.task', delegate }, runningMode:'VIDEO', numPoses:1, minPoseDetectionConfidence:0.5, minTrackingConfidence:0.5 });
-        try { this._poseLandmarker = await mp.PoseLandmarker.createFromOptions(fileset, opts('GPU')); }
-        catch (e2) { this._poseLandmarker = await mp.PoseLandmarker.createFromOptions(fileset, opts('CPU')); }
-      }
-      this.setState({ fitView:'play', fitReps:0 });
-      setTimeout(() => this._fitBegin(), 90);
-    } catch (e) {
-      this._fitStopCam();
-      let msg = 'Kamera oder Bewegungsmodell konnte nicht geladen werden. Prüfe deine Internetverbindung und versuch es erneut.';
-      if (e && (e.name === 'NotAllowedError' || e.name === 'SecurityError')) msg = 'Kein Kamerazugriff. Erlaube NutriDesk die Kamera und starte erneut.';
-      else if (e && e.name === 'NotFoundError') msg = 'Es wurde keine Kamera gefunden.';
-      else if (e && e.name === 'NotReadableError') msg = 'Die Kamera wird schon von einem anderen Programm benutzt.';
-      else if (e && e.name === 'Unsupported') msg = 'Dieses Gerät unterstützt keinen Kamerazugriff.';
-      this.setState({ fitView:'error', fitErr: msg });
-    }
+      await this._fitStreamGet();
+      if (!this._poseFull) this._poseFull = await this._fitLm('PoseLandmarker', 'pose_landmarker_full.task', { numPoses:1, minPoseDetectionConfidence:0.5, minTrackingConfidence:0.5 });
+      if (!this._handLm) this._handLm = await this._fitLm('HandLandmarker', 'hand_landmarker.task', { numHands:2, minHandDetectionConfidence:0.4, minTrackingConfidence:0.4 });
+      this.setState({ fitView:'camtest' }); setTimeout(() => this._fitTestBegin(), 90);
+    } catch (e) { this._fitCamError(e); }
   };
   _fitLoadMp = async () => {
     const u = this._fitCdn + '/vision_bundle.mjs';
@@ -5961,11 +5989,12 @@ class Component extends DCLogic {
     const p = v.play(); if (p && p.catch) p.catch(() => {});
     cv.width = 640; cv.height = 480;
     const now = (typeof performance !== 'undefined' ? performance.now() : 0);
-    this._fit = { video:v, canvas:cv, ctx: cv.getContext('2d'), lm: this._poseLandmarker, exId: this.state.fitEx.id, reps:0, phase:'rest', lastRep:0, active:false, cdEnd: now + 3200, duration: 60000, endAt:0, kL:false, kR:false, fb:'Mach dich bereit', prog:0, lastTs:0, raf:0 };
+    this._fit = { video:v, canvas:cv, ctx: cv.getContext('2d'), lm: this._poseLandmarker, exId: this.state.fitEx.id, goal: this.state.fitEx.goal || 20, reps:0, phase:'rest', lastRep:0, active:false, cdEnd: now + 3200, maxEnd:0, doneAt:0, kL:false, kR:false, pL:false, pR:false, fb:'Mach dich bereit', prog:0, lastTs:0, raf:0 };
     this._fitLoop();
   };
   _fitStopCam = () => {
     if (this._fit && this._fit.raf) { try { cancelAnimationFrame(this._fit.raf); } catch (e) {} this._fit.raf = 0; }
+    if (this._fitTest && this._fitTest.raf) { try { cancelAnimationFrame(this._fitTest.raf); } catch (e) {} this._fitTest.raf = 0; }
     if (this._fitStream) { try { this._fitStream.getTracks().forEach(t => t.stop()); } catch (e) {} this._fitStream = null; }
     const v = document.getElementById('fit-video'); if (v) { try { v.srcObject = null; } catch (e) {} }
   };
@@ -5992,6 +6021,19 @@ class Component extends DCLogic {
       } else { st.fb = 'Stell dich ganz ins Bild'; st.prog = 0; }
       return;
     }
+    if (id === 'punch') {
+      const ok = this._fitVis(lm, [11, 12, 15, 16]);
+      if (ok) {
+        const rL = (L(11).y - L(15).y) / torso, rR = (L(12).y - L(16).y) / torso;
+        if (!st.pL && rL > 0.15 && now - st.lastRep > 150) { st.reps++; st.lastRep = now; st.pL = true; this._fitBump(); }
+        if (st.pL && rL < -0.15) st.pL = false;
+        if (!st.pR && rR > 0.15 && now - st.lastRep > 150) { st.reps++; st.lastRep = now; st.pR = true; this._fitBump(); }
+        if (st.pR && rR < -0.15) st.pR = false;
+        st.fb = (rL > 0.1 || rR > 0.1) ? 'Zack, weiter!' : 'Fäuste abwechselnd nach vorne';
+        st.prog = Math.max(0, Math.min(1, Math.max(rL, rR) / 0.4));
+      } else { st.fb = 'Arme müssen sichtbar sein'; st.prog = 0; }
+      return;
+    }
     let poseOk = true, restOk = false, effortOk = false, fb = '', prog = 0;
     if (id === 'squat') {
       poseOk = this._fitVis(lm, [23, 24, 25, 26, 27, 28]);
@@ -6009,6 +6051,12 @@ class Component extends DCLogic {
       const shoulderW = Math.abs(L(11).x - L(12).x) || 0.1, ankleW = Math.abs(L(27).x - L(28).x);
       effortOk = r > 0.3 && ankleW > shoulderW * 1.35; restOk = r < -0.2 && ankleW < shoulderW * 1.12;
       prog = Math.max(0, Math.min(1, (r + 0.5) / 0.9)); fb = !poseOk ? 'Ganzer Körper ins Bild' : effortOk ? 'Auf!' : 'Zu';
+    } else if (id === 'side') {
+      poseOk = this._fitVis(lm, [11, 12, 23, 24]);
+      const shMid = (L(11).x + L(12).x) / 2, hipMid = (L(23).x + L(24).x) / 2, shoulderW = Math.abs(L(11).x - L(12).x) || 0.12;
+      const off = Math.abs(shMid - hipMid) / shoulderW;
+      restOk = off < 0.15; effortOk = off > 0.4; prog = Math.max(0, Math.min(1, off / 0.5));
+      fb = !poseOk ? 'Oberkörper ganz ins Bild' : effortOk ? 'Gut, und zurück zur Mitte' : (st.phase === 'effort' ? 'Zurück zur Mitte' : 'Zur Seite neigen');
     }
     st.prog = prog;
     if (!poseOk) { st.fb = fb; return; }
@@ -6025,6 +6073,71 @@ class Component extends DCLogic {
     ctx.fillStyle = '#2dd4bf';
     for (const i of [11,12,13,14,15,16,23,24,25,26,27,28]) { const p = lm[i]; if (!p) continue; ctx.beginPath(); ctx.arc(p.x * W, p.y * H, 5, 0, 7); ctx.fill(); }
   };
+  _FIT_ALL_CONN = [[0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],[9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],[17,19],[12,14],[14,16],[16,18],[16,20],[16,22],[18,20],[11,23],[12,24],[23,24],[23,25],[25,27],[27,29],[27,31],[29,31],[24,26],[26,28],[28,30],[28,32],[30,32]];
+  _FIT_GROUPS = [{ c:'#f472b6', idx:[0,1,2,3,4,5,6,7,8,9,10] }, { c:'#34d399', idx:[11,12,13,14] }, { c:'#fbbf24', idx:[15,16,17,18,19,20,21,22] }, { c:'#60a5fa', idx:[23,24] }, { c:'#a78bfa', idx:[25,26,27,28,29,30,31,32] }];
+  _fitTestBegin = () => {
+    const v = document.getElementById('fit-video'), cv = document.getElementById('fit-canvas');
+    if (!v || !cv || !this._fitStream) { if (this.state.fitView === 'camtest') setTimeout(() => this._fitTestBegin(), 90); return; }
+    v.srcObject = this._fitStream; v.muted = true; v.playsInline = true; v.setAttribute('playsinline', '');
+    const p = v.play(); if (p && p.catch) p.catch(() => {});
+    cv.width = 640; cv.height = 480;
+    this._fitTest = { video:v, canvas:cv, ctx: cv.getContext('2d'), pose: this._poseFull, hand: this._handLm, lastTs:0, raf:0 };
+    this._fitTestLoop();
+  };
+  _fitTestLoop = () => {
+    const st = this._fitTest; if (!st || this.state.modal !== 'fitness' || this.state.fitView !== 'camtest') return;
+    const v = st.video, cv = st.canvas, ctx = st.ctx, now = performance.now();
+    if (v && v.readyState >= 2) {
+      let ts = Math.max((st.lastTs || 0) + 1, Math.round(now)); st.lastTs = ts;
+      let poseRes = null, handRes = null;
+      try { poseRes = st.pose.detectForVideo(v, ts); } catch (e) {}
+      try { handRes = st.hand.detectForVideo(v, ts); } catch (e) {}
+      const lm = poseRes && poseRes.landmarks && poseRes.landmarks[0];
+      const handList = (handRes && handRes.landmarks) ? handRes.landmarks : [];
+      ctx.save(); ctx.clearRect(0, 0, cv.width, cv.height);
+      ctx.translate(cv.width, 0); ctx.scale(-1, 1);
+      try { ctx.drawImage(v, 0, 0, cv.width, cv.height); } catch (e) {}
+      if (lm) this._fitTestDraw(ctx, lm, cv);
+      this._fitTestDrawHands(ctx, handList, cv);
+      ctx.restore();
+      this._fitTestHud(ctx, cv, lm, handList);
+    }
+    st.raf = requestAnimationFrame(this._fitTestLoop);
+  };
+  _fitTestDraw = (ctx, lm, cv) => {
+    const W = cv.width, H = cv.height, vis = (i) => lm[i] && (lm[i].visibility === undefined || lm[i].visibility > 0.4);
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(163,230,53,.55)';
+    for (const [a, b] of this._FIT_ALL_CONN) { if (!vis(a) || !vis(b)) continue; ctx.beginPath(); ctx.moveTo(lm[a].x * W, lm[a].y * H); ctx.lineTo(lm[b].x * W, lm[b].y * H); ctx.stroke(); }
+    for (const g of this._FIT_GROUPS) { ctx.fillStyle = g.c; for (const i of g.idx) { if (!vis(i)) continue; ctx.beginPath(); ctx.arc(lm[i].x * W, lm[i].y * H, 4.5, 0, 7); ctx.fill(); } }
+  };
+  _HAND_CONN = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
+  _fitTestDrawHands = (ctx, handList, cv) => {
+    const W = cv.width, H = cv.height;
+    for (const hand of handList) {
+      ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(45,212,191,.9)';
+      for (const [a, b] of this._HAND_CONN) { const p = hand[a], q = hand[b]; if (!p || !q) continue; ctx.beginPath(); ctx.moveTo(p.x * W, p.y * H); ctx.lineTo(q.x * W, q.y * H); ctx.stroke(); }
+      ctx.fillStyle = '#fbbf24';
+      for (const p of hand) { ctx.beginPath(); ctx.arc(p.x * W, p.y * H, 3.5, 0, 7); ctx.fill(); }
+    }
+  };
+  _fitTestHud = (ctx, cv, lm, handList) => {
+    const W = cv.width, H = cv.height, vis = (i) => !!(lm && lm[i] && (lm[i].visibility === undefined || lm[i].visibility > 0.4));
+    const any = (a) => a.some(vis), all = (a) => a.every(vis);
+    const nHands = (handList || []).length;
+    ctx.fillStyle = 'rgba(11,13,19,.5)'; ctx.fillRect(0, 0, W, 40);
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'left';
+    ctx.fillStyle = lm ? '#a3e635' : '#f87171'; ctx.font = '600 15px "Space Grotesk",sans-serif';
+    ctx.fillText(lm ? ('✓ Körper erkannt' + (nHands ? ' · ' + nHands + (nHands > 1 ? ' Hände' : ' Hand') : '')) : 'Stell dich ins Bild', 14, 20);
+    const checks = [['Kopf', any([0,7,8])], ['Augen', all([2,5])], ['Arme', any([13,14]) && any([15,16])], ['Hände (Finger)', nHands > 0], ['Rumpf', any([11,12]) && any([23,24])], ['Beine', any([25,26]) && any([27,28])]];
+    let y = H - checks.length * 25 - 12;
+    for (const [label, ok] of checks) {
+      ctx.fillStyle = 'rgba(11,13,19,.6)'; ctx.fillRect(10, y, 178, 23);
+      ctx.fillStyle = ok ? '#a3e635' : '#6b7280'; ctx.font = '700 15px "Space Grotesk",sans-serif'; ctx.fillText(ok ? '✓' : '·', 18, y + 12);
+      ctx.fillStyle = ok ? '#e8ecf2' : '#9aa4b2'; ctx.font = '600 13px "Space Grotesk",sans-serif'; ctx.fillText(label, 42, y + 12);
+      y += 25;
+    }
+    ctx.textBaseline = 'alphabetic';
+  };
   _fitHud = (ctx, cv, now) => {
     const st = this._fit, W = cv.width, H = cv.height;
     if (!st.active) {
@@ -6034,16 +6147,17 @@ class Component extends DCLogic {
       ctx.fillText(left > 0 ? String(left) : 'Los!', W / 2, H / 2 + 20);
       ctx.textAlign = 'left'; return;
     }
+    const pct = Math.min(100, Math.round(st.reps / st.goal * 100)), done = st.reps >= st.goal;
     ctx.fillStyle = 'rgba(11,13,19,.42)'; ctx.fillRect(0, 0, W, 66);
-    ctx.fillStyle = '#a3e635'; ctx.font = 'bold 46px "Space Grotesk",monospace'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(st.reps), 20, 36); ctx.fillStyle = '#9aa4b2'; ctx.font = '600 14px "Space Grotesk",sans-serif'; ctx.fillText('WDH', 22 + ctx.measureText(String(st.reps)).width + 40, 36);
-    const secs = Math.max(0, Math.ceil((st.endAt - now) / 1000));
-    ctx.textAlign = 'right'; ctx.fillStyle = secs <= 10 ? '#f87171' : '#e8ecf2'; ctx.font = 'bold 30px "Space Grotesk",monospace';
-    ctx.fillText(secs + 's', W - 20, 36); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    if (st.fb) { ctx.textAlign = 'center'; ctx.font = '600 20px "Space Grotesk",sans-serif'; const tw = ctx.measureText(st.fb).width; ctx.fillStyle = 'rgba(11,13,19,.6)'; ctx.fillRect(W/2 - tw/2 - 16, H - 92, tw + 32, 38); ctx.fillStyle = '#e8ecf2'; ctx.fillText(st.fb, W/2, H - 66); ctx.textAlign = 'left'; }
-    const bw = W - 40, bx = 20, by = H - 34;
-    ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(bx, by, bw, 12);
-    ctx.fillStyle = '#a3e635'; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, st.prog || 0)), 12);
+    ctx.fillStyle = '#a3e635'; ctx.font = 'bold 44px "Space Grotesk",monospace'; ctx.textBaseline = 'middle';
+    ctx.fillText(st.reps + ' / ' + st.goal, 20, 36);
+    ctx.textAlign = 'right'; ctx.fillStyle = done ? '#a3e635' : '#e8ecf2'; ctx.font = 'bold 34px "Space Grotesk",monospace';
+    ctx.fillText(pct + '%', W - 20, 36); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    if (st.fb) { ctx.textAlign = 'center'; ctx.font = '600 20px "Space Grotesk",sans-serif'; const tw = ctx.measureText(st.fb).width; ctx.fillStyle = 'rgba(11,13,19,.6)'; ctx.fillRect(W/2 - tw/2 - 16, H - 96, tw + 32, 38); ctx.fillStyle = '#e8ecf2'; ctx.fillText(st.fb, W/2, H - 70); ctx.textAlign = 'left'; }
+    const bw = W - 40, bx = 20, by = H - 40;
+    ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(bx, by, bw, 14);
+    ctx.fillStyle = '#a3e635'; ctx.fillRect(bx, by, bw * (pct / 100), 14);
+    if (st.prog) { ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillRect(bx, by + 16, bw * Math.max(0, Math.min(1, st.prog)), 4); }
   };
   _fitLoop = () => {
     const st = this._fit; if (!st || this.state.modal !== 'fitness' || this.state.fitView !== 'play') return;
@@ -6058,8 +6172,9 @@ class Component extends DCLogic {
       ctx.restore();
       if (!res || !res.landmarks || !res.landmarks[0]) { st.fb = 'Ich sehe dich nicht ganz'; st.prog = 0; }
       this._fitHud(ctx, cv, now);
-      if (!st.active) { if (now >= st.cdEnd) { st.active = true; st.endAt = now + st.duration; } }
-      else if (now >= st.endAt) { this._fitEnd(); return; }
+      if (!st.active) { if (now >= st.cdEnd) { st.active = true; st.maxEnd = now + 180000; } }
+      else if (st.reps >= st.goal) { if (!st.doneAt) st.doneAt = now; st.fb = 'Geschafft!'; if (now - st.doneAt > 900) { this._fitEnd(); return; } }
+      else if (now >= st.maxEnd) { this._fitEnd(); return; }
     }
     st.raf = requestAnimationFrame(this._fitLoop);
   };
@@ -6138,11 +6253,11 @@ class Component extends DCLogic {
       kcalNextD: kPicked ? 'flex' : 'none', kcalNextLabel: ((s.kcalIdx || 0) + 1 >= kTotal) ? 'Auswerten' : 'Weiter',
       kcalResultLabel: (s.kcalCorrect || 0) + ' von ' + kTotal + ' richtig',
       kcalRewardXp: (s.kcalReward && s.kcalReward.xp) || 0, kcalRewardNut: (s.kcalReward && s.kcalReward.nutris) || 0,
-      openFitness: this.openFitness, fitPick: this.fitPick, fitMenu: this.fitMenu, fitStart: this.fitStart, fitStop: this.fitStop,
+      openFitness: this.openFitness, fitPick: this.fitPick, fitMenu: this.fitMenu, fitStart: this.fitStart, fitStop: this.fitStop, fitCamTest: this.fitCamTest,
       modFit: s.modal === 'fitness',
-      fitIsMenu: s.fitView === 'menu', fitIsIntro: s.fitView === 'intro', fitIsLoading: s.fitView === 'loading', fitIsPlay: s.fitView === 'play', fitIsError: s.fitView === 'error', fitIsResult: s.fitView === 'result',
-      fitList: this._FITX.map(x => ({ id: x.id, icon: x.icon, name: x.name, hint: x.hint })),
-      fitExName: s.fitEx ? s.fitEx.name : '', fitExHint: s.fitEx ? s.fitEx.hint : '', fitExIcon: s.fitEx ? s.fitEx.icon : 'dumbbell',
+      fitIsMenu: s.fitView === 'menu', fitIsIntro: s.fitView === 'intro', fitIsLoading: s.fitView === 'loading', fitIsPlay: s.fitView === 'play', fitIsError: s.fitView === 'error', fitIsResult: s.fitView === 'result', fitIsCamTest: s.fitView === 'camtest',
+      fitList: this._FITX.map(x => ({ id: x.id, icon: x.icon, name: x.name, hint: x.hint, goal: x.goal })),
+      fitExName: s.fitEx ? s.fitEx.name : '', fitExHint: s.fitEx ? s.fitEx.hint : '', fitExIcon: s.fitEx ? s.fitEx.icon : 'dumbbell', fitExGoal: s.fitEx ? s.fitEx.goal : 0,
       fitReps: s.fitReps || 0, fitErr: s.fitErr || '',
       fitRewardXp: (s.fitReward && s.fitReward.xp) || 0, fitRewardNut: (s.fitReward && s.fitReward.nutris) || 0,
     };

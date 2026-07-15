@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__vmd197921__exec",
+      "Bash(node unpack.js)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

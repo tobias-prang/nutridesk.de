@@ -1029,6 +1029,7 @@ const QUESTS = [
   { id: 'arcade_score', title: 'Frucht-Jäger', desc: 'Erreiche 60 Punkte in Fruit Rush.', target: 60, reward: 60, kind: 'arcade_score' },
   { id: 'play_any', title: 'Warmspielen', desc: 'Spiele heute 3 Runden, egal welches Spiel.', target: 3, reward: 50, kind: 'rounds' },
   { id: 'quiz_food', title: 'Ernährungs-Profi', desc: 'Beantworte 6 Lebensmittel-Fragen richtig.', target: 6, reward: 70, kind: 'food_correct' },
+  { id: 'fitness_reps', title: 'In Bewegung', desc: 'Schaffe heute 20 erkannte Wiederholungen im Training.', target: 20, reward: 80, kind: 'fitness_reps' },
 ];
 function gLevel(xp) { let l = 1; while (100 * l * (l + 1) <= xp) l++; return l; }
 function gXpForLevel(l) { return 100 * l * (l - 1); }
@@ -1055,25 +1056,44 @@ function gStateObj(g) {
 }
 app.get('/games/state', auth, asyncRoute(async (req, res) => { res.json(gStateObj(await gEnsure(req.uid))); }));
 app.post('/games/reward', auth, rateLimitUser('game-reward', 120, 60000), asyncRoute(async (req, res) => {
-  const game = vEnum(req.body.game, 'Spiel', ['quiz', 'arcade']);
+  const game = vEnum(req.body.game, 'Spiel', ['quiz', 'arcade', 'fitness', 'kcal', 'ninja']);
   const correct = vInt(req.body.correct, 'Richtige', 0, 100, { optional: true }) || 0;
   const score = vInt(req.body.score, 'Punkte', 0, 100000, { optional: true }) || 0;
+  const reps = vInt(req.body.reps, 'Wiederholungen', 0, 1000, { optional: true }) || 0;
   const category = vStr(req.body.category, 'Kategorie', 20, { optional: true }) || '';
+  const isQuizLike = game === 'quiz' || game === 'kcal';
+  const isFoodQuiz = game === 'kcal' || (game === 'quiz' && category === 'food');
   const g = await gEnsure(req.uid);
-  let xpEarn = game === 'quiz' ? correct * 12 : Math.floor(score / 2);
-  let nutEarn = game === 'quiz' ? correct * 4 : Math.floor(score / 4);
+  let xpEarn = isQuizLike ? correct * 12 : game === 'fitness' ? reps * 4 : Math.floor(score / 5);
+  let nutEarn = isQuizLike ? correct * 4 : game === 'fitness' ? reps * 2 : Math.floor(score / 12);
   const room = Math.max(0, GAME_XP_CAP - g.xpToday);
   const capped = xpEarn > room;
   xpEarn = Math.min(xpEarn, room);
   const q = g.quest; let prog = g.prog;
-  if (q.kind === 'quiz_correct' && game === 'quiz') prog += correct;
-  else if (q.kind === 'food_correct' && game === 'quiz' && category === 'food') prog += correct;
+  if (q.kind === 'quiz_correct' && isQuizLike) prog += correct;
+  else if (q.kind === 'food_correct' && isFoodQuiz) prog += correct;
   else if (q.kind === 'arcade_score' && game === 'arcade') prog = Math.max(prog, score);
+  else if (q.kind === 'fitness_reps' && game === 'fitness') prog += reps;
   else if (q.kind === 'rounds') prog += 1;
   const newXp = g.xp + xpEarn, newNut = g.nutris + nutEarn, newToday = g.xpToday + xpEarn;
   await pool.execute('UPDATE user_settings SET xp=?, nutris=?, xp_today=?, xp_today_date=?, quest_prog=?, quest_date=? WHERE user_id=?',
     [newXp, newNut, newToday, gToday(), prog, gToday(), req.uid]);
+  const metric = isQuizLike ? correct : game === 'fitness' ? reps : score;
+  await pool.execute('INSERT INTO game_scores (user_id, game, best, total, plays) VALUES (?,?,?,?,1) ON DUPLICATE KEY UPDATE best=GREATEST(best,VALUES(best)), total=total+VALUES(total), plays=plays+1',
+    [req.uid, game, metric, metric]).catch(() => {});
   res.json({ earned: { xp: xpEarn, nutris: nutEarn }, capped, state: gStateObj({ xp: newXp, nutris: newNut, xpToday: newToday, prog, claimed: g.claimed, quest: q }) });
+}));
+app.get('/games/leaderboard', auth, asyncRoute(async (req, res) => {
+  const game = vEnum(req.query.game, 'Spiel', ['quiz', 'arcade', 'fitness', 'kcal', 'ninja']);
+  const col = (game === 'quiz' || game === 'kcal') ? 'total' : 'best';
+  const [rows] = await pool.execute(
+    'SELECT s.user_id, s.' + col + ' AS value, COALESCE(NULLIF(u.username,""), u.name, "Spieler") AS name FROM game_scores s JOIN users u ON u.id=s.user_id WHERE s.game=? AND s.' + col + '>0 ORDER BY s.' + col + ' DESC, s.updated_at ASC LIMIT 10',
+    [game]);
+  const top = rows.map((r, i) => ({ rank: i + 1, name: r.name, value: r.value, me: r.user_id === req.uid }));
+  const [meRows] = await pool.execute('SELECT ' + col + ' AS value FROM game_scores WHERE user_id=? AND game=?', [req.uid, game]);
+  const meVal = meRows.length ? meRows[0].value : 0;
+  const [rankRows] = await pool.execute('SELECT COUNT(*) AS c FROM game_scores WHERE game=? AND ' + col + '>?', [game, meVal]);
+  res.json({ game, metric: col, top, me: { value: meVal, rank: meVal > 0 ? rankRows[0].c + 1 : null } });
 }));
 app.post('/games/quest/claim', auth, asyncRoute(async (req, res) => {
   const g = await gEnsure(req.uid);
@@ -1082,6 +1102,23 @@ app.post('/games/quest/claim', auth, asyncRoute(async (req, res) => {
   const newNut = g.nutris + g.quest.reward;
   await pool.execute('UPDATE user_settings SET nutris=?, quest_claimed=1, quest_date=? WHERE user_id=?', [newNut, gToday(), req.uid]);
   res.json({ reward: g.quest.reward, state: gStateObj({ ...g, nutris: newNut, claimed: 1 }) });
+}));
+// Kalorien-Duell: 5 Runden aus echten Produkten (welches hat mehr kcal). Schneller Random per id-Offset.
+app.get('/games/kcal-duell', auth, asyncRoute(async (req, res) => {
+  const [[mx]] = await pool.execute('SELECT MAX(id) AS m FROM foods');
+  const maxId = Number(mx && mx.m) || 1;
+  const picks = [];
+  for (let i = 0; i < 16 && picks.length < 10; i++) {
+    const start = Math.floor(Math.random() * Math.max(1, maxId - 50));
+    const [[row]] = await pool.execute('SELECT name, kcal FROM foods WHERE id > ? AND kcal IS NOT NULL AND kcal BETWEEN 1 AND 900 AND CHAR_LENGTH(name) BETWEEN 4 AND 42 ORDER BY id LIMIT 1', [start]);
+    if (row && !picks.some(p => p.name === row.name)) picks.push({ name: row.name, kcal: Number(row.kcal) });
+  }
+  const rounds = [];
+  for (let i = 0; i + 1 < picks.length && rounds.length < 5; i += 2) {
+    if (picks[i].kcal === picks[i + 1].kcal) continue;
+    rounds.push({ a: picks[i], b: picks[i + 1] });
+  }
+  res.json(rounds);
 }));
 // Tages-Aktivitätsbonus: einmal pro Tag XP + Nutris fürs App-Nutzen.
 app.post('/games/daily-login', auth, asyncRoute(async (req, res) => {
