@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "tauri dev",
     "build": "tauri build",
+    "build:mac": "printf '// prod build\\n' > src/renderer/assets/env.js && TAURI_SIGNING_PRIVATE_KEY=$(cat src-tauri/nutridesk.key) TAURI_SIGNING_PRIVATE_KEY_PASSWORD='' tauri build --bundles app dmg",
+    "build:mac:dev": "printf 'window.__API_BASE=\"http://localhost:3180\";window.__DEV__=true;\\n' > src/renderer/assets/env.js && TAURI_SIGNING_PRIVATE_KEY=$(cat src-tauri/nutridesk.key) TAURI_SIGNING_PRIVATE_KEY_PASSWORD='' tauri build --config src-tauri/tauri.dev.conf.json --bundles app dmg",
     "release": "node release.js",
     "tauri": "tauri"
   },

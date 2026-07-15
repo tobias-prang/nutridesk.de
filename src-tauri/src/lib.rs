@@ -267,7 +267,8 @@ pub fn run() {
         #[cfg(desktop)]
         {
             if let Some(win) = app.get_webview_window("main") {
-                let _ = win.set_title(&format!("NutriDesk · v{}", version));
+                let suffix = if app.config().identifier.ends_with(".dev") { " · DEV" } else { "" };
+                let _ = win.set_title(&format!("NutriDesk · v{}{}", version, suffix));
             }
             // Infobereich (Tray): Oeffnen / Beenden, Linksklick holt das Fenster zurueck.
             let open_i = MenuItem::with_id(app, "open", "Öffnen", true, None::<&str>)?;

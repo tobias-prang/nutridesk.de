@@ -8,3 +8,6 @@ src-tauri/*.key
 
 .DS_Store
 Thumbs.db
+
+# Build-generierte Dev/Prod-Umgebung
+src/renderer/assets/env.js
