@@ -5951,7 +5951,7 @@ class Component extends DCLogic {
     { id:'knees', icon:'footprints', name:'Knieheben', goal:30, hint:'Lauf auf der Stelle und zieh die Knie abwechselnd bis etwa auf Hüfthöhe hoch.' },
     { id:'arms', icon:'move-vertical', name:'Arm-Heben', goal:20, hint:'Arme seitlich von unten bis über Schulterhöhe heben und wieder senken. Oberkörper sichtbar.' },
     { id:'side', icon:'move-horizontal', name:'Seitneigung', goal:20, hint:'Steh aufrecht, Füße hüftbreit. Neig den Oberkörper abwechselnd nach links und rechts und komm jedes Mal zurück zur Mitte.' },
-    { id:'punch', icon:'zap', name:'Boxen', goal:30, hint:'Fäuste auf Kinnhöhe, Oberkörper im Bild. Stoß abwechselnd mit links und rechts nach vorne oben und zieh die Faust wieder zurück.' },
+    { id:'punch', icon:'zap', name:'Boxen', goal:30, hint:'Fäuste ans Kinn, Oberkörper im Bild. Stoß abwechselnd links und rechts nach vorne, streck den Arm dabei ganz durch und zieh die Faust wieder ans Kinn.' },
   ];
   openFitness = () => { this._fitStopCam(); this.setState({ modal:'fitness', fitView:'menu', fitEx:null, fitReps:0, fitErr:'', fitReward:null }); };
   fitPick = (e) => { const id = e.currentTarget.dataset.id; const ex = this._FITX.find(x => x.id === id); if (ex) this.setState({ fitEx: ex, fitView:'intro' }); };
@@ -6046,7 +6046,26 @@ class Component extends DCLogic {
     st.sm[k] = s; return s;
   };
   _fitClamp = (v) => Math.max(0, Math.min(1, v));
-  _fitProcess = (lm, now) => {
+  _d3 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, (a.z || 0) - (b.z || 0));
+  _fitArmExt = (w, s, e, r) => {
+    if (!w || !w[s] || !w[e] || !w[r]) return null;
+    const len = this._d3(w[s], w[e]) + this._d3(w[e], w[r]);
+    return len > 0.01 ? this._d3(w[s], w[r]) / len : null;
+  };
+  _fitPunch = (w, s, e, r) => {
+    const ext = this._fitArmExt(w, s, e, r);
+    if (ext == null) return null;
+    const len = this._d3(w[s], w[e]) + this._d3(w[e], w[r]);
+    const fwd = (w[s].z - w[r].z) / (len || 0.5);
+    return Math.min(this._fitClamp((ext - 0.6) / 0.28), this._fitClamp(fwd / 0.45));
+  };
+  _fitAngle3 = (a, b, c) => {
+    const ab = { x:a.x-b.x, y:a.y-b.y, z:(a.z||0)-(b.z||0) }, cb = { x:c.x-b.x, y:c.y-b.y, z:(c.z||0)-(b.z||0) };
+    const dot = ab.x*cb.x + ab.y*cb.y + ab.z*cb.z;
+    const m = (Math.hypot(ab.x,ab.y,ab.z) * Math.hypot(cb.x,cb.y,cb.z)) || 1e-6;
+    return Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180 / Math.PI;
+  };
+  _fitProcess = (lm, now, wl) => {
     const st = this._fit, id = st.exId, L = (i) => lm[i];
     const torso = Math.abs(((L(11).y + L(12).y) / 2) - ((L(23).y + L(24).y) / 2)) || 0.2;
     if (id === 'knees') {
@@ -6068,21 +6087,27 @@ class Component extends DCLogic {
     if (id === 'punch') {
       const ok = this._fitAligned(lm, id);
       if (ok) {
-        const rL = this._fitSm('pl', (L(11).y - L(15).y) / torso), rR = this._fitSm('pr', (L(12).y - L(16).y) / torso);
-        if (!st.pL && rL > 0.12 && now - st.lastRep > 140) { st.reps++; st.lastRep = now; st.pL = true; this._fitBump(); }
-        if (st.pL && rL < -0.1) st.pL = false;
-        if (!st.pR && rR > 0.12 && now - st.lastRep > 140) { st.reps++; st.lastRep = now; st.pR = true; this._fitBump(); }
-        if (st.pR && rR < -0.1) st.pR = false;
+        const xL = this._fitPunch(wl, 11, 13, 15), xR = this._fitPunch(wl, 12, 14, 16);
+        const use3d = xL != null && xR != null;
+        const eL = this._fitSm('pl', use3d ? xL : this._fitClamp((L(11).y - L(15).y) / torso + 0.5)),
+              eR = this._fitSm('pr', use3d ? xR : this._fitClamp((L(12).y - L(16).y) / torso + 0.5));
+        const hit = use3d ? 0.999 : 0.62, back = use3d ? 0.5 : 0.5;
+        if (!st.pL && eL > hit && now - st.lastRep > 140) { st.reps++; st.lastRep = now; st.pL = true; this._fitBump(); }
+        if (st.pL && eL < back) st.pL = false;
+        if (!st.pR && eR > hit && now - st.lastRep > 140) { st.reps++; st.lastRep = now; st.pR = true; this._fitBump(); }
+        if (st.pR && eR < back) st.pR = false;
         st.latched = st.pL || st.pR;
-        st.fb = (rL > 0.08 || rR > 0.08) ? 'Zack, weiter!' : 'Fäuste abwechselnd nach vorne';
-        st.prog = this._fitClamp(Math.max(rL, rR) / 0.12);
+        st.fb = st.latched ? 'Faust zurück zum Kinn' : 'Fäuste abwechselnd nach vorne';
+        st.prog = this._fitClamp((Math.max(eL, eR) - back) / (hit - back));
       } else { st.fb = 'Arme müssen sichtbar sein'; st.prog = 0; st.latched = false; }
       return;
     }
     let poseOk = true, restOk = false, effortOk = false, fb = '', prog = 0;
     if (id === 'squat') {
       poseOk = this._fitAligned(lm, id);
-      const a = this._fitSm('a', (this._fitAngle(L(23), L(25), L(27)) + this._fitAngle(L(24), L(26), L(28))) / 2);
+      const raw3 = wl && wl[23] && wl[25] && wl[27] && wl[24] && wl[26] && wl[28]
+        ? (this._fitAngle3(wl[23], wl[25], wl[27]) + this._fitAngle3(wl[24], wl[26], wl[28])) / 2 : null;
+      const a = this._fitSm('a', raw3 != null ? raw3 : (this._fitAngle(L(23), L(25), L(27)) + this._fitAngle(L(24), L(26), L(28))) / 2);
       restOk = a > 148; effortOk = a < 118; prog = this._fitClamp((168 - a) / (168 - 118));
       fb = !poseOk ? 'Stell dich ganz ins Bild' : effortOk ? 'Tief, stark!' : a < 138 ? 'Noch etwas tiefer' : (st.phase === 'effort' ? 'Und wieder hoch' : 'Bereit');
     } else if (id === 'arms') {
@@ -6304,12 +6329,13 @@ class Component extends DCLogic {
       let ts = Math.max((st.lastTs || 0) + 1, Math.round(now)); st.lastTs = ts;
       let res = null; try { res = st.lm.detectForVideo(v, ts); } catch (e) {}
       const lm = res && res.landmarks && res.landmarks[0];
+      const wl = res && res.worldLandmarks && res.worldLandmarks[0];
       const aligned = this._fitAligned(lm, st.exId);
       ctx.save(); ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.translate(cv.width, 0); ctx.scale(-1, 1);
       try { ctx.drawImage(v, 0, 0, cv.width, cv.height); } catch (e) {}
       this._fitUV(ctx, cv);
-      if (lm) { this._fitDraw(ctx, lm, cv); if (st.active && !st.paused) this._fitProcess(lm, now); }
+      if (lm) { this._fitDraw(ctx, lm, cv); if (st.active && !st.paused) this._fitProcess(lm, now, wl); }
       ctx.restore();
       if (!lm) { st.fb = 'Ich sehe dich nicht ganz'; st.prog = 0; }
       if (st.active) {
