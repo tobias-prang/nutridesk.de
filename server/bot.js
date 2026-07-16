@@ -590,6 +590,10 @@ module.exports = function registerBot(app, deps) {
     { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(intervallfasten|intermittierendes fasten|16 ?: ?8)\b/, a: 'Beim Intervallfasten isst du nur in einem festen Zeitfenster, oft 8 Stunden, und lässt den Rest des Tages aus. Es hilft manchen beim Abnehmen, vor allem weil sie insgesamt weniger essen, nicht durch Magie. Ob es zu dir passt, ist Geschmackssache. Ich bin keine Ernährungsberatung.' },
     { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(konto|kontostand|saldo)\b/, a: 'Der Kontostand, auch Saldo, ist die Summe deiner Einnahmen minus deiner Ausgaben. In der App siehst du ihn im Finanzbuch. Frag mich einfach "Wie ist mein Kontostand?", dann sage ich dir deinen aktuellen Stand.' },
     { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\bzinsen?\b/, a: 'Zinsen sind der Preis für geliehenes Geld. Zahlst du einen Kredit ab, gehen sie an die Bank. Legst du Geld an, bekommst du sie. In der App kannst du bei Krediten den Zinssatz hinterlegen, dann rechne ich dir die Belastung mit.' },
+    // Die Lebensmittel-Datenbank (OpenFoodFacts) behauptet bei Wasser 22 bis 107 kcal, weil dort
+    // Sirup und Limos als "Wasser" gefuehrt werden. Sowas beantwortet die App selbst.
+    { re: /\b(wie viele?|wieviel)[^.?!]{0,20}\b(kalorien|kcal)[^.?!]{0,12}\b(wasser|leitungswasser|mineralwasser|sprudel|stilles wasser)\b|\bkalorien (von |in |hat )?wasser\b/, a: 'Wasser hat 0 kcal, egal ob Leitungswasser, still oder mit Sprudel. Es liefert keine Energie. Falls dir meine Datenbank etwas anderes anzeigt: dort stehen auch aromatisierte Wässer und Limonaden unter "Wasser", die haben tatsächlich Kalorien.' },
+    { re: /\b(wie viele?|wieviel)[^.?!]{0,20}\b(kalorien|kcal)[^.?!]{0,12}\b(kaffee schwarz|schwarzer kaffee|tee ungesuesst|schwarzer tee)\b/, a: 'Schwarzer Kaffee und ungesüßter Tee haben praktisch keine Kalorien, etwa 1 bis 2 kcal pro 100 ml. Erst Milch und Zucker machen daraus etwas Nennenswertes.' },
     { re: /\b(dark ?mode|dunkelmodus|hellmodus|nachtmodus|design aendern|theme|farbe aendern|akzentfarbe|heller machen|dunkler machen)\b/, a: 'Das Aussehen stellst du in den Einstellungen unter Anpassen ein. Dort kannst du zwischen hell und dunkel wechseln und die Akzentfarbe wählen, es gibt zwölf zur Auswahl.' },
     { re: /\b(was kostet die app|kostet.{0,12}(was|etwas|geld)|ist die app (kostenlos|gratis|umsonst)|abo|preis|abopreis)\b[^.?!]{0,10}(app|nutridesk)?\b/, a: 'NutriDesk kostet dich nichts und ist gerade im Early Access. Deine Daten liegen auf deinem eigenen Server, es gibt keine Werbung und keinen Weiterverkauf.' },
     { re: /\b(offline nutzen|ohne internet|kein internet|offline funktionieren)\b/, a: 'Nur eingeschränkt: die App holt deine Daten vom Server, ganz ohne Internet geht es also nicht. Was lokal läuft, ist die Kamera-Erkennung im Training, die verlässt dein Gerät nie.' },
@@ -695,7 +699,12 @@ module.exports = function registerBot(app, deps) {
     // Eine Auswahl-Antwort ist kurz und keine neue Frage. Ohne diese Bremse wurde dieselbe Frage
     // nochmal ("wie viele kalorien hat banane") als Auswahl gedeutet, weil "banane" darin vorkommt:
     // daher die alternierenden Antworten bei wiederholter Eingabe.
-    const wirktWieFrage = /\b(wie viel|wieviel|kalorien|kcal|naehrwerte?|hat|habe|ist|sind|was|wer|wo|wann)\b/.test(n) && t.length > 22;
+    // Der exakte Knopftext gilt IMMER, auch wenn er lang ist und "kcal" enthaelt. Sonst wurde
+    // "Wasser (Edeka, gut & günstig) · 44 kcal" als neue Frage gedeutet und landete in einem
+    // Hilfe-Artikel ueber Wasser-Tracking.
+    const istKnopftext = asked && asked.kind === 'foodpick' && Array.isArray(asked.opts)
+      && asked.opts.some(c => foldTxt((c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal') === foldTxt(t));
+    const wirktWieFrage = !istKnopftext && /\b(wie viel|wieviel|kalorien|kcal|naehrwerte?|hat|habe|ist|sind|was|wer|wo|wann)\b/.test(n) && t.length > 22;
     if (asked && asked.kind === 'foodpick' && Array.isArray(asked.opts) && !wirktWieFrage) {
       const O = asked.opts;
       // Abbruch der Auswahl zulassen
@@ -717,12 +726,9 @@ module.exports = function registerBot(app, deps) {
       // Kalorienzahl genannt: "die mit 336"
       if (!hit) { const mk = n.match(/\b(\d{1,4})\s*(kcal|kalorien)?\b/); if (mk) hit = O.find(c => String(c.kcal) === mk[1]); }
       if (!hit) hit = O.find(c => foldTxt(t).indexOf(foldTxt(c.name)) >= 0 && (!c.brand || foldTxt(t).indexOf(foldTxt(c.brand)) >= 0));
-      // Nichts erkannt: Auswahl offen halten statt sie zu verlieren
-      if (!hit) {
-        setAsk(uid, sid, { kind: 'foodpick', opts: O });
-        return { intent: 'food_choice', reply: 'Das konnte ich nicht zuordnen. Tipp einfach die Nummer (1 bis ' + O.length + ') oder den Markennamen.',
-          quicks: O.map(c => ({ label: (c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal', send: (c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal' })) };
-      }
+      // Nichts erkannt: NICHT erneut fragen. Sonst wird jede Folgenachricht als Auswahl gedeutet
+      // und selbst ein "hallo" kommt nicht mehr raus. Die Nachricht laeuft dann normal weiter,
+      // die Knoepfe bleiben ja sichtbar.
       if (hit) {
         rememberFood(uid, sid, hit.name, hit.kcal);
         return {
@@ -825,7 +831,8 @@ module.exports = function registerBot(app, deps) {
     if (/^(lol|haha+|hehe|hihi|xd|:d|:\)|lachen|witzig|lustig)\b/.test(n)) {
       return { intent: 'smalltalk', reply: 'Freut mich, wenn du was zu lachen hast. Noch einen Witz?', quicks: [{ label: 'Noch einen Witz', send: 'erzähl mir einen witz' }] };
     }
-    if (/^(erzaehl (mir )?(mal )?was|und sonst so|was gibts neues|wie war dein tag|was machst du gerade|erzaehl)\b/.test(n)) {
+    // Fuehrende Begruessung erlauben: "hey wie war dein tag" ist eine Frage, keine Begruessung.
+    if (/^((hi+|hallo|hey+|moin|na|servus|yo)[ ,!]+)?(erzaehl (mir )?(mal )?was|und sonst so|was gibts neues|wie war dein tag|wie wars? bei dir|was machst du gerade|erzaehl)\b/.test(n)) {
       return { intent: 'smalltalk', reply: 'Bei mir passiert wenig, ich warte einfach, bis du was brauchst. Bei dir? Wenn du magst, zeige ich dir deine Zahlen für heute oder erzähle einen Witz.', quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Witz', send: 'erzähl mir einen witz' }] };
     }
     if (/^(ja|jo|jup|nein|ne|noe|nö|k|kk)[.!]*$/.test(n)) {
@@ -886,8 +893,10 @@ module.exports = function registerBot(app, deps) {
       if (d.re.test(n)) return { intent: 'domain', reply: d.reply, quicks: d.quicks };
     }
 
-    // Begrüßung
-    if (/^(hi+|hallo|hey+|moin|servus|grü(ß|ss)|guten (morgen|tag|abend)|na\b|yo\b|hallöchen)/.test(low)) {
+    // Begrüßung. NUR wenn danach nichts Inhaltliches mehr kommt: "hey wie war dein tag" ist eine
+    // Frage, wurde aber komplett von der Begruessung verschluckt, weil es mit "hey" anfaengt.
+    const nurGruss = /^(hi+|hallo|hey+|moin|servus|gruess dich|guten (morgen|tag|abend)|na|yo|halloechen|hei|hallo zusammen)([ ,!.]+(du|anja|conrad|leute|zusammen|nochmal|wieder))*[ ,!.]*$/.test(n);
+    if (nurGruss) {
       return { intent: 'greet', reply: `Hallo! Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Ich helfe dir bei der App, bei Nährwerten, deinen Daten und kann Sachen für dich eintragen. Was brauchst du?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Hilfe', send: 'Wie funktioniert der Ernährungsplan?' }] };
     }
 
