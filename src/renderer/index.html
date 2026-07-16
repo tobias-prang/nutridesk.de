@@ -3925,6 +3925,7 @@
               <div onclick="{{ toggleItem }}" data-id="{{ it.id }}" style="display:flex;align-items:center;gap:13px;padding:9px 6px;border-radius:9px;cursor:pointer;" style-hover="background:var(--chip);">
                 <div style="width:21px;height:21px;border-radius:7px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;background:{{ it.boxBg }};border:1px solid {{ it.boxBd }};color:{{ it.boxColor }};"><i data-lucide="check" style="width:13px;height:13px;"></i></div>
                 <span style="flex:1 1 auto;min-width:0;font-size:13.5px;font-weight:500;color:{{ it.nameColor }};text-decoration:{{ it.nameDeco }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ it.name }}</span>
+                <span title="Vorratsware, hast du wahrscheinlich schon zu Hause" style="display:{{ it.pantryD }};flex:0 0 auto;align-items:center;font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink3);border:1px solid var(--line3);padding:1px 6px;border-radius:5px;">Vorrat</span>
                 <span style="flex:0 0 auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--ink3);background:var(--chip);padding:2px 8px;border-radius:6px;">{{ it.qtyLabel }}</span>
                 <span style="flex:0 0 auto;width:66px;text-align:right;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink2);">{{ it.priceLabel }}</span>
               </div>
@@ -9153,6 +9154,7 @@ class Component extends DCLogic {
           return {
             id: it.id, name: it.name,
             qtyLabel: (qty % 1 ? fmt(qty) : fmt0(qty)) + ' ' + it.unit, priceLabel: eur(price),
+            pantryD: it.pantry ? 'inline-flex' : 'none',
             boxBg: ck ? 'var(--acc)' : 'transparent', boxBd: ck ? 'var(--acc)' : 'var(--line3)', boxColor: ck ? '#0f1117' : 'transparent',
             nameColor: ck ? 'var(--mut)' : 'var(--ink)', nameDeco: ck ? 'line-through' : 'none', priceColor: ck ? 'var(--mut)' : 'var(--ink2)',
           };
@@ -10257,6 +10259,7 @@ class Component extends DCLogic {
             const its = m[cat].map(it => {
               const ck = !!it.checked; const price = parseFloat(it.price) * mult; const qty = parseFloat(it.qty) * mult; sum += price;
               return { id: it.id, name: it.name, qtyLabel: (qty % 1 ? fmt(qty) : fmt0(qty)) + ' ' + it.unit, priceLabel: eur(price),
+                pantryD: it.pantry ? 'inline-flex' : 'none',
                 boxBg: ck ? 'var(--acc)' : 'transparent', boxBd: ck ? 'var(--acc)' : 'var(--line3)', boxColor: ck ? '#0f1117' : 'transparent',
                 nameColor: ck ? 'var(--mut)' : 'var(--ink)', nameDeco: ck ? 'line-through' : 'none' };
             });

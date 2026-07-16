@@ -14,6 +14,7 @@ const multer = require('multer');
 const { serveCloudFile } = require('./lib/cloud-download'); // SEC-004A: sichere Datei-Auslieferung
 const { validateUpload } = require('./lib/upload-guard'); // SEC-004B: Upload-Validierung (Allowlist + Magic-Bytes)
 const badwords = require('./badwords');
+const packs = require('./packs');
 const { scanFile } = require('./lib/malware-scan'); // SEC-004B: Malware-Scan (fail-closed)
 
 const PORT = parseInt(process.env.PORT || '8420', 10);
@@ -2117,12 +2118,10 @@ async function buildShoppingRange(conn, uid, from, to, persons, weekNo) {
     const g = Math.round((Number(row.g) || 0) * persons);
     if (g <= 0) continue;
     const cat = row.cat || 'Sonstiges';
-    let qty = g, unit = 'g';
-    if (g >= 1000) { qty = Math.round(g / 100) / 10; unit = 'kg'; }
-    const price = Math.round((g / 1000) * (PRICE_PER_KG[cat] || 5) * 100) / 100;
+    const b = packs.buyFor(cat, row.iname, g, PRICE_PER_KG[cat] || 5);
     await conn.execute(
-      'INSERT INTO shopping_items (user_id, category, name, qty, unit, price, week_no) VALUES (?,?,?,?,?,?,?)',
-      [uid, cat.slice(0, 60), String(row.iname).slice(0, 120), qty, unit, price, weekNo || 1]);
+      'INSERT INTO shopping_items (user_id, category, name, qty, unit, grams, pantry, price, week_no) VALUES (?,?,?,?,?,?,?,?,?)',
+      [uid, cat.slice(0, 60), String(row.iname).slice(0, 120), b.qty, b.unit, b.grams, b.pantry ? 1 : 0, b.price, weekNo || 1]);
     n++;
   }
   return n;
