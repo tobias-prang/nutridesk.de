@@ -311,3 +311,45 @@ Der komplette Admin-Bereich ist aus `index.html` raus und in **`assets/admin.js`
 **Damit ist die gesamte tote Admin-Logik restlos aus dem Basis-`index.html` entfernt.** Admin lebt komplett im lazy `admin.js`.
 - Admin-Sub-Features in `admin.js` funktional-vereinfacht (Board ohne Drag&Drop, Rezepte ohne vollen Wizard) → bei Bedarf anreichern.
 - Weitere Bereiche (Finanzen, Community, KI) noch monolithisch im `index.html`.
+
+---
+
+## 14. Rezept-Freigabe, Wortfilter, Einkaufsliste (2026-07-16)
+
+### 14.1 `server/badwords.js` (NEU, gemeinsam genutzt)
+Ein Wortfilter für **zwei** Aufrufer: `bot.js` maskiert damit seine Ausgaben (`badwords.mask` auf `out.reply` + Quick-Labels in `/bot/chat`), `server.js` prüft damit Rezepte (`recipeScan`).
+- Stufen: `soft` (nur markieren), `hard`/`slur` (maskieren + Rezept blocken). `scan(text)` → `{hits, worst, clean}`, `mask(text)` → Wort wird zu `A********`.
+- Erkennt Umlaute, **Akzente via NFD** (`épis` → `epis`), Leet (`K4CKE`) und gestauchte Wiederholungen (`Kaaacke`).
+- **Zwei Matching-Wege, das ist der Kern:** Stauchen (`squeeze`) nur für **exakte** Treffer, Teilwort-Suche auf der **ungestauchten** Form. Grund: `squeeze('nigger')` = `niger`, und das steckt in **„weniger"**.
+- `EXACT_ONLY` = Wörter, die nur als ganzes Wort zählen dürfen (`arsch` wegen **Barsch/Marsch**, `mongo` wegen **mongolisch**, `chink` wegen **Schinken**, `schwanz` wegen **Ochsenschwanzsuppe**, `spast` wegen `spastisch`).
+- `ALLOW` = Freigaben gegen Kollisionen (`weniger`, `niger`, `deep` (= `depp` gestaucht), `pissenlit`, `monggo`, `morron`, `fagot`, `muschio`).
+- **Gegen den echten Bestand getestet** (Skript im Scratchpad, jederzeit wiederholbar): 2,16 Mio `foods`-Namen → 218 Treffer (0,01%), 3015 Rezeptnamen + Hilfe-Artikel → 0, alle Strings aus `bot.js`/`server.js` → 0. **Bei jeder Wortlisten-Änderung erneut gegen `foods` prüfen**, sonst schlägt der Filter auf Lebensmittel an.
+
+### 14.2 Rezept-Freigabe (`user_recipes`)
+Community zeigt nur `is_public=1 AND status='approved'`. Neue Spalten: `status` enum(pending/approved/rejected), `reject_reason`, `reviewed_at` (**in Dev UND Prod angelegt**).
+- **Anlegen setzt IMMER `status='pending'`, auch bei privat.** Sonst wäre „privat anlegen, dann öffentlich schalten" eine Umgehung der Prüfung. Der Status wird dem Nutzer nur bei `is_public` angezeigt.
+- `POST /my-recipes` blockt `hard`/`slur` in Name, Zutaten und Schritten mit 400.
+- Abgelehnte Rezepte: `is_public` wird auf 0 gezwungen, erneutes Teilen gibt 400.
+- Admin: `GET /admin/user-recipes?view=…`, `POST /admin/user-recipes/:id/review` (Grund ist bei Ablehnung Pflicht), `POST /admin/user-recipes/checkup` (prüft alle offenen). **Präfix `/admin/user-recipes`, nicht `/admin/recipes/pending`** — sonst frisst die ältere Route `/admin/recipes/:id` das Wort „pending" als ID.
+- Benachrichtigung via `botPost(uid,'recipe_ok'|'recipe_no',…)`. `bot_messages` hat `uq_bot(user_id,kind,ref)` + `INSERT IGNORE`, deshalb wird vor jedem Review die alte Zeile gelöscht, sonst käme bei einer zweiten Prüfung keine Nachricht.
+- UI: Admin-Tab „Rezepte" hat Segmente **Datenbank | Freigaben** (Zähler offener Fälle). Nutzer sieht „In Prüfung" / „Abgelehnt: Grund" an der Rezeptkarte.
+
+### 14.3 Einkaufsliste: `server/packs.js` (NEU)
+`buyFor(cat, name, cookedG, pricePerKg)` macht aus der Rezeptmenge die **kaufbare** Menge. 234 der 372 Zutaten haben eine Packungsregel, 138 bleiben **lose nach Gewicht** (Fleisch, Käse, Obst, Gemüse — das kauft man so).
+- **Reihenfolge im `PACKS`-Array ist die Kollisionsauflösung** und darf nicht sortiert werden: Olivenöl→Flasche vor Oliven→Glas, Essig vor Wein (sonst wird `Weißweinessig` zur Weinflasche), Gewürze vor Senf (sonst wird `Senfsamen` zum Senfglas), Öle vor Kernen (sonst wird `Sesamöl` zur Sesampackung).
+- **`RAW_FACTOR`: Kochgewicht → Kaufgewicht.** Die Rezeptmengen sind bei „(gekocht)" das Gewicht **nach** dem Garen (verifiziert: `Reis (gekocht)` hat 130 kcal/100g, trocken wären ~350). Ohne Umrechnung kauft die Liste das 2,5-fache an Reis/Nudeln. Dosenbohnen sind bewusst **draußen** (Dosengewicht ist schon das Endgewicht).
+- Packungsgrößen von Konzentraten zählen in **fertiger** Menge (Gemüsebrühe = Pulver für 5 l, Kartoffelpüree = 200g Pulver ergibt 1200g), sonst stehen 18 Gläser Brühe auf der Liste.
+- `pantry`-Flag (Öl, Gewürze, Salz, Mehl) → „Vorrat"-Chip im Modal, erklärt die ganze Flasche auf einer Wochenliste. Preis folgt der Packung.
+- `shopping_items`: neu `grams`, `pantry`, `unit` auf VARCHAR(48) (**Dev + Prod**).
+- **Bekanntes Datenproblem, kein Regelfehler:** Rezepte setzen 1g Safran pro Portion an (real 0,1g) → Safran landet bei ~22 EUR/Woche.
+
+### 14.4 Ladezustände Admin
+`skRows`/`skBar` + `.nd-adm-sk`-Shimmer in `admin.js`, in **allen 7 Tabs** verdrahtet. Wichtig beim Lebensmittel-Tab (2,16 Mio Zeilen, spürbare Wartezeit).
+
+### 14.5 Toter Code gefunden (nicht angefasst)
+- `setWeek`/`setMonth` + `s.period` sind **nirgends im Markup** verdrahtet → `mult` ist immer 1. Deshalb ist die Packungs-Rundung serverseitig sicher.
+- `shopWeeks` (Dashboard-Einkaufsliste) wird nirgends gerendert, die Liste läuft nur über `openShopModal`.
+
+### 14.6 Noch offen
+- **Prod-Deploy dieser Änderungen steht aus** (`badwords.js`, `packs.js`, `server.js`, `bot.js`). Die DB-Spalten sind in Prod schon da und ändern das alte Verhalten nicht (Prod hat 0 Nutzer-Rezepte). Renderer geht erst mit dem nächsten Build raus.
+- Bot kennt die Spiele/Ranglisten weiterhin nicht („Wie funktioniert das Training?" → „Das weiß ich leider nicht"), siehe §9.
