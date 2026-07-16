@@ -344,6 +344,10 @@ module.exports = function registerBot(app, deps) {
         { key: 'meal', ask: 'Zu welcher Mahlzeit? (Frühstück, Mittag, Abend oder Snack)', parse: (t) => { const s = t.toLowerCase(); if (/früh|fruh|morgen/.test(s)) return 'fruh'; if (/mittag/.test(s)) return 'mittag'; if (/abend/.test(s)) return 'abend'; if (/snack|zwischen/.test(s)) return 'snack'; return null; } },
       ],
     },
+    delTx: {
+      title: 'Buchung löschen',
+      slots: [],
+    },
     ticket: {
       title: 'Support-Ticket',
       slots: [
@@ -380,6 +384,12 @@ module.exports = function registerBot(app, deps) {
     if (f.type === 'weight') { await pool.execute('INSERT INTO weights (user_id, date, kg) VALUES (?,?,?) ON DUPLICATE KEY UPDATE kg=VALUES(kg)', [uid, todayStr(), d.kg]).catch(async () => { await pool.execute('INSERT INTO weights (user_id, date, kg) VALUES (?,?,?)', [uid, todayStr(), d.kg]); }); return `Gewicht ${Number(d.kg).toFixed(1)} kg gespeichert.`; }
     if (f.type === 'appointment') { await pool.execute('INSERT INTO appointments (user_id, title, date, time) VALUES (?,?,?,?)', [uid, d.title, d.date, d.time || null]); return `Termin "${d.title}" am ${d.date}${d.time ? ' um ' + d.time : ''} ist eingetragen.`; }
     if (f.type === 'food') { await pool.execute('INSERT INTO food_log (user_id, date, meal, name, kcal, carbs, protein, fat) VALUES (?,?,?,?,?,?,?,?)', [uid, todayStr(), d.meal, d._match.slice(0, 120), d._kcal, d._c, d._p, d._f]); return `Eingetragen: ${d.grams} g ${d._match} mit ${d._kcal} kcal.`; }
+    if (f.type === 'delTx') {
+      const [r] = await pool.execute('DELETE FROM transactions WHERE id=? AND user_id=?', [d.id, uid]);
+      if (!r || !r.affectedRows) return 'Die Buchung habe ich nicht mehr gefunden, da ist nichts gelöscht worden.';
+      logEvent('info', 'bot_tx_deleted', 'Buchung per Assistent gelöscht', { uid });
+      return 'Erledigt, die Buchung ist gelöscht. Dein Finanzbuch ist wieder aktuell.';
+    }
     if (f.type === 'ticket') {
       const [r] = await pool.execute('INSERT INTO tickets (user_id, subject, category) VALUES (?,?,?)', [uid, d.subject, 'bot']);
       await pool.execute('INSERT INTO ticket_messages (ticket_id, sender, text) VALUES (?,?,?)', [r.insertId, 'user', d.description]);
@@ -568,8 +578,14 @@ module.exports = function registerBot(app, deps) {
     if (DISTRESS_RE.test(n)) { return { intent: 'empathy', reply: DISTRESS_REPLY }; }
 
     // Entschuldigung vor der Beleidigungspruefung, sonst schlaegt "sorry, war dumm von mir" als Beleidigung an.
-    if (/\b(sorry|sry|entschuldigung|entschuldige|tut mir leid|war nicht so gemeint|nicht boese gemeint|mein fehler|verzeihung|war doof von mir)\b/.test(n)) {
+    // Nicht greifen, wenn es um eine Buchung geht: "ich hab mich vertippt bei der letzten ausgabe"
+    // ist eine Korrekturbitte, keine Entschuldigung, und gehoert zum Loeschen weiter unten.
+    if (/\b(sorry|sry|entschuldigung|entschuldige|tut mir leid|war nicht so gemeint|nicht boese gemeint|mein fehler|verzeihung|war doof von mir|hab mich vertippt)\b/.test(n)
+        && !/\b(buchung|ausgabe|einnahme|eintrag|transaktion|gebucht)\b/.test(n)) {
       insultCount.delete(uid + ':' + sid);
+      // Wenn gerade ein Dialog laeuft, MUSS er weg. Vorher sagte der Bot "ist vergessen",
+      // liess den Dialog aber offen und verbuchte die naechste harmlose Frage als Betrag.
+      if (flows.get(key)) { flows.delete(key); return { intent: 'cancel', reply: 'Kein Problem, ich habe nichts eingetragen. Womit kann ich dir helfen?' }; }
       return { intent: 'smalltalk', reply: 'Kein Problem, ist vergessen. Womit kann ich dir helfen?' };
     }
 
@@ -579,8 +595,12 @@ module.exports = function registerBot(app, deps) {
       return { intent: 'insult', reply: c >= 5 ? INSULT_HARD : INSULT_REPLIES[Math.min(c - 1, INSULT_REPLIES.length - 1)] };
     }
 
-    // Abbruch jederzeit
-    if (flow && /^(abbrechen|abbruch|stop|vergiss es|doch nicht|nein danke)$/.test(low)) { flows.delete(key); return { intent: 'cancel', reply: 'Alles klar, abgebrochen.' }; }
+    // Abbruch jederzeit. Bewusst tolerant: vorher war das ein exakter Wortvergleich, "vergiss es"
+    // brach ab, "ach vergiss es" und "vergiss es!" wurden zur Bezeichnung einer echten Buchung.
+    if (flow && /\b(abbrechen|abbruch|abbrich|stop|stopp|vergiss (es|das|den|die)|doch nicht|lass (mal|es|gut sein|stecken)|will (das|ich) (doch )?nicht|nicht eintragen|kein bock mehr|quatsch|egal)\b/.test(n)) {
+      flows.delete(key);
+      return { intent: 'cancel', reply: 'Alles klar, abgebrochen. Ich habe nichts eingetragen.' };
+    }
 
     // Laufender Flow
     if (flow) {
@@ -739,8 +759,39 @@ module.exports = function registerBot(app, deps) {
       return { intent: 'greet', reply: `Hallo! Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Ich helfe dir bei der App, bei Nährwerten, deinen Daten und kann Sachen für dich eintragen. Was brauchst du?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Hilfe', send: 'Wie funktioniert der Ernährungsplan?' }] };
     }
 
-    // Aktionen (Eintragen/Erledigen)
-    if (/(trag|eintragen|buch|erfass|notier|leg an|anlegen|hinzufüg)/.test(low) || /(ausgabe|einnahme)/.test(low)) {
+    // Letzte Buchung loeschen. Fehlte komplett: wer sich vertippt hatte, kam nicht zurueck, und
+    // jeder Rettungsversuch ("korrigier die letzte buchung auf 15 euro") legte eine NEUE Buchung
+    // an. Muss vor die Aktions-Weiche, sonst faengt die das "buchung" ab.
+    if (/\b(loesch|entfern|rueckgaengig|storrnier|stornier|zurueck ?nehmen)\w*\b[^.?!]{0,25}\b(buchung|ausgabe|einnahme|eintrag|transaktion)\b/.test(n)
+        || /\b(die )?letzte (buchung|ausgabe|einnahme|eintrag)\b[^.?!]{0,20}\b(loesch|weg|entfern|rueckgaengig|falsch|stornier)\w*\b/.test(n)
+        || /\b(hab|habe) mich vertippt\b[^.?!]{0,25}\b(buchung|ausgabe|einnahme)\b/.test(n)
+        || /\b(korrigier|aender)\w*\b[^.?!]{0,20}\b(letzte|die letzte)\b[^.?!]{0,12}\b(buchung|ausgabe|einnahme)\b/.test(n)) {
+      const [[last]] = await pool.execute(
+        'SELECT id, amount, name, date FROM transactions WHERE user_id=? AND planned=0 ORDER BY id DESC LIMIT 1', [uid]).catch(() => [[null]]);
+      if (!last) return { intent: 'data', reply: 'Ich finde keine Buchung, die ich löschen könnte. Dein Finanzbuch ist leer.' };
+      startFlow(uid, sid, 'delTx');
+      const f = flows.get(key);
+      f.data.id = last.id; f.awaitConfirm = true;
+      return { intent: 'flow_confirm',
+        reply: `Deine letzte Buchung ist ${fmtEur(Math.abs(last.amount))} ${Number(last.amount) < 0 ? 'Ausgabe' : 'Einnahme'}${last.name ? ' (' + last.name + ')' : ''} vom ${String(last.date).slice(0,10)}. Soll ich die löschen?`,
+        quicks: [{ label: 'Ja, löschen', send: 'ja' }, { label: 'Abbrechen', send: 'abbrechen' }] };
+    }
+
+    // Lesen vor Schreiben pruefen: "zeig mir meine ausgaben" enthaelt "ausgabe" und startete
+    // vorher den Buchungsdialog ("Wie hoch ist der Betrag?"). Der Nutzer wollte lesen.
+    const leseWunsch = /^(zeig|zeige|liste|welche|was (sind|waren|habe|hab)|wie viele?|wieviel|hab ich|habe ich|gibt es|wo |meine |mein )/.test(n)
+      || /\b(anzeigen|auflisten|uebersicht|zusammenfassung|liste mir)\b/.test(n);
+    if (leseWunsch && /(ausgabe|einnahme|buchung|transaktion|umsatz)/.test(n) && !/\b(neue|neuen|neues)\b/.test(n)) {
+      return { intent: 'data', reply: await dataAnswer(uid, 'balance') + ' Die einzelnen Buchungen siehst du im Finanzbuch unter Finanzen.', quicks: [{ label: 'Ausgabe eintragen', send: 'Ausgabe eintragen' }] };
+    }
+
+    // Aktionen (Eintragen/Erledigen). Das blosse Wort "ausgabe" reicht NICHT mehr, sonst startet
+    // "meine ausgaben diesen monat" den Buchungsdialog. Es braucht ein Verb, das blosse Nomen
+    // allein, oder einen Betrag mit Ausgabe-Verb ("ich hab 30 euro fuer kaffee bezahlt").
+    const aktionVerb = /(trag|eintragen|buch|erfass|notier|leg an|anlegen|hinzufüg)/.test(low);
+    const nurNomen = /^(eine? )?(ausgabe|einnahme)$/.test(n);
+    const geldVerb = /\b(ausgegeben|bezahlt|gekauft|gekostet|bekommen|erhalten|verdient|ueberwiesen)\b/.test(n);
+    if (aktionVerb || nurNomen || (parseAmount(low) != null && geldVerb)) {
       if (/gewicht|wiege|gewogen|kg\b/.test(low)) { startFlow(uid, sid, 'weight'); const n = parseAmount(low); if (n && n >= 20 && n <= 400) { const f = flows.get(key); f.data.kg = n; f.step = 1; f.awaitConfirm = true; return { intent: 'flow', reply: await confirmSummary(uid, f), quicks: [{ label: 'Ja', send: 'ja' }, { label: 'Abbrechen', send: 'abbrechen' }] }; } return { intent: 'flow', reply: FLOW_DEFS.weight.slots[0].ask }; }
       if (/aufgabe|todo|to-do|erledig/.test(low)) { startFlow(uid, sid, 'todo'); return { intent: 'flow', reply: FLOW_DEFS.todo.slots[0].ask }; }
       if (/termin|appointment|kalender/.test(low)) { startFlow(uid, sid, 'appointment'); return { intent: 'flow', reply: FLOW_DEFS.appointment.slots[0].ask }; }
@@ -780,7 +831,21 @@ module.exports = function registerBot(app, deps) {
     if (/(wie viele?|wieviel).*(kalorien|kcal).*(heute|bisher)|kalorien heute|kcal heute/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'kcal_today') };
     if (/(kalorien|kcal).*(woche|schnitt|durchschnitt)/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'kcal_week') };
     if (/(mein|aktuelles?)\s*gewicht|wie schwer|wie viel wiege/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'weight') };
-    if (/kontostand|saldo|wie viel geld|finanzen|ausgegeben diesen monat|budget übrig/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'balance') };
+    // Bewusst weit: der Bot kannte die Zahl und bot trotzdem ein Support-Ticket an, sobald ein
+    // Wort fehlte ("wie viel geld hab ich noch" ging, "wie viel hab ich noch" nicht).
+    if (/kontostand|kontostnad|saldo|wie viel geld|finanzen|budget uebrig/.test(n)
+        || /\b(wie viel|wieviel)\b[^.?!]{0,25}\b(ausgegeben|ausgeben|verbraten|raus|weg)\b/.test(n)
+        || /\b(wie viel|wieviel)\b[^.?!]{0,15}\b(hab|habe) ich\b[^.?!]{0,12}(noch|uebrig|insgesamt|drauf)?\s*[.?!]*$/.test(n)
+        || /\bbin ich im (minus|plus)\b|\bsteh ich im (minus|plus)\b|\bwie steht (es|es denn) um meine finanzen\b/.test(n)) {
+      const txt = await dataAnswer(uid, 'balance');
+      const minusFrage = /\bim (minus|plus)\b/.test(n);
+      if (minusFrage) {
+        const [[r]] = await pool.execute('SELECT COALESCE(SUM(amount),0) bal FROM transactions WHERE user_id=? AND planned=0', [uid]).catch(() => [[{ bal: 0 }]]);
+        const b = Number(r.bal) || 0;
+        return { intent: 'data', reply: (b < 0 ? 'Ja, du bist im Minus. ' : b > 0 ? 'Nein, du bist im Plus. ' : 'Du stehst genau bei null. ') + txt };
+      }
+      return { intent: 'data', reply: txt };
+    }
     if (/offene (aufgaben|todos|to-dos)|wie viele (aufgaben|todos)/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'todos') };
     if (/(nächste[rn]?|welche) termine?|was steht an|termine/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'appts') };
 
