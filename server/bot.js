@@ -60,10 +60,23 @@ module.exports = function registerBot(app, deps) {
     return (neg ? '-' : '') + i.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ',' + dec + ' EUR';
   }
   // Deutsche Zahl aus Text ziehen ("12,50", "12.50", "12")
+  // Vorher wurden ALLE Punkte blind geloescht, bevor die Zahl gelesen wurde: aus "12.50" wurde
+  // "1250", also das Hundertfache. In einer Finanz-App der schlimmstmoegliche Fehler.
+  // Regel: Komma ist immer Dezimaltrenner. Ohne Komma ist ein Punkt nur dann Tausendertrenner,
+  // wenn genau drei Ziffern folgen ("12.500"), sonst ist er ein Dezimalpunkt ("12.50").
   function parseAmount(t) {
-    const m = String(t).replace(/\./g, '').match(/(-?\d+(?:,\d+)?)/);
-    if (!m) { const m2 = String(t).match(/(-?\d+(?:\.\d+)?)/); return m2 ? parseFloat(m2[1]) : null; }
-    return parseFloat(m[1].replace(',', '.'));
+    const m = String(t).match(/-?\d[\d.,]*/);
+    if (!m) return null;
+    let v = m[0].replace(/[.,]+$/, '');
+    if (v.indexOf(',') >= 0) {
+      v = v.replace(/\./g, '').replace(',', '.');
+    } else {
+      const dots = (v.match(/\./g) || []).length;
+      if (dots > 1) v = v.replace(/\./g, '');
+      else if (dots === 1 && (v.split('.')[1] || '').length === 3) v = v.replace('.', '');
+    }
+    const n = parseFloat(v);
+    return isNaN(n) ? null : n;
   }
   function parseDateWord(t) {
     const s = String(t).toLowerCase().trim();
@@ -424,15 +437,36 @@ module.exports = function registerBot(app, deps) {
 
   // ---------- Gefuehle / Belastung ----------
   // Wichtig: Bei Hinweisen auf ernste Not KEIN Support-Ticket anbieten, sondern echte Hilfe nennen.
-  // Bewusst weit gefasst und tolerant. Ein Fehlalarm ist harmlos, ein verpasster Hilferuf nicht.
+  // Zwei Stufen, weil beides falsch waere: einen Hilferuf verpassen, oder jemandem wegen
+  // Kopfschmerzen die Telefonseelsorge unter die Nase halten.
+  // STUFE 1, eindeutig: volle Krisenantwort.
+  // Wortstaemme statt ganzer Woerter: "ritzen" traf "ich ritze mich" nicht.
   const CRISIS_RE = new RegExp([
     'bringe? mich um', '\\bumbringen\\b', '\\bselbstmord\\b', '\\bsuizid', '\\bsuizidal\\b',
-    'nicht mehr leben', 'leben beenden', 'mich toeten', 'toete mich', '\\britzen\\b', 'selbstverletz',
-    'will sterben', 'sterben wollen', 'waere besser tot', 'lieber tot',
+    'nicht mehr leben', 'leben beenden', 'mich toeten', 'toete mich', 'mag nicht mehr leben',
+    // "sich das Leben nehmen" ist die haeufigste deutsche Formulierung und fehlte komplett
+    '(mir|sich|mein)[^.?!]{0,12}leben[^.?!]{0,8}nehmen', 'leben nehmen',
+    // Selbstverletzung: Stamm, damit ritze/ritzt/geritzt greifen
+    '\\britz(e|en|t|te|est)\\b', 'geritzt', 'selbstverletz',
+    '(verletze|verletzen)[^.?!]{0,10}(mich|mir)', '(mich|mir)[^.?!]{0,10}(selbst )?(verletzen|weh tun|wehtun)',
+    'tue mir[^.?!]{0,8}weh', 'arme? aufgeschnitten', '\\bpulsadern\\b',
+    // Ueberdosis
+    '(tabletten|pillen|medikamente)[^.?!]{0,15}(geschluckt|genommen|eingeworfen)',
+    'ueberdosis', 'zu viele tabletten',
+    'will sterben', 'sterben wollen', 'waere besser tot', 'lieber tot', 'nicht mehr aufwachen',
     'keinen sinn mehr', 'alles[^.?!]{0,12}sinnlos', 'leben[^.?!]{0,12}sinnlos',
-    'keiner (wuerde|wurde) mich vermissen', 'niemand (wuerde|wurde) mich vermissen',
-    'will nicht mehr\\s*[.!]*$', 'mag nicht mehr leben',
+    '(keiner|niemand)[^.?!]{0,12}(wuerde|wurde)[^.?!]{0,8}vermissen',
+    'welt[^.?!]{0,12}ohne mich[^.?!]{0,12}besser', 'ohne mich[^.?!]{0,10}besser dran',
+    'schluss machen mit allem', 'will nicht mehr\\s*[.!]*$',
   ].join('|'));
+
+  // STUFE 2, Belastung ohne eindeutigen Hinweis: zuhoeren und Hilfe NENNEN, ohne Alarm zu schlagen.
+  const DISTRESS_RE = new RegExp([
+    'keinen ausweg', 'kein ausweg', 'bin am ende', 'am ende meiner kraft',
+    'halte das nicht mehr aus', 'ertrage das nicht mehr', 'weiss nicht mehr weiter',
+    'kann so nicht mehr', 'schaffe das nicht mehr', 'alles zu viel fuer mich',
+  ].join('|'));
+  const DISTRESS_REPLY = 'Das klingt, als würde dir gerade sehr viel über den Kopf wachsen. Ich bin nur ein Assistent in einer App und kann dir dabei ehrlich nicht helfen. Wenn es dir wirklich schlecht geht, kannst du jederzeit kostenlos und anonym mit jemandem sprechen: Die Telefonseelsorge ist rund um die Uhr unter 0800 111 0 111 erreichbar. Und wenn ich dir hier bei etwas Kleinem den Kopf frei machen kann, sag Bescheid.';
   const CRISIS_REPLY = 'Das klingt, als ginge es dir gerade richtig schlecht, und das tut mir leid. Ich bin nur ein Assistent in einer App und kann dir dabei nicht helfen, aber es gibt Menschen, die das können: Die Telefonseelsorge ist rund um die Uhr kostenlos erreichbar unter 0800 111 0 111 oder 0800 111 0 222, auch anonym. Wenn es akut ist, ruf bitte den Notruf 112. Bitte sprich mit jemandem.';
   // Bewusst tolerant: Menschen schreiben "mir gehts heute ehrlich gesagt nicht so gut", nicht "mir geht es schlecht".
   const SAD_RE = new RegExp([
@@ -480,6 +514,25 @@ module.exports = function registerBot(app, deps) {
     return rows.map(r => `${r.mkey}: ${r.mval}`).join(', ');
   }
 
+  // ---------- Eigenes Glossar ----------
+  // Kernbegriffe der App MUESSEN vor die Wikipedia. Sonst antwortet eine Ernaehrungs-App auf
+  // "was ist fett" mit einem SS-Gruppenfuehrer aus einer Begriffsklaerung und auf "was ist
+  // zucker" mit einer Filmsatire von 1978.
+  const GLOSSAR = [
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\bfett(e|en)?\b/, a: 'Fett ist einer der drei Hauptnährstoffe, neben Eiweiß und Kohlenhydraten. Es hat mit rund 9 kcal pro Gramm mehr als doppelt so viel Energie wie die anderen beiden und ist trotzdem lebensnotwendig, etwa für Hormone und die Aufnahme mancher Vitamine. In der App siehst du bei jedem Lebensmittel den Fettanteil pro 100 g.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\bzucker\b/, a: 'Zucker ist eine Untergruppe der Kohlenhydrate und liefert etwa 4 kcal pro Gramm. Er steckt nicht nur in Süßem, sondern auch versteckt in vielen Fertigprodukten. In der App findest du bei jedem Lebensmittel die Kohlenhydrate, in denen der Zucker enthalten ist.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(kohlenhydrate?|carbs)\b/, a: 'Kohlenhydrate sind der Hauptenergielieferant des Körpers, etwa 4 kcal pro Gramm. Dazu zählen Zucker, Stärke und Ballaststoffe. In der App siehst du sie bei jedem Lebensmittel pro 100 g.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(eiweiss|protein)e?\b/, a: 'Eiweiß, auch Protein genannt, ist der Baustoff für Muskeln, Haut und Enzyme, etwa 4 kcal pro Gramm. Als Faustregel reichen rund 0,8 g pro kg Körpergewicht am Tag, beim Sport eher 1,4 bis 2 g.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(kalorien?|kcal)\b/, a: 'Eine Kalorie ist eine Einheit für Energie. Die Angabe kcal auf Lebensmitteln sagt dir, wie viel Energie darin steckt. Nimmst du dauerhaft mehr auf als du verbrauchst, nimmst du zu, bei weniger ab. Genau das rechnet dir die App mit.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(grundumsatz|bmr)\b/, a: 'Der Grundumsatz ist die Energie, die dein Körper in völliger Ruhe verbraucht, nur fürs Atmen, Herzschlag und Wärme. Er macht meist den größten Teil deines Tagesbedarfs aus. Zusammen mit deiner Aktivität ergibt er den Gesamtbedarf, den die App aus deinen Körperdaten schätzt.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\bbmi\b/, a: 'Der BMI setzt Gewicht und Größe ins Verhältnis (Gewicht in kg geteilt durch Größe in Metern zum Quadrat). Er ist eine grobe Orientierung und sagt nichts über Muskeln oder Körperbau, deshalb bei Sportlern oft irreführend. Ich bin kein Arzt, das ist nur eine Einordnung.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(vitamin ?[abcdek]\d?|vitamine)\b/, a: 'Vitamine sind Stoffe, die dein Körper braucht, aber nicht oder kaum selbst herstellen kann. Sie liefern keine Energie, sind aber für viele Vorgänge nötig. Eine abwechslungsreiche Ernährung deckt sie normalerweise ab. Bei Verdacht auf einen Mangel bitte ärztlich abklären, dazu kann ich nichts sagen.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(intervallfasten|intermittierendes fasten|16 ?: ?8)\b/, a: 'Beim Intervallfasten isst du nur in einem festen Zeitfenster, oft 8 Stunden, und lässt den Rest des Tages aus. Es hilft manchen beim Abnehmen, vor allem weil sie insgesamt weniger essen, nicht durch Magie. Ob es zu dir passt, ist Geschmackssache. Ich bin keine Ernährungsberatung.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(konto|kontostand|saldo)\b/, a: 'Der Kontostand, auch Saldo, ist die Summe deiner Einnahmen minus deiner Ausgaben. In der App siehst du ihn im Finanzbuch. Frag mich einfach "Wie ist mein Kontostand?", dann sage ich dir deinen aktuellen Stand.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\bzinsen?\b/, a: 'Zinsen sind der Preis für geliehenes Geld. Zahlst du einen Kredit ab, gehen sie an die Bank. Legst du Geld an, bekommst du sie. In der App kannst du bei Krediten den Zinssatz hinterlegen, dann rechne ich dir die Belastung mit.' },
+    { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(budget)\b/, a: 'Ein Budget ist ein Limit, das du dir für eine Ausgabenkategorie im Monat setzt. Die App warnt dich bei 80, 100 und 120 Prozent, damit du früh merkst, wenn es eng wird.' },
+  ];
+
   // ---------- Domaenenwissen (regelbasiert, ehrlich) ----------
   const DOMAIN = [
     { re: /\b(nehme|nimmt|nimm)\b[^.?!]{0,30}\bab\s*[.?!]*$|\b(abnehmen|abzunehmen|abspecken|gewicht verlieren|schlank werden|diaet|kalorien ?defizit)\b/,
@@ -510,6 +563,9 @@ module.exports = function registerBot(app, deps) {
 
     // Ernste Not hat Vorrang vor allem, auch vor laufenden Flows und vor dem Ticket-Angebot.
     if (CRISIS_RE.test(n)) { flows.delete(key); return { intent: 'crisis', reply: CRISIS_REPLY }; }
+
+    // Belastung ohne eindeutigen Hinweis: zuhoeren und Hilfe nennen, ohne Alarm zu schlagen.
+    if (DISTRESS_RE.test(n)) { return { intent: 'empathy', reply: DISTRESS_REPLY }; }
 
     // Entschuldigung vor der Beleidigungspruefung, sonst schlaegt "sorry, war dumm von mir" als Beleidigung an.
     if (/\b(sorry|sry|entschuldigung|entschuldige|tut mir leid|war nicht so gemeint|nicht boese gemeint|mein fehler|verzeihung|war doof von mir)\b/.test(n)) {
@@ -551,12 +607,30 @@ module.exports = function registerBot(app, deps) {
     // Antwort auf eine eigene Rueckfrage. Muss frueh kommen: "birkenbeul" ist fuer jede andere
     // Regel sinnloser Text, aber als Antwort auf "Nenn mir eine Stadt" voellig richtig.
     const asked = takeAsk(uid, sid);
+
+    // Antwort auf eine Lebensmittel-Auswahl. Wird gegen die gemerkte Liste aufgeloest, damit ein
+    // Klick nicht erneut in derselben Rueckfrage landet.
+    if (asked && asked.kind === 'foodpick' && Array.isArray(asked.opts)) {
+      const hit = asked.opts.find(c => foldTxt((c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal') === foldTxt(t))
+        || asked.opts.find(c => foldTxt(t).indexOf(foldTxt(c.name)) >= 0 && (!c.brand || foldTxt(t).indexOf(foldTxt(c.brand)) >= 0));
+      if (hit) {
+        rememberFood(uid, sid, hit.name, hit.kcal);
+        return {
+          intent: 'food_info',
+          reply: `${hit.name}${hit.brand ? ' (' + hit.brand + ')' : ''}: ${hit.kcal} kcal pro 100 g, ${hit.protein} g Eiweiß, ${hit.carbs} g Kohlenhydrate, ${hit.fat} g Fett.`,
+          quicks: [{ label: 'Ins Tagebuch', send: 'Essen eintragen: ' + hit.name }],
+          sources: [{ kind: 'food', label: 'Lebensmittel-Datenbank' }],
+        };
+      }
+    }
+
     if (asked === 'city' && t.length >= 2 && t.length <= 60 && !/^(nein|ne|nö|egal|weiss nicht|weiß nicht|abbrechen)$/.test(low)) {
       const city = t.replace(/^(in|aus|für|fuer)\s+/i, '').replace(/[?.!]/g, '').trim();
       const g = await geocode(city).catch(() => null);
       if (!g) {
-        setAsk(uid, sid, 'city');
-        return { intent: 'weather', reply: `"${city}" finde ich leider nicht. Schreib den Ort vielleicht anders oder nimm die nächstgrößere Stadt.` };
+        // NICHT erneut fragen: sonst wird jede Folgenachricht als Ortsname gedeutet und man
+        // kommt nie wieder raus ("mein chef nervt" -> "finde ich nicht").
+        return { intent: 'weather', reply: `"${city}" finde ich als Ort leider nicht. Frag mich gern nochmal mit "Wetter in <Stadt>", oder sag mir, was du sonst brauchst.` };
       }
       const w = await weatherFor(g.lat, g.lon, g.city).catch(() => null);
       return { intent: 'weather', reply: w ? `In ${w.city || g.city} sind es gerade ${w.temp} Grad, ${w.desc}, Wind ${w.wind} km/h.` : 'Das Wetter konnte ich gerade nicht abrufen.' };
@@ -649,8 +723,11 @@ module.exports = function registerBot(app, deps) {
     const lf = lastFood.get(uid + ':' + sid);
     if (lf && /^(und |aber )?(ist|sind|waere|ist denn)?\s*(das|es|die|der|sowas)\b[^.?!]{0,20}\b(gesund|ungesund|schlimm|ok|okay|viel|zu viel|fett|fettig)\b/.test(n)) {
       const viel = lf.kcal >= 400 ? 'Das ist ziemlich energiedicht' : lf.kcal >= 200 ? 'Das liegt im Mittelfeld' : 'Das ist eher kalorienarm';
-      return { intent: 'domain', reply: `${viel}: ${lf.name} hat ${lf.kcal} kcal pro 100 g. Ob das für dich passt, hängt von der Menge und deinem restlichen Tag ab, nicht vom Lebensmittel allein. Ich bin keine Ernährungsberatung, aber die Zahlen helfen dir beim Einordnen.`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Eintragen', send: 'Ich möchte ' + lf.name + ' eintragen' }] };
+      return { intent: 'domain', reply: `${viel}: ${lf.name} hat ${lf.kcal} kcal pro 100 g. Ob das für dich passt, hängt von der Menge und deinem restlichen Tag ab, nicht vom Lebensmittel allein. Ich bin keine Ernährungsberatung, aber die Zahlen helfen dir beim Einordnen.`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Eintragen', send: 'Essen eintragen: ' + lf.name }] };
     }
+
+    // Eigenes Glossar VOR Hilfe und Wikipedia: Kernbegriffe beantwortet die App selbst.
+    for (const g of GLOSSAR) { if (g.re.test(n)) return { intent: 'domain', reply: g.a }; }
 
     // Domaenenfragen (Abnehmen, Fitness, Eiweiss, Trinken, "ist X gesund")
     for (const d of DOMAIN) {
@@ -667,7 +744,25 @@ module.exports = function registerBot(app, deps) {
       if (/gewicht|wiege|gewogen|kg\b/.test(low)) { startFlow(uid, sid, 'weight'); const n = parseAmount(low); if (n && n >= 20 && n <= 400) { const f = flows.get(key); f.data.kg = n; f.step = 1; f.awaitConfirm = true; return { intent: 'flow', reply: await confirmSummary(uid, f), quicks: [{ label: 'Ja', send: 'ja' }, { label: 'Abbrechen', send: 'abbrechen' }] }; } return { intent: 'flow', reply: FLOW_DEFS.weight.slots[0].ask }; }
       if (/aufgabe|todo|to-do|erledig/.test(low)) { startFlow(uid, sid, 'todo'); return { intent: 'flow', reply: FLOW_DEFS.todo.slots[0].ask }; }
       if (/termin|appointment|kalender/.test(low)) { startFlow(uid, sid, 'appointment'); return { intent: 'flow', reply: FLOW_DEFS.appointment.slots[0].ask }; }
-      if (/gegessen|essen|kalorien.*(trag|eintr)|mahlzeit|food/.test(low)) { startFlow(uid, sid, 'food'); return { intent: 'flow', reply: FLOW_DEFS.food.slots[0].ask }; }
+      if (/gegessen|essen|kalorien.*(trag|eintr)|mahlzeit|food|tagebuch/.test(low)) {
+        const f = startFlow(uid, sid, 'food');
+        // "Essen eintragen: Nutella" -> Namen gleich uebernehmen, statt nochmal zu fragen
+        const pre = t.match(/(?:essen eintragen|tagebuch)\s*[:\-]\s*(.{2,60})$/i);
+        if (pre && f) { const v = FLOW_DEFS.food.slots[0].parse(pre[1].trim()); if (v !== null) { f.data[FLOW_DEFS.food.slots[0].key] = v; f.step = 1; return { intent: 'flow', reply: FLOW_DEFS.food.slots[1].ask }; } }
+        return { intent: 'flow', reply: FLOW_DEFS.food.slots[0].ask };
+      }
+      // Finanz-Buchung NUR mit Finanz-Hinweis. Sonst landete der eigene Knopf des Bots
+      // ("Ich möchte Nutella eintragen") in der Buchung und hielt den Nutzer dort fest.
+      const finHint = /(ausgabe|einnahme|buchung|euro|eur|geld|gekauft|bezahlt|gekostet|gehalt|lohn|ueberweis|rechnung|konto|finanz)/.test(n) || /€/.test(t);
+      if (!finHint) {
+        return { intent: 'ask', reply: 'Klar. Was möchtest du eintragen?', quicks: [
+          { label: 'Essen', send: 'Essen eintragen' },
+          { label: 'Ausgabe', send: 'Ausgabe eintragen' },
+          { label: 'Gewicht', send: 'Gewicht eintragen' },
+          { label: 'Aufgabe', send: 'Aufgabe eintragen' },
+          { label: 'Termin', send: 'Termin eintragen' },
+        ] };
+      }
       // Standard: Finanz-Buchung
       const f = startFlow(uid, sid, 'transaction');
       if (/einnahme|gehalt|lohn|erhalten|bekommen/.test(low)) f.data.direction = 'einnahme';
@@ -711,13 +806,40 @@ module.exports = function registerBot(app, deps) {
       if (!m || m.length < 2) m = low.replace(/(wie viele?|wieviel|kalorien|kcal|nährwerte?|naehrwerte?|hat|eine[nr]?|ein|der|die|das|how many|how much|calories|protein|carbs|fat|does|have)/g, ' ').replace(/[?.!,]/g, ' ').replace(/\s+/g, ' ').trim();
       const cands = await foodCandidates(m, 6);
       if (!cands.length) return { intent: 'food_info', reply: 'Dazu habe ich in der Lebensmittel-Datenbank nichts gefunden. Formulier es vielleicht anders.' };
+
+      // Nachfragen, aber NUR wenn es einen Unterschied macht. "Nutella" und "Nutella to go" haben
+      // andere Werte, und bei "Milch" wurde vorher stumm irgendeine Marke gewaehlt.
+      const label = (c) => (c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42);
+      // Die Datenbank hat Dubletten ("Nutella (Nutella)" und "Nutella (nutella)") und Eintraege
+      // ohne Marke, die sich nur um 1 kcal unterscheiden. Beides taugt nicht als Auswahl.
+      const seen = new Set();
+      const uniq = cands.filter(c => {
+        const k = foldTxt(label(c)) + '|' + Math.round(c.kcal / 10);
+        if (seen.has(k)) return false;
+        seen.add(k); return true;
+      });
+      const kc = uniq.map(c => c.kcal);
+      const spread = kc.length > 1 ? Math.max(...kc) - Math.min(...kc) : 0;
+      if (uniq.length >= 2 && spread >= 25) {
+        const opts = uniq.slice(0, 5);
+        // Auswahl merken, damit der Klick eindeutig aufgeloest wird. Ohne das landet "Banane"
+        // wieder in derselben Rueckfrage: Endlosschleife.
+        setAsk(uid, sid, { kind: 'foodpick', opts });
+        return {
+          intent: 'food_choice',
+          reply: `Davon habe ich mehrere, und die Werte gehen deutlich auseinander (${Math.min(...kc)} bis ${Math.max(...kc)} kcal pro 100 g). Welches meinst du?`,
+          quicks: opts.map((c, i) => ({ label: label(c) + ' · ' + c.kcal + ' kcal', send: label(c) + ' · ' + c.kcal + ' kcal' })),
+          sources: [{ kind: 'food', label: 'Lebensmittel-Datenbank' }],
+        };
+      }
+
       const top = cands[0];
       rememberFood(uid, sid, top.name, top.kcal);
-      const others = cands.slice(1, 5).filter(c => c.name.toLowerCase() !== top.name.toLowerCase());
+      const others = cands.slice(1, 5).filter(c => label(c).toLowerCase() !== label(top).toLowerCase());
       return {
         intent: 'food_info',
         reply: `${top.name}${top.brand ? ' (' + top.brand + ')' : ''}: ${top.kcal} kcal pro 100 g, ${top.protein} g Eiweiß, ${top.carbs} g Kohlenhydrate, ${top.fat} g Fett.`,
-        quicks: others.map(c => ({ label: c.name.slice(0, 28), send: 'Wie viele kalorien hat ' + c.name })).concat([{ label: 'Ins Tagebuch', send: 'Ich möchte ' + top.name + ' eintragen' }]),
+        quicks: others.map(c => ({ label: label(c) + ' · ' + c.kcal + ' kcal', send: 'Nährwerte von ' + c.name + (c.brand ? ' ' + c.brand : '') })).concat([{ label: 'Ins Tagebuch', send: 'Essen eintragen: ' + top.name }]),
         sources: [{ kind: 'food', label: 'Lebensmittel-Datenbank' }],
       };
     }
@@ -744,17 +866,19 @@ module.exports = function registerBot(app, deps) {
         || /\b(bedeutet|hauptstadt von|geboren|gestorben|erfinder von|geschichte von)\b/.test(low));
     if (knowledge) {
       const wiki = await wikiSearch(t).catch(() => null);
-      // Der Treffer muss inhaltlich zur Frage passen (teilt ein Wort), sonst kommt irgendein
-      // Artikel zurueck. Dieselbe Bremse hat die App-Hilfe oben schon.
-      if (wiki && wiki.text && qWords.some((w) => fold(wiki.text.slice(0, 160)).indexOf(w) >= 0)) {
-        return { intent: 'wiki', reply: wiki.text };
-      }
+      // Zwei Filter. Der Wort-Treffer allein reichte nicht: "Zucker, Zucker! ist eine Filmsatire"
+      // enthaelt "Zucker" und rutschte durch. Begriffsklaerungen sind nie eine Antwort, und ein
+      // Film/Lied/Roman ist auf eine Sachfrage praktisch immer der falsche Treffer.
+      const passt = wiki && wiki.text && qWords.some((w) => fold(wiki.text.slice(0, 160)).indexOf(w) >= 0);
+      const kopf = wiki && wiki.text ? wiki.text.slice(0, 200) : '';
+      const mist = /begriffskl|steht f(ü|ue)r:|bezeichnet:|ist der name|kann sich beziehen|\b(film|spielfilm|filmsatire|kom(ö|oe)die|fernsehserie|lied|song|album|roman|musical|band|einheit\)|zeitschrift|magazin|sendung)\b/i.test(kopf);
+      if (passt && !mist) return { intent: 'wiki', reply: wiki.text };
     }
 
     // Aussagen ueber sich selbst bestaetigen. scanMemory hat sie oben schon gespeichert, ohne
     // diesen Zweig antwortete der Bot auf "ich bin Vegetarier" mit "das verstehe ich nicht".
     if (/\b(ich bin|ich heisse|mein name ist|ich wohne|ich lebe|ich mag kein|ich esse kein|ich vertrage kein|ich spare|mein ziel|ich will|ich moechte)\b/.test(n)
-        && /\b(vegan|vegetarier|vegetarisch|wohne in|lebe in|heisse|name ist|mag kein|esse kein|vertrage kein|spare (auf|fuer)|\d{3,5}\s*(kcal|kalorien))\b/.test(n)) {
+        && /\b(vegan|veganer|veganerin|vegetarier|vegetarierin|vegetarisch|wohne in|lebe in|heisse|name ist|mag kein|esse kein|vertrage kein|spare (auf|fuer)|\d{3,5}\s*(kcal|kalorien))\b/.test(n)) {
       const mem = await memorySummary(uid);
       return { intent: 'memory', reply: mem
         ? `Alles klar, das merke ich mir. Aktuell weiß ich das über dich: ${mem}.`
