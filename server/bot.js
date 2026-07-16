@@ -128,7 +128,7 @@ module.exports = function registerBot(app, deps) {
     if ((m = text.match(/ich hei(?:ß|ss)e\s+([A-Za-zÄÖÜäöüß]{2,30})/i)) || (m = text.match(/mein name ist\s+([A-Za-zÄÖÜäöüß]{2,30})/i))) save('Name', m[1]);
     if ((m = t.match(/(?:ziel|abnehmen|zunehmen|halten)[^.]{0,24}?(\d{3,5})\s*(?:kcal|kalorien)/))) save('Kalorien-Ziel', m[1] + ' kcal');
     if ((m = text.match(/ich (?:mag kein|mag keine|vertrage kein|vertrage keine|esse kein|esse keine)\s+([A-Za-zÄÖÜäöüß ]{3,30})/i))) save('Mag nicht', m[1].trim());
-    if ((m = text.match(/ich (?:wohne|lebe) in\s+([A-Za-zÄÖÜäöüß .-]{2,40})/i))) save('Wohnort', m[1].trim());
+    if ((m = text.match(/\b(?:wohne|lebe) in\s+([A-Za-zÄÖÜäöüß.-]{2,40}(?:\s[A-Za-zÄÖÜäöüß.-]{2,20})?)/i))) save('Wohnort', m[1].trim());
     if ((m = text.match(/ich spare (?:auf|für)\s+(?:ein |eine |einen )?([A-Za-zÄÖÜäöüß ]{3,40})/i))) save('Sparziel', m[1].trim());
   }
 
@@ -164,21 +164,37 @@ module.exports = function registerBot(app, deps) {
   }
 
   // ---------- Nährwert-Suche (mehrere Kandidaten) ----------
-  async function foodCandidates(q, limit = 6) {
+  // "kaese" -> "käse". Viele tippen ohne Umlaute, die Datenbank hat sie aber. Nur als Rueckfallebene
+  // benutzen, sonst wuerde aus "neue" faelschlich "nü".
+  function unfoldUmlaut(s) {
+    return String(s).replace(/ae/g, 'ä').replace(/oe/g, 'ö').replace(/ue/g, 'ü').replace(/ss/g, 'ß');
+  }
+  async function foodSearch(q, limit, nameOnly) {
     const toks = String(q).toLowerCase().split(/[^a-z0-9äöüß]+/i).filter(t => t.length >= 3);
     let rows = [];
     if (toks.length) {
       const bool = toks.map(t => '+' + t + '*').join(' ');
-      [rows] = await pool.execute(
-        'SELECT name, brand, kcal, carbs, protein, fat FROM foods WHERE MATCH(name, brand) AGAINST (? IN BOOLEAN MODE) ' +
-        'ORDER BY (name LIKE ?) DESC, (kcal BETWEEN 20 AND 900) DESC, (kcal>0) DESC, LENGTH(name) ASC LIMIT ?',
-        [bool, toks[0] + '%', limit]);
+      const sql = 'SELECT name, brand, kcal, carbs, protein, fat FROM foods WHERE MATCH(name, brand) AGAINST (? IN BOOLEAN MODE) ' +
+        (nameOnly ? 'AND name LIKE ? ' : '') +
+        'ORDER BY (name LIKE ?) DESC, (kcal BETWEEN 20 AND 900) DESC, (kcal>0) DESC, LENGTH(name) ASC LIMIT ?';
+      const args = nameOnly ? [bool, '%' + toks[0] + '%', toks[0] + '%', limit] : [bool, toks[0] + '%', limit];
+      [rows] = await pool.execute(sql, args);
     }
-    if (!rows.length) {
+    if (!rows.length && !nameOnly) {
       [rows] = await pool.execute(
         'SELECT name, brand, kcal, carbs, protein, fat FROM foods WHERE name LIKE ? ORDER BY (name LIKE ?) DESC, (kcal>0) DESC, LENGTH(name) ASC LIMIT ?',
         ['%' + q + '%', q + '%', limit]);
     }
+    return rows;
+  }
+  async function foodCandidates(q, limit = 6) {
+    const base = String(q).toLowerCase(), alt = unfoldUmlaut(base);
+    const variants = alt !== base ? [base, alt] : [base];
+    let rows = [];
+    // Erst Treffer im NAMEN (in jeder Schreibweise), sonst gewinnt eine zufaellig passende Marke
+    // wie "Kaeselager.De" gegen die eigentlich gesuchte Kaese-Sorte.
+    for (const v of variants) { rows = await foodSearch(v, limit, true); if (rows.length) break; }
+    if (!rows.length) for (const v of variants) { rows = await foodSearch(v, limit, false); if (rows.length) break; }
     return rows.map(f => ({
       name: String(f.name || '').slice(0, 120), brand: f.brand ? String(f.brand).slice(0, 60) : '',
       kcal: Math.max(0, Math.round(f.kcal) || 0), carbs: Math.round(f.carbs) || 0, protein: Math.round(f.protein) || 0, fat: Math.round(f.fat) || 0,
@@ -338,12 +354,139 @@ module.exports = function registerBot(app, deps) {
     return 'Erledigt.';
   }
 
+  // ---------- Sprachnormalisierung ----------
+  // Umlaute/ss falten, damit "eiweiss" und "eiweiß" gleich behandelt werden. Ohne das rutschte
+  // "wie viel eiweiss hat huehnchen" an der Naehrwert-Regel vorbei bis in die Wikipedia-Suche.
+  const foldTxt = (s) => String(s).toLowerCase()
+    .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+    .replace(/\s+/g, ' ').trim();
+
+  // ---------- Beleidigungen ----------
+  const INSULT_RE = /\b(idiot(en)?|vollidiot|dumm(kopf|es|er|e)?|bloed(e|er|es)?|daemlich|schwachkopf|schwachsinn|arsch(loch)?|fotze|fick|ficken|hurensohn|wichser|spast|spasti|behindert|missgeburt|penner|opfer|nutte|schlampe|kacke|kack|scheiss(e|dreck|bot|ding)?|fresse|schnauze|verpiss|halt(s)? maul|dumme kuh|bloede kuh|du (bist|kannst) (nichts|nix)|nutzlos|unfaehig|muell|schrott|hirnlos|trottel|depp|vollpfosten)\b/;
+  const INSULT_REPLIES = [
+    'Das lasse ich mal so stehen. Sag mir lieber, was du brauchst, dann helfe ich dir.',
+    'Ich merke, du bist genervt. Kein Ding, aber beleidigen bringt uns nicht weiter. Woran hakt es gerade?',
+    'Ich bleibe trotzdem freundlich. Wenn etwas nicht klappt, sag mir was, dann versuchen wir es zusammen.',
+    'Okay, das reicht jetzt aber. Ich helfe dir gern, wenn du sachlich bleibst.',
+    'Ich bin ein Assistent, kein Boxsack. Sag mir dein Anliegen, dann kümmere ich mich darum.',
+  ];
+  const INSULT_HARD = 'So kommen wir nicht weiter. Ich beantworte gern jede Frage zur App, zu Ernährung oder zu deinen Zahlen, aber auf Beleidigungen gehe ich nicht mehr ein.';
+  // Merkt sich das zuletzt genannte Lebensmittel pro Unterhaltung, damit Rueckbezuege wie
+  // "und ist das gesund?" nach einer Naehrwert-Antwort funktionieren.
+  const lastFood = new Map();
+  const rememberFood = (uid, sid, name, kcal) => {
+    const k = uid + ':' + sid;
+    lastFood.set(k, { name, kcal });
+    if (lastFood.size > 500) lastFood.delete(lastFood.keys().next().value);
+  };
+  const insultCount = new Map();
+  const bumpInsult = (uid, sid) => {
+    const k = uid + ':' + sid, n = (insultCount.get(k) || 0) + 1;
+    insultCount.set(k, n);
+    if (insultCount.size > 500) { const first = insultCount.keys().next().value; insultCount.delete(first); }
+    return n;
+  };
+
+  // ---------- Gefuehle / Belastung ----------
+  // Wichtig: Bei Hinweisen auf ernste Not KEIN Support-Ticket anbieten, sondern echte Hilfe nennen.
+  // Bewusst weit gefasst und tolerant. Ein Fehlalarm ist harmlos, ein verpasster Hilferuf nicht.
+  const CRISIS_RE = new RegExp([
+    'bringe? mich um', '\\bumbringen\\b', '\\bselbstmord\\b', '\\bsuizid', '\\bsuizidal\\b',
+    'nicht mehr leben', 'leben beenden', 'mich toeten', 'toete mich', '\\britzen\\b', 'selbstverletz',
+    'will sterben', 'sterben wollen', 'waere besser tot', 'lieber tot',
+    'keinen sinn mehr', 'alles[^.?!]{0,12}sinnlos', 'leben[^.?!]{0,12}sinnlos',
+    'keiner (wuerde|wurde) mich vermissen', 'niemand (wuerde|wurde) mich vermissen',
+    'will nicht mehr\\s*[.!]*$', 'mag nicht mehr leben',
+  ].join('|'));
+  const CRISIS_REPLY = 'Das klingt, als ginge es dir gerade richtig schlecht, und das tut mir leid. Ich bin nur ein Assistent in einer App und kann dir dabei nicht helfen, aber es gibt Menschen, die das können: Die Telefonseelsorge ist rund um die Uhr kostenlos erreichbar unter 0800 111 0 111 oder 0800 111 0 222, auch anonym. Wenn es akut ist, ruf bitte den Notruf 112. Bitte sprich mit jemandem.';
+  // Bewusst tolerant: Menschen schreiben "mir gehts heute ehrlich gesagt nicht so gut", nicht "mir geht es schlecht".
+  const SAD_RE = new RegExp([
+    'mir (geht|gehts|geht es)[^.?!]{0,25}(schlecht|mies|dreckig|beschissen|nicht so gut|nicht gut|nicht besonders)',
+    'geht mir[^.?!]{0,25}(schlecht|mies|dreckig|nicht so gut|nicht gut)',
+    '\\bbin (grad |gerade |heute |echt |total |ziemlich |so )*(traurig|fertig|erschoepft|ausgebrannt|kaputt|down|deprimiert|einsam|allein|ungluecklich|verzweifelt)',
+    'fuehle mich[^.?!]{0,20}(schlecht|mies|leer|allein|einsam|ueberfordert|wertlos)',
+    '\\bschaffe (das|es)[^.?!]{0,15}nicht', '\\bkann nicht mehr\\b', '\\balles zu viel\\b', '\\bueberfordert\\b',
+    '\\bhabe angst\\b', '\\bmache mir sorgen\\b',
+    '\\bjob verloren\\b', '\\bgekuendigt\\b', '\\barbeit verloren\\b', '\\btrennung\\b', '\\bhat mich verlassen\\b',
+    '\\bgestorben\\b', '\\bbeerdigung\\b', '\\bliebeskummer\\b',
+  ].join('|'));
+  const SAD_REPLIES = [
+    'Das klingt nach einem echt schweren Tag, das tut mir leid. Ich bin kein Mensch und kann dir das nicht abnehmen, aber ich bin da. Magst du erzählen, was los ist, oder soll ich dich einfach in Ruhe lassen?',
+    'Puh, das klingt belastend. Ich kann nur bei der App, Ernährung und deinen Zahlen helfen, aber wenn dich etwas ablenkt oder du einfach weitermachen willst, sag Bescheid.',
+  ];
+  const STRESS_REPLY = 'Klingt nach viel auf einmal. Wenn du magst, fangen wir klein an: Ich kann dir zeigen, was heute ansteht, oder eine Aufgabe für dich eintragen, damit du sie nicht im Kopf behalten musst.';
+
+  // ---------- Witze ----------
+  // Wurde real mehrfach gefragt, deshalb echte Witze statt einer Absage. Rotation pro Unterhaltung.
+  const JOKES = [
+    'Treffen sich zwei Kalorien. Sagt die eine: "Puh, ist das heiß hier." Sagt die andere: "Klar, wir sind ja auch in der Pfanne."',
+    'Was macht ein Keks unter einem Baum? Krümeln.',
+    'Ich wollte ja abnehmen, aber der Kühlschrank hat mich immer wieder zurückgerufen.',
+    'Warum können Geister so schlecht lügen? Weil man durch sie hindurchsieht.',
+    'Wie nennt man einen Bumerang, der nicht zurückkommt? Stock.',
+    'Mein Arzt sagte, ich soll mehr Gemüse essen. Jetzt nehme ich immer die Gurke aus dem Burger mit.',
+    'Was sagt ein Nulleuroschein zum anderen? Wir sind nichts wert, aber immerhin zu zweit.',
+    'Ich habe meinem Sparschwein erzählt, dass ich sparen will. Seitdem lacht es nur noch.',
+    'Warum trinken Mathematiker keinen Alkohol? Weil sie sonst nicht mehr geradeaus rechnen können.',
+    'Sport ist Mord. Aber Salat ist auch kein Leben.',
+  ];
+  const jokeIdx = new Map();
+  const nextJoke = (uid, sid) => {
+    const k = uid + ':' + sid, i = (jokeIdx.get(k) || 0) % JOKES.length;
+    jokeIdx.set(k, i + 1);
+    if (jokeIdx.size > 500) jokeIdx.delete(jokeIdx.keys().next().value);
+    return JOKES[i];
+  };
+
+  // ---------- Gedaechtnis-Auskunft ----------
+  async function memorySummary(uid) {
+    const [rows] = await pool.execute('SELECT mkey, mval FROM bot_user_memory WHERE user_id=? ORDER BY updated_at DESC LIMIT 12', [uid]).catch(() => [[]]);
+    if (!rows || !rows.length) return null;
+    return rows.map(r => `${r.mkey}: ${r.mval}`).join(', ');
+  }
+
+  // ---------- Domaenenwissen (regelbasiert, ehrlich) ----------
+  const DOMAIN = [
+    { re: /\b(nehme|nimmt|nimm)\b[^.?!]{0,30}\bab\s*[.?!]*$|\b(abnehmen|abzunehmen|abspecken|gewicht verlieren|schlank werden|diaet|kalorien ?defizit)\b/,
+      reply: 'Abnehmen läuft am Ende über ein Kaloriendefizit: dauerhaft etwas weniger essen, als du verbrauchst. Realistisch sind etwa 0,3 bis 0,5 kg pro Woche. Die App hilft dir dabei beim Nachhalten: trag dein Essen im Tagebuch ein, dann siehst du dein Tagesziel und was noch übrig ist. Ich bin aber kein Arzt und keine Ernährungsberatung, bei Vorerkrankungen oder größeren Zielen sprich das bitte ärztlich ab.',
+      quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Essen eintragen', send: 'Ich möchte Essen eintragen' }] },
+    { re: /\b(keine lust|kein bock|raff mich nicht|komme nicht in die gaenge|motivier mich|brauche motivation|schaffe es nicht anzufangen)\b/,
+      reply: 'Kenne ich, und ehrlich: Motivation kommt meist erst beim Machen, nicht davor. Nimm dir was lächerlich Kleines vor, fünf Minuten reichen. In der App zählt das Training deine Wiederholungen per Kamera mit, da siehst du sofort etwas passieren, das hilft gegen den inneren Schweinehund.',
+      quicks: [{ label: 'Training öffnen', send: 'Wie funktioniert das Training?' }] },
+    { re: /\b(wie (werde|bleibe) ich fit|fitter werden|muskeln aufbauen|muskelaufbau|mehr sport|sportlicher)\b/,
+      reply: 'Fitter wirst du vor allem durch Regelmäßigkeit, nicht durch Intensität. Lieber dreimal pro Woche etwas Kurzes als einmal etwas Riesiges. In der App findest du unter Community und Spiele das Training, da erkennt die Kamera deine Wiederholungen und zählt sie mit. Für Muskelaufbau brauchst du zusätzlich genug Eiweiß, grob 1,4 bis 2 g pro kg Körpergewicht.',
+      quicks: [{ label: 'Training öffnen', send: 'Wie funktioniert das Training?' }] },
+    { re: /\b(wie viel(e)? (eiweiss|protein) (brauche|braucht)|eiweissbedarf|proteinbedarf)\b/,
+      reply: 'Als grobe Richtung: etwa 0,8 g Eiweiß pro kg Körpergewicht am Tag reichen zum Erhalt, beim Sport oder in einer Diät eher 1,4 bis 2 g pro kg. Bei 75 kg wären das also grob 60 g normal und 105 bis 150 g mit Training. Ich bin keine Ernährungsberatung, das ist nur eine Faustregel.' },
+    { re: /\b(wie viel(e)? wasser|wie viel trinken|trinkmenge)\b/,
+      reply: 'Faustregel sind etwa 30 bis 35 ml pro kg Körpergewicht am Tag, bei 75 kg also grob 2,2 bis 2,6 Liter. Bei Hitze oder Sport mehr. Das ist eine Richtgröße, keine medizinische Vorgabe.' },
+    { re: /\bist (nutella|schokolade|pizza|fastfood|zucker|butter|fett|kaese|brot|obst|bier|alkohol|cola) (gesund|ungesund|schlecht|gut)\b|\b(gesund|ungesund) (ist|sind)\b/,
+      reply: 'Einzelne Lebensmittel sind selten einfach gesund oder ungesund, es kommt auf die Menge und den Rest des Tages an. Frag mich gern nach den Nährwerten, dann siehst du die Zahlen und kannst selbst einordnen, zum Beispiel "Wie viele Kalorien hat Nutella?".',
+      quicks: [{ label: 'Nährwerte nachschlagen', send: 'Wie viele Kalorien hat Nutella?' }] },
+  ];
+
   // ---------- Intent-Router ----------
   async function route(uid, sid, text, settings) {
     const t = text.trim();
     const low = t.toLowerCase();
+    const n = foldTxt(t);
     const key = fkey(uid, sid);
     let flow = flows.get(key);
+
+    // Ernste Not hat Vorrang vor allem, auch vor laufenden Flows und vor dem Ticket-Angebot.
+    if (CRISIS_RE.test(n)) { flows.delete(key); return { intent: 'crisis', reply: CRISIS_REPLY }; }
+
+    // Entschuldigung vor der Beleidigungspruefung, sonst schlaegt "sorry, war dumm von mir" als Beleidigung an.
+    if (/\b(sorry|sry|entschuldigung|entschuldige|tut mir leid|war nicht so gemeint|nicht boese gemeint|mein fehler|verzeihung|war doof von mir)\b/.test(n)) {
+      insultCount.delete(uid + ':' + sid);
+      return { intent: 'smalltalk', reply: 'Kein Problem, ist vergessen. Womit kann ich dir helfen?' };
+    }
+
+    // Beleidigungen abfangen, bevor sie in einem Flow als Slot-Wert landen.
+    if (INSULT_RE.test(n)) {
+      const c = bumpInsult(uid, sid);
+      return { intent: 'insult', reply: c >= 5 ? INSULT_HARD : INSULT_REPLIES[Math.min(c - 1, INSULT_REPLIES.length - 1)] };
+    }
 
     // Abbruch jederzeit
     if (flow && /^(abbrechen|abbruch|stop|vergiss es|doch nicht|nein danke)$/.test(low)) { flows.delete(key); return { intent: 'cancel', reply: 'Alles klar, abgebrochen.' }; }
@@ -389,9 +532,42 @@ module.exports = function registerBot(app, deps) {
     if (/hab dich lieb|ich mag dich|bist (süß|nett|toll|cool|lieb)|ich liebe dich/.test(low)) {
       return { intent: 'smalltalk', reply: 'Das ist lieb, danke. Ich helfe dir gern weiter, was brauchst du?' };
     }
-    if (/\bwitz|witze|scherz|mach mich lachen|erzähl.*witz/.test(low)) {
-      return { intent: 'smalltalk', reply: 'Witze sind ehrlich gesagt nicht meine Stärke. Ich bin eher für App-Hilfe, Ernährung und Finanzen da, frag mich ruhig etwas dazu.' };
+    if (/\bwitz\b|\bwitze\b|scherz|mach mich lachen|erzaehl[^.?!]{0,15}witz|bring mich zum lachen|was lustiges/.test(n)) {
+      return { intent: 'joke', reply: nextJoke(uid, sid), quicks: [{ label: 'Noch einen', send: 'noch einen witz' }] };
     }
+    if (jokeIdx.get(uid + ':' + sid) && /^(noch (einen|einer|mal)|nochmal|mehr|weiter|und noch einen|noch)\b/.test(n)) {
+      return { intent: 'joke', reply: nextJoke(uid, sid), quicks: [{ label: 'Noch einen', send: 'noch einen witz' }] };
+    }
+    // Persoenliche Frage: muss VOR die Wikipedia-Suche, sonst landet "was weisst du ueber mich" dort.
+    if (/was weisst du (ueber|von) mich|was weisst du ueber mich|kennst du mich|was hast du dir (ueber mich )?gemerkt|was weisst du von mir/.test(n)) {
+      const mem = await memorySummary(uid);
+      return { intent: 'memory', reply: mem
+        ? `Ich habe mir das hier von dir gemerkt: ${mem}. Du kannst das jederzeit in den Einstellungen löschen.`
+        : 'Bisher habe ich mir nichts von dir gemerkt. Wenn du mir etwas erzählst, zum Beispiel "Ich bin Vegetarier" oder "Ich wohne in Köln", behalte ich das für unsere Gespräche.' };
+    }
+    // Gefuehle: erst zuhoeren, nicht mit einem Support-Ticket antworten.
+    if (SAD_RE.test(n)) {
+      return { intent: 'empathy', reply: SAD_REPLIES[Math.floor(Math.random() * SAD_REPLIES.length)] };
+    }
+    if (/\b(bin (gestresst|im stress)|zu viel stress|keine zeit|alles gleichzeitig|chaos im kopf)\b/.test(n)) {
+      return { intent: 'empathy', reply: STRESS_REPLY, quicks: [{ label: 'Was steht an?', send: 'Welche Termine habe ich?' }, { label: 'Aufgabe eintragen', send: 'Ich möchte eine Aufgabe eintragen' }] };
+    }
+    if (/\b(mir gehts? gut|geht mir gut|bin gluecklich|bin froh|super drauf|bestens|alles super|alles gut)\b/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Das freut mich zu hören. Wenn du etwas brauchst, sag Bescheid.' };
+    }
+
+    // Rueckbezug auf die letzte Naehrwert-Antwort ("und ist das gesund?", "wie viel ist das?")
+    const lf = lastFood.get(uid + ':' + sid);
+    if (lf && /^(und |aber )?(ist|sind|waere|ist denn)?\s*(das|es|die|der|sowas)\b[^.?!]{0,20}\b(gesund|ungesund|schlimm|ok|okay|viel|zu viel|fett|fettig)\b/.test(n)) {
+      const viel = lf.kcal >= 400 ? 'Das ist ziemlich energiedicht' : lf.kcal >= 200 ? 'Das liegt im Mittelfeld' : 'Das ist eher kalorienarm';
+      return { intent: 'domain', reply: `${viel}: ${lf.name} hat ${lf.kcal} kcal pro 100 g. Ob das für dich passt, hängt von der Menge und deinem restlichen Tag ab, nicht vom Lebensmittel allein. Ich bin keine Ernährungsberatung, aber die Zahlen helfen dir beim Einordnen.`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Eintragen', send: 'Ich möchte ' + lf.name + ' eintragen' }] };
+    }
+
+    // Domaenenfragen (Abnehmen, Fitness, Eiweiss, Trinken, "ist X gesund")
+    for (const d of DOMAIN) {
+      if (d.re.test(n)) return { intent: 'domain', reply: d.reply, quicks: d.quicks };
+    }
+
     // Begrüßung
     if (/^(hi+|hallo|hey+|moin|servus|grü(ß|ss)|guten (morgen|tag|abend)|na\b|yo\b|hallöchen)/.test(low)) {
       return { intent: 'greet', reply: `Hallo! Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Ich helfe dir bei der App, bei Nährwerten, deinen Daten und kann Sachen für dich eintragen. Was brauchst du?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Hilfe', send: 'Wie funktioniert der Ernährungsplan?' }] };
@@ -436,11 +612,13 @@ module.exports = function registerBot(app, deps) {
     }
 
     // Nährwert-Frage ("wie viel kcal hat nutella")
-    if (/(wie viele?|wieviel).*(kalorien|kcal|eiweiß|protein|fett|kohlenhydrate)/.test(low) || /(kalorien|kcal|nährwerte?)\s+(von|für|hat)/.test(low)) {
-      const m = low.replace(/.*(hat|von|für|in)\s+/,'').replace(/[?.!]/g,'').trim() || low.replace(/(wie viele?|wieviel|kalorien|kcal|hat|eine[nr]?|ein|der|die|das)/g,' ').trim();
+    if (/(wie viele?|wieviel).*(kalorien|kcal|eiweiss|protein|fett|kohlenhydrate|naehrwerte?)/.test(n) || /(kalorien|kcal|naehrwerte?)\s+(von|fuer|hat|in)/.test(n) || /(how many|how much).*(calories|protein|carbs|fat)/.test(n)) {
+      let m = low.replace(/[?.!,]/g, ' ').replace(/^.*\b(hat|von|für|fuer|in|does|of)\s+/, '').replace(/\b(have|has|got|hat)\b/g, ' ').replace(/\s+/g, ' ').trim();
+      if (!m || m.length < 2) m = low.replace(/(wie viele?|wieviel|kalorien|kcal|nährwerte?|naehrwerte?|hat|eine[nr]?|ein|der|die|das|how many|how much|calories|protein|carbs|fat|does|have)/g, ' ').replace(/[?.!,]/g, ' ').replace(/\s+/g, ' ').trim();
       const cands = await foodCandidates(m, 6);
       if (!cands.length) return { intent: 'food_info', reply: 'Dazu habe ich in der Lebensmittel-Datenbank nichts gefunden. Formulier es vielleicht anders.' };
       const top = cands[0];
+      rememberFood(uid, sid, top.name, top.kcal);
       const others = cands.slice(1, 5).filter(c => c.name.toLowerCase() !== top.name.toLowerCase());
       return {
         intent: 'food_info',
@@ -470,8 +648,41 @@ module.exports = function registerBot(app, deps) {
       if (wiki && wiki.text) return { intent: 'wiki', reply: wiki.text };
     }
 
-    // Fallback: ehrlich sagen + Ticket anbieten
-    return { intent: 'unknown', reply: 'Das weiß ich nicht sicher. Soll ich dazu ein Ticket an den Support anlegen? Dann kümmert sich ein Mensch darum.', quicks: [{ label: 'Ja, Ticket', send: 'Ich möchte ein Support-Ticket erstellen' }, { label: 'Nein', send: 'nein danke' }] };
+    // Aussagen ueber sich selbst bestaetigen. scanMemory hat sie oben schon gespeichert, ohne
+    // diesen Zweig antwortete der Bot auf "ich bin Vegetarier" mit "das verstehe ich nicht".
+    if (/\b(ich bin|ich heisse|mein name ist|ich wohne|ich lebe|ich mag kein|ich esse kein|ich vertrage kein|ich spare|mein ziel|ich will|ich moechte)\b/.test(n)
+        && /\b(vegan|vegetarier|vegetarisch|wohne in|lebe in|heisse|name ist|mag kein|esse kein|vertrage kein|spare (auf|fuer)|\d{3,5}\s*(kcal|kalorien))\b/.test(n)) {
+      const mem = await memorySummary(uid);
+      return { intent: 'memory', reply: mem
+        ? `Alles klar, das merke ich mir. Aktuell weiß ich das über dich: ${mem}.`
+        : 'Alles klar, das merke ich mir für unsere Gespräche.' };
+    }
+
+    // Fallback gestaffelt: nicht auf jeden Murks ein Support-Ticket anbieten.
+    const words = (n.match(/[a-z0-9]+/g) || []);
+    const letters = (n.match(/[a-z]/g) || []).length;
+
+    // Nur Emojis, Satzzeichen oder Zahlen
+    if (!letters) return { intent: 'unclear', reply: 'Damit kann ich nichts anfangen. Schreib mir ruhig in ganzen Worten, was du brauchst.' };
+
+    // Kurze Bestaetigungen und Fuellwoerter: nicht als Frage behandeln
+    if (/^(ok|okay|oke|jo|jap|joa|aha|achso|hm+|mhm|na ja|naja|und|halt|eben|ach|so|alles klar|verstehe|gut|schon gut)$/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Alles klar. Sag einfach, wenn du etwas brauchst.' };
+    }
+    if (/^(langweilig|mir ist langweilig|und jetzt|was jetzt|weiter)$/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Dann lass uns was tun. Ich kann dir deine Zahlen zeigen, Nährwerte nachschlagen oder etwas eintragen. Im Spiele-Bereich gibt es auch Quiz und Training.', quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Nährwerte', send: 'Wie viele Kalorien hat Nutella?' }] };
+    }
+
+    // Kauderwelsch: keine erkennbaren Woerter (nur Buchstabensalat ohne Vokalstruktur)
+    const gibberish = words.length <= 3 && words.every(w => w.length < 3 || !/[aeiou]/.test(w));
+    if (gibberish) return { intent: 'unclear', reply: 'Das habe ich nicht verstanden. Kannst du es anders formulieren?' };
+
+    // Echte, aber unbeantwortete Frage: hier ist ein Ticket sinnvoll
+    const isQuestion = /\?$/.test(t) || /^(wer|was|wann|wo|warum|wieso|weshalb|welche|wie|kann|kannst|hast|gibt|ist|sind|darf|soll|muss)\b/.test(n);
+    if (isQuestion) {
+      return { intent: 'unknown', reply: 'Das weiß ich leider nicht. Ich kenne mich mit der App, Nährwerten, deinen Zahlen und Terminen aus. Wenn es um die App geht, kann ich ein Ticket an den Support anlegen, dann schaut ein Mensch drauf.', quicks: [{ label: 'Ja, Ticket', send: 'Ich möchte ein Support-Ticket erstellen' }, { label: 'Nein danke', send: 'nein danke' }] };
+    }
+    return { intent: 'unclear', reply: 'Da bin ich raus, das habe ich nicht verstanden. Frag mich gern etwas zur App, zu Nährwerten oder zu deinen Zahlen.', quicks: [{ label: 'Was kannst du?', send: 'Was kannst du alles?' }] };
   }
 
   // ================= HTTP-Endpunkte =================
