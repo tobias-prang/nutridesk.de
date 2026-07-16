@@ -4234,19 +4234,24 @@
 
   <sc-if value="{{ modFit }}">
   <div onclick="{{ eatClick }}" style="position:fixed;inset:0;background:rgba(5,7,11,.82);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;">
-    <div onclick="{{ eatClick }}" style="width:560px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:22px;box-shadow:var(--modalsh);">
+    <div onclick="{{ eatClick }}" style="width:660px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:22px;box-shadow:var(--modalsh);">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
         <span style="display:flex;align-items:center;gap:9px;font-size:17px;font-weight:700;"><i data-lucide="dumbbell" style="width:18px;height:18px;color:var(--violet);"></i>Training</span>
         <div onclick="{{ closeModal }}" style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);background:var(--bg2);color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="corner-down-left" style="width:13px;height:13px;"></i><span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:600;letter-spacing:.16em;">ESC</span></div>
       </div>
       <sc-if value="{{ fitIsMenu }}">
-      <div style="font-size:13px;color:var(--ink3);margin-bottom:16px;">Wähle eine Übung. Deine Kamera zählt die Wiederholungen automatisch. Schaff das Ziel, um die Challenge abzuschließen, jede erkannte Wiederholung gibt XP + Nutris.</div>
-      <div style="display:flex;flex-direction:column;gap:11px;">
-        <sc-for list="{{ fitList }}" as="fx" hint-placeholder-count="4">
-          <div onclick="{{ fitPick }}" data-id="{{ fx.id }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg2);border:1px solid var(--line3);cursor:pointer;" style-hover="border-color:var(--acc-bd);"><div style="width:46px;height:46px;border-radius:12px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:var(--violet);flex:0 0 auto;"><i data-lucide="{{ fx.icon }}" style="width:22px;height:22px;"></i></div><div style="flex:1;min-width:0;"><div style="font-size:15px;font-weight:700;margin-bottom:2px;">{{ fx.name }}</div><div style="font-size:12px;color:var(--ink3);line-height:1.45;">{{ fx.hint }}</div></div><div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 12px;border-radius:10px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.24);"><div style="font-size:17px;font-weight:800;color:var(--violet);line-height:1;">{{ fx.goal }}</div><div style="font-size:9.5px;color:var(--ink3);font-weight:600;letter-spacing:.03em;">WDH</div></div></div>
+      <div style="font-size:12.5px;color:var(--ink3);margin-bottom:14px;line-height:1.5;">Wähle eine Übung. Die Kamera zählt automatisch, schaff das Ziel für den vollen Satz XP und Nutris.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <sc-for list="{{ fitList }}" as="fx" hint-placeholder-count="6">
+          <div onclick="{{ fitPick }}" data-id="{{ fx.id }}" style="position:relative;padding:14px;border-radius:14px;background:var(--bg2);border:1px solid var(--line3);cursor:pointer;" style-hover="border-color:var(--acc-bd);">
+            <div style="position:absolute;top:11px;right:11px;display:flex;align-items:baseline;gap:3px;padding:3px 8px;border-radius:8px;background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.24);"><span style="font-size:13px;font-weight:800;color:var(--violet);line-height:1;">{{ fx.goal }}</span><span style="font-size:8.5px;color:var(--ink3);font-weight:700;letter-spacing:.03em;">WDH</span></div>
+            <div style="width:38px;height:38px;border-radius:11px;background:rgba(167,139,250,.14);border:1px solid rgba(167,139,250,.3);display:flex;align-items:center;justify-content:center;color:var(--violet);margin-bottom:9px;"><i data-lucide="{{ fx.icon }}" style="width:19px;height:19px;"></i></div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:3px;">{{ fx.name }}</div>
+            <div style="font-size:11.5px;color:var(--ink3);line-height:1.4;">{{ fx.short }}</div>
+          </div>
         </sc-for>
       </div>
-      <div onclick="{{ fitCamTest }}" style="display:flex;align-items:center;gap:14px;padding:16px;border-radius:14px;background:var(--bg2);border:1px dashed var(--line3);cursor:pointer;margin-top:12px;" style-hover="border-color:#2dd4bf;"><div style="width:46px;height:46px;border-radius:12px;background:rgba(45,212,191,.14);border:1px solid rgba(45,212,191,.3);display:flex;align-items:center;justify-content:center;color:#2dd4bf;flex:0 0 auto;"><i data-lucide="scan-face" style="width:22px;height:22px;"></i></div><div><div style="font-size:15px;font-weight:700;margin-bottom:2px;">Kamera-Test</div><div style="font-size:12px;color:var(--ink3);line-height:1.45;">Prüf, ob die Kamera dich sieht: Körper, Arme, Hände, Kopf &amp; Augen werden live markiert.</div></div></div>
+      <div onclick="{{ fitCamTest }}" style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:var(--bg2);border:1px dashed var(--line3);cursor:pointer;margin-top:10px;" style-hover="border-color:#2dd4bf;"><div style="width:36px;height:36px;border-radius:10px;background:rgba(45,212,191,.14);border:1px solid rgba(45,212,191,.3);display:flex;align-items:center;justify-content:center;color:#2dd4bf;flex:0 0 auto;"><i data-lucide="scan-face" style="width:18px;height:18px;"></i></div><div style="min-width:0;"><div style="font-size:13.5px;font-weight:700;margin-bottom:1px;">Kamera-Test</div><div style="font-size:11.5px;color:var(--ink3);line-height:1.4;">Prüf, ob die Kamera dich sieht, bevor du loslegst.</div></div></div>
       </sc-if>
       <sc-if value="{{ fitIsIntro }}">
       <div style="text-align:center;padding:4px 0;">
@@ -6008,12 +6013,12 @@ class Component extends DCLogic {
   _mpWarmStop = () => { if (this._mpWarmAbort) { try { this._mpWarmAbort.abort(); } catch (e) {} this._mpWarmAbort = null; } };
   _fitWarm = (on) => { const w = document.getElementById('fit-warm'); if (w) w.style.display = on ? 'flex' : 'none'; };
   _FITX = [
-    { id:'squat', icon:'chevrons-down', name:'Kniebeugen', goal:15, hint:'Steh mittig ins Bild, Beine hüftbreit. Geh in die Knie bis die Oberschenkel etwa waagerecht sind, dann kontrolliert wieder hoch.' },
-    { id:'jack', icon:'move', name:'Hampelmann', goal:25, hint:'Ganzer Körper ins Bild. Arme und Beine gleichzeitig öffnen (Hände über den Kopf) und wieder schließen.' },
-    { id:'knees', icon:'footprints', name:'Knieheben', goal:30, hint:'Lauf auf der Stelle und zieh die Knie abwechselnd bis etwa auf Hüfthöhe hoch.' },
-    { id:'arms', icon:'move-vertical', name:'Arm-Heben', goal:20, hint:'Arme seitlich von unten bis über Schulterhöhe heben und wieder senken. Oberkörper sichtbar.' },
-    { id:'side', icon:'move-horizontal', name:'Seitneigung', goal:20, hint:'Steh aufrecht, Füße hüftbreit. Neig den Oberkörper abwechselnd nach links und rechts und komm jedes Mal zurück zur Mitte.' },
-    { id:'punch', icon:'zap', name:'Boxen', goal:30, hint:'Fäuste ans Kinn, Oberkörper im Bild. Stoß abwechselnd links und rechts nach vorne, streck den Arm dabei ganz durch und zieh die Faust wieder ans Kinn.' },
+    { id:'squat', icon:'chevrons-down', name:'Kniebeugen', goal:15, short:'Tief in die Knie, kontrolliert hoch', hint:'Steh mittig ins Bild, Beine hüftbreit. Geh in die Knie bis die Oberschenkel etwa waagerecht sind, dann kontrolliert wieder hoch.' },
+    { id:'jack', icon:'move', name:'Hampelmann', goal:25, short:'Arme und Beine auf und zu', hint:'Ganzer Körper ins Bild. Arme und Beine gleichzeitig öffnen (Hände über den Kopf) und wieder schließen.' },
+    { id:'knees', icon:'footprints', name:'Knieheben', goal:30, short:'Auf der Stelle, Knie hoch', hint:'Lauf auf der Stelle und zieh die Knie abwechselnd bis etwa auf Hüfthöhe hoch.' },
+    { id:'arms', icon:'move-vertical', name:'Arm-Heben', goal:20, short:'Arme seitlich hoch und runter', hint:'Arme seitlich von unten bis über Schulterhöhe heben und wieder senken. Oberkörper sichtbar.' },
+    { id:'side', icon:'move-horizontal', name:'Seitneigung', goal:20, short:'Oberkörper zur Seite neigen', hint:'Steh aufrecht, Füße hüftbreit. Neig den Oberkörper abwechselnd nach links und rechts und komm jedes Mal zurück zur Mitte.' },
+    { id:'punch', icon:'zap', name:'Boxen', goal:30, short:'Fäuste abwechselnd nach vorne', hint:'Fäuste ans Kinn, Oberkörper im Bild. Stoß abwechselnd links und rechts nach vorne, streck den Arm dabei ganz durch und zieh die Faust wieder ans Kinn.' },
   ];
   openFitness = () => { this._fitStopCam(); this.setState({ modal:'fitness', fitView:'menu', fitEx:null, fitReps:0, fitErr:'', fitReward:null }); };
   fitPick = (e) => { const id = e.currentTarget.dataset.id; const ex = this._FITX.find(x => x.id === id); if (ex) this.setState({ fitEx: ex, fitView:'intro' }); };
@@ -6582,7 +6587,7 @@ class Component extends DCLogic {
         ? { bg:'var(--acc)', bd:'var(--acc)' } : { bg:'transparent', bd:'var(--line3)' })),
       pinPad: ['1','2','3','4','5','6','7','8','9','','0','del'].map(k => ({ k, t: k === 'del' ? '⌫' : k, d: k === '' ? 'none' : 'flex' })),
       fitIsMenu: s.fitView === 'menu', fitIsIntro: s.fitView === 'intro', fitIsLoading: s.fitView === 'loading', fitIsPlay: s.fitView === 'play', fitIsError: s.fitView === 'error', fitIsResult: s.fitView === 'result', fitIsCamTest: s.fitView === 'camtest',
-      fitList: this._FITX.map(x => ({ id: x.id, icon: x.icon, name: x.name, hint: x.hint, goal: x.goal })),
+      fitList: this._FITX.map(x => ({ id: x.id, icon: x.icon, name: x.name, hint: x.hint, short: x.short, goal: x.goal })),
       fitExName: s.fitEx ? s.fitEx.name : '', fitExHint: s.fitEx ? s.fitEx.hint : '', fitExIcon: s.fitEx ? s.fitEx.icon : 'dumbbell', fitExGoal: s.fitEx ? s.fitEx.goal : 0,
       fitReps: s.fitReps || 0, fitErr: s.fitErr || '',
       fitResGoal: s.fitEx ? s.fitEx.goal : 0,
