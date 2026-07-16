@@ -6154,18 +6154,71 @@ class Component extends DCLogic {
     g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.3, c); g.addColorStop(1, 'rgba(168,85,247,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
   };
+  _FIT_JOINTS = [0,11,12,13,14,15,16,23,24,25,26,27,28];
+  _fitBox = (lm, W, H, pad) => {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const i of this._FIT_JOINTS) {
+      const p = lm[i]; if (!p) continue;
+      x0 = Math.min(x0, p.x * W); x1 = Math.max(x1, p.x * W);
+      y0 = Math.min(y0, p.y * H); y1 = Math.max(y1, p.y * H);
+    }
+    if (x0 > x1) return null;
+    return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad };
+  };
+  _fitBrackets = (ctx, b) => {
+    const c = 30;
+    ctx.strokeStyle = '#22d3ee'; ctx.lineWidth = 2.5; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 10;
+    const k = (cx, cy, dx, dy) => { ctx.beginPath(); ctx.moveTo(cx + dx * c, cy); ctx.lineTo(cx, cy); ctx.lineTo(cx, cy + dy * c); ctx.stroke(); };
+    k(b.x0, b.y0, 1, 1); k(b.x1, b.y0, -1, 1); k(b.x0, b.y1, 1, -1); k(b.x1, b.y1, -1, -1);
+    ctx.shadowBlur = 0;
+  };
+  _fitTorso = (ctx, lm, W, H, b) => {
+    const q = [11, 12, 24, 23].map(i => lm[i]);
+    if (q.some(p => !p)) return;
+    ctx.beginPath(); ctx.moveTo(q[0].x * W, q[0].y * H);
+    for (const p of q.slice(1)) ctx.lineTo(p.x * W, p.y * H);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, q[0].y * H, 0, q[3].y * H);
+    g.addColorStop(0, 'rgba(34,211,238,.34)'); g.addColorStop(1, 'rgba(192,38,211,.30)');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(120,230,255,.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+    ctx.save(); ctx.clip();
+    ctx.strokeStyle = 'rgba(34,211,238,.35)'; ctx.lineWidth = 0.8;
+    for (let y = b.y0; y < b.y1; y += 9) { ctx.beginPath(); ctx.moveTo(b.x0, y); ctx.lineTo(b.x1, y); ctx.stroke(); }
+    for (let x = b.x0; x < b.x1; x += 12) { ctx.beginPath(); ctx.moveTo(x, b.y0); ctx.lineTo(x, b.y1); ctx.stroke(); }
+    ctx.restore();
+  };
+  _fitScanLine = (ctx, b, t) => {
+    const sy = b.y0 + ((t / 1600) % 1) * (b.y1 - b.y0);
+    const g = ctx.createLinearGradient(0, sy - 20, 0, sy + 20);
+    g.addColorStop(0, 'rgba(34,211,238,0)'); g.addColorStop(0.5, 'rgba(34,211,238,.42)'); g.addColorStop(1, 'rgba(34,211,238,0)');
+    ctx.fillStyle = g; ctx.fillRect(b.x0, sy - 20, b.x1 - b.x0, 40);
+    ctx.strokeStyle = 'rgba(180,250,255,.85)'; ctx.lineWidth = 1.5; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.moveTo(b.x0, sy); ctx.lineTo(b.x1, sy); ctx.stroke(); ctx.shadowBlur = 0;
+  };
   _fitDraw = (ctx, lm, cv) => {
     const W = cv.width, H = cv.height, t = performance.now();
+    const b = this._fitBox(lm, W, H, 26);
     ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    for (const [a, b] of this._FIT_CONN) {
-      const p = lm[a], q = lm[b]; if (!p || !q) continue;
+    if (b) { this._fitBrackets(ctx, b); this._fitTorso(ctx, lm, W, H, b); }
+    ctx.strokeStyle = 'rgba(34,211,238,.14)'; ctx.lineWidth = 24;
+    for (const [a, c] of this._FIT_CONN) {
+      const p = lm[a], q = lm[c]; if (!p || !q) continue;
+      ctx.beginPath(); ctx.moveTo(p.x * W, p.y * H); ctx.lineTo(q.x * W, q.y * H); ctx.stroke();
+    }
+    for (const [a, c] of this._FIT_CONN) {
+      const p = lm[a], q = lm[c]; if (!p || !q) continue;
       this._fitGlowLine(ctx, p.x * W, p.y * H, q.x * W, q.y * H, '#22d3ee', '#c026d3');
     }
-    const r = 11 + Math.sin(t / 240) * 2.2;
-    for (const i of [11,12,13,14,15,16,23,24,25,26,27,28]) {
+    ctx.strokeStyle = '#eafcff'; ctx.lineWidth = 1.4; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 8;
+    for (const i of this._FIT_JOINTS) {
       const p = lm[i]; if (!p) continue;
-      this._fitGlowDot(ctx, p.x * W, p.y * H, r, 'rgba(34,211,238,.7)');
+      const x = p.x * W, y = p.y * H, s = 5;
+      ctx.beginPath(); ctx.moveTo(x - s, y); ctx.lineTo(x + s, y); ctx.moveTo(x, y - s); ctx.lineTo(x, y + s); ctx.stroke();
+      ctx.strokeRect(x - s * 0.7, y - s * 0.7, s * 1.4, s * 1.4);
     }
+    ctx.shadowBlur = 0;
+    if (b) this._fitScanLine(ctx, b, t);
     ctx.globalCompositeOperation = 'source-over';
   };
   _FIT_ALL_CONN = [[0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],[9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],[17,19],[12,14],[14,16],[16,18],[16,20],[16,22],[18,20],[11,23],[12,24],[23,24],[23,25],[25,27],[27,29],[27,31],[29,31],[24,26],[26,28],[28,30],[28,32],[30,32]];
