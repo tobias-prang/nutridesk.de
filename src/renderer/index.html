@@ -6059,9 +6059,10 @@ class Component extends DCLogic {
         if (st.kL && dL > 0.5) st.kL = false;
         if (!st.kR && rUp && now - st.lastRep > 200) { st.reps++; st.lastRep = now; st.kR = true; this._fitBump(); }
         if (st.kR && dR > 0.5) st.kR = false;
+        st.latched = st.kL || st.kR;
         st.fb = (lUp || rUp) ? 'Knie hoch, weiter so!' : 'Lauf auf der Stelle';
         st.prog = this._fitClamp((0.62 - Math.min(dL, dR)) / (0.62 - 0.34));
-      } else { st.fb = 'Stell dich ganz ins Bild'; st.prog = 0; }
+      } else { st.fb = 'Stell dich ganz ins Bild'; st.prog = 0; st.latched = false; }
       return;
     }
     if (id === 'punch') {
@@ -6072,9 +6073,10 @@ class Component extends DCLogic {
         if (st.pL && rL < -0.1) st.pL = false;
         if (!st.pR && rR > 0.12 && now - st.lastRep > 140) { st.reps++; st.lastRep = now; st.pR = true; this._fitBump(); }
         if (st.pR && rR < -0.1) st.pR = false;
+        st.latched = st.pL || st.pR;
         st.fb = (rL > 0.08 || rR > 0.08) ? 'Zack, weiter!' : 'Fäuste abwechselnd nach vorne';
         st.prog = this._fitClamp(Math.max(rL, rR) / 0.12);
-      } else { st.fb = 'Arme müssen sichtbar sein'; st.prog = 0; }
+      } else { st.fb = 'Arme müssen sichtbar sein'; st.prog = 0; st.latched = false; }
       return;
     }
     let poseOk = true, restOk = false, effortOk = false, fb = '', prog = 0;
@@ -6108,9 +6110,10 @@ class Component extends DCLogic {
     if (!poseOk) { st.fb = fb; return; }
     if (st.phase === 'rest' && effortOk) { st.phase = 'effort'; }
     else if (st.phase === 'effort' && restOk) { if (now - st.lastRep > 280) { st.reps++; st.lastRep = now; this._fitBump(); } st.phase = 'rest'; }
+    st.latched = st.phase === 'effort';
     st.fb = fb;
   };
-  _fitBump = () => {};
+  _fitBump = () => { if (this._fit) this._fit.flash = performance.now(); };
   _FIT_CONN = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
   _fitUV = (ctx, cv) => { ctx.fillStyle = 'rgba(10,4,28,.55)'; ctx.fillRect(0, 0, cv.width, cv.height); };
   _fitGlowLine = (ctx, x1, y1, x2, y2, c1, c2) => {
@@ -6271,15 +6274,25 @@ class Component extends DCLogic {
     ctx.fillText(pct + '%', W - 20, 36); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     if (st.fb) { ctx.textAlign = 'center'; ctx.font = '600 20px "Space Grotesk",sans-serif'; const tw = ctx.measureText(st.fb).width; ctx.fillStyle = 'rgba(11,13,19,.6)'; ctx.fillRect(W/2 - tw/2 - 16, H - 96, tw + 32, 38); ctx.fillStyle = '#e8ecf2'; ctx.fillText(st.fb, W/2, H - 70); ctx.textAlign = 'left'; }
     const bw = W - 40, bx = 20, by = H - 40;
-    const mp = Math.max(0, Math.min(1, st.prog || 0)), hot = mp >= 0.999;
+    const mp = Math.max(0, Math.min(1, st.prog || 0)), full = mp >= 0.999;
+    const lab = st.latched ? 'ZURÜCK' : full ? 'WEIT GENUG' : '';
+    const labC = st.latched ? '#fbbf24' : '#22d3ee';
     ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(bx, by - 15, bw, 7);
-    if (hot) { ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 16; }
-    ctx.fillStyle = hot ? '#22d3ee' : 'rgba(255,255,255,.38)';
+    if (full) { ctx.shadowColor = labC; ctx.shadowBlur = 16; }
+    ctx.fillStyle = full ? labC : 'rgba(255,255,255,.38)';
     ctx.fillRect(bx, by - 15, bw * mp, 7);
     ctx.shadowBlur = 0;
-    if (hot) {
-      ctx.textAlign = 'right'; ctx.font = 'bold 11px "Space Grotesk",monospace'; ctx.fillStyle = '#22d3ee';
-      ctx.fillText('ZÄHLT', bx + bw, by - 21); ctx.textAlign = 'left';
+    if (lab) {
+      ctx.textAlign = 'right'; ctx.font = 'bold 11px "Space Grotesk",monospace'; ctx.fillStyle = labC;
+      ctx.fillText(lab, bx + bw, by - 21); ctx.textAlign = 'left';
+    }
+    if (st.flash && now - st.flash < 460) {
+      const k = 1 - (now - st.flash) / 460;
+      ctx.save(); ctx.globalAlpha = Math.max(0, Math.min(1, k * 1.4));
+      ctx.shadowColor = '#a3e635'; ctx.shadowBlur = 18;
+      ctx.fillStyle = '#a3e635'; ctx.textAlign = 'center'; ctx.font = 'bold 58px "Space Grotesk",sans-serif';
+      ctx.fillText('+1', W / 2, H * 0.34 - (1 - k) * 26);
+      ctx.restore(); ctx.textAlign = 'left';
     }
     ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(bx, by, bw, 14);
     ctx.fillStyle = '#a3e635'; ctx.fillRect(bx, by, bw * (pct / 100), 14);
