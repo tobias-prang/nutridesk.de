@@ -1031,6 +1031,24 @@ const QUESTS = [
   { id: 'quiz_food', title: 'Ernährungs-Profi', desc: 'Beantworte 6 Lebensmittel-Fragen richtig.', target: 6, reward: 70, kind: 'food_correct' },
   { id: 'fitness_reps', title: 'In Bewegung', desc: 'Schaffe heute 20 erkannte Wiederholungen im Training.', target: 20, reward: 80, kind: 'fitness_reps' },
 ];
+const FIT_EX = {
+  squat: { goal: 15, xp: 90, nut: 35, minMs: 1200 },
+  jack:  { goal: 25, xp: 75, nut: 30, minMs: 550 },
+  arms:  { goal: 20, xp: 60, nut: 24, minMs: 800 },
+  knees: { goal: 30, xp: 60, nut: 24, minMs: 320 },
+  side:  { goal: 20, xp: 55, nut: 22, minMs: 700 },
+  punch: { goal: 30, xp: 55, nut: 22, minMs: 260 },
+};
+const FIT_ABORT_RATE = 0.4;
+const fitSessions = new Map();
+function fitSessionStart(uid) { fitSessions.set(uid, Date.now()); }
+function fitSessionTake(uid) { const t = fitSessions.get(uid); fitSessions.delete(uid); return t || 0; }
+function fitPlausibleReps(ex, reps, startedAt) {
+  const capped = Math.min(reps, ex.goal);
+  if (!startedAt) return 0;
+  const elapsed = Date.now() - startedAt;
+  return Math.max(0, Math.min(capped, Math.floor(elapsed / ex.minMs)));
+}
 function gLevel(xp) { let l = 1; while (100 * l * (l + 1) <= xp) l++; return l; }
 function gXpForLevel(l) { return 100 * l * (l - 1); }
 function gToday() { return new Date().toISOString().slice(0, 10); }
@@ -1055,17 +1073,32 @@ function gStateObj(g) {
   };
 }
 app.get('/games/state', auth, asyncRoute(async (req, res) => { res.json(gStateObj(await gEnsure(req.uid))); }));
+app.post('/games/fitness/start', auth, rateLimitUser('fit-start', 60, 60000), asyncRoute(async (req, res) => {
+  vEnum(req.body.ex, 'Übung', Object.keys(FIT_EX));
+  fitSessionStart(req.uid);
+  res.json({ ok: true });
+}));
 app.post('/games/reward', auth, rateLimitUser('game-reward', 120, 60000), asyncRoute(async (req, res) => {
   const game = vEnum(req.body.game, 'Spiel', ['quiz', 'arcade', 'fitness', 'kcal', 'ninja']);
   const correct = vInt(req.body.correct, 'Richtige', 0, 100, { optional: true }) || 0;
   const score = vInt(req.body.score, 'Punkte', 0, 100000, { optional: true }) || 0;
-  const reps = vInt(req.body.reps, 'Wiederholungen', 0, 1000, { optional: true }) || 0;
+  let reps = vInt(req.body.reps, 'Wiederholungen', 0, 1000, { optional: true }) || 0;
   const category = vStr(req.body.category, 'Kategorie', 20, { optional: true }) || '';
   const isQuizLike = game === 'quiz' || game === 'kcal';
   const isFoodQuiz = game === 'kcal' || (game === 'quiz' && category === 'food');
+  let fitDone = false;
+  let fitXp = 0, fitNut = 0;
+  if (game === 'fitness') {
+    const ex = FIT_EX[vEnum(req.body.ex, 'Übung', Object.keys(FIT_EX))];
+    reps = fitPlausibleReps(ex, reps, fitSessionTake(req.uid));
+    fitDone = reps >= ex.goal;
+    const share = ex.goal > 0 ? reps / ex.goal : 0;
+    fitXp = fitDone ? ex.xp : Math.round(ex.xp * share * FIT_ABORT_RATE);
+    fitNut = fitDone ? ex.nut : Math.round(ex.nut * share * FIT_ABORT_RATE);
+  }
   const g = await gEnsure(req.uid);
-  let xpEarn = isQuizLike ? correct * 12 : game === 'fitness' ? reps * 4 : Math.floor(score / 5);
-  let nutEarn = isQuizLike ? correct * 4 : game === 'fitness' ? reps * 2 : Math.floor(score / 12);
+  let xpEarn = isQuizLike ? correct * 12 : game === 'fitness' ? fitXp : Math.floor(score / 5);
+  let nutEarn = isQuizLike ? correct * 4 : game === 'fitness' ? fitNut : Math.floor(score / 12);
   const room = Math.max(0, GAME_XP_CAP - g.xpToday);
   const capped = xpEarn > room;
   xpEarn = Math.min(xpEarn, room);
@@ -1081,7 +1114,7 @@ app.post('/games/reward', auth, rateLimitUser('game-reward', 120, 60000), asyncR
   const metric = isQuizLike ? correct : game === 'fitness' ? reps : score;
   await pool.execute('INSERT INTO game_scores (user_id, game, best, total, plays) VALUES (?,?,?,?,1) ON DUPLICATE KEY UPDATE best=GREATEST(best,VALUES(best)), total=total+VALUES(total), plays=plays+1',
     [req.uid, game, metric, metric]).catch(() => {});
-  res.json({ earned: { xp: xpEarn, nutris: nutEarn }, capped, state: gStateObj({ xp: newXp, nutris: newNut, xpToday: newToday, prog, claimed: g.claimed, quest: q }) });
+  res.json({ earned: { xp: xpEarn, nutris: nutEarn }, capped, reps, done: fitDone, state: gStateObj({ xp: newXp, nutris: newNut, xpToday: newToday, prog, claimed: g.claimed, quest: q }) });
 }));
 app.get('/games/leaderboard', auth, asyncRoute(async (req, res) => {
   const game = vEnum(req.query.game, 'Spiel', ['quiz', 'arcade', 'fitness', 'kcal', 'ninja']);

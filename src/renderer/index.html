@@ -4241,9 +4241,10 @@
       </sc-if>
       <sc-if value="{{ fitIsResult }}">
       <div style="text-align:center;padding:10px 0 4px;">
-        <div style="width:64px;height:64px;border-radius:50%;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><i data-lucide="party-popper" style="width:30px;height:30px;color:var(--acc);"></i></div>
-        <div style="font-size:18px;font-weight:700;margin-bottom:6px;">Gut gemacht!</div>
-        <div style="font-size:14px;color:var(--ink3);margin-bottom:16px;"><span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">{{ fitReps }}</span> Wiederholungen geschafft</div>
+        <div style="width:64px;height:64px;border-radius:50%;background:{{ fitResBg }};border:1px solid {{ fitResBd }};display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><i data-lucide="{{ fitResIcon }}" style="width:30px;height:30px;color:{{ fitResC }};"></i></div>
+        <div style="font-size:18px;font-weight:700;margin-bottom:6px;">{{ fitResTitle }}</div>
+        <div style="font-size:14px;color:var(--ink3);margin-bottom:16px;"><span style="font-family:'JetBrains Mono',monospace;color:var(--ink);font-weight:600;">{{ fitReps }} / {{ fitResGoal }}</span> Wiederholungen</div>
+        <div style="display:{{ fitResHintD }};font-size:12.5px;color:#fbbf24;line-height:1.5;margin-bottom:14px;">Challenge nicht abgeschlossen, deshalb gibt es nur 40 % der Belohnung. Schaff das Ziel für den vollen Satz.</div>
         <div style="display:inline-flex;gap:16px;padding:12px 20px;border-radius:12px;background:var(--bg2);border:1px solid var(--line3);margin-bottom:20px;"><span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--acc);">+{{ fitRewardXp }} XP</span><span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:#2dd4bf;">+{{ fitRewardNut }} Nutris</span></div>
         <div style="display:flex;gap:10px;">
           <div onclick="{{ fitStart }}" style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="rotate-ccw" style="width:15px;height:15px;"></i>Nochmal</div>
@@ -6014,7 +6015,7 @@ class Component extends DCLogic {
     cv.width = 640; cv.height = 480;
     const now = (typeof performance !== 'undefined' ? performance.now() : 0);
     this._fitWarm(true);
-    this._fit = { video:v, canvas:cv, ctx: cv.getContext('2d'), lm: this._poseLandmarker, exId: this.state.fitEx.id, goal: this.state.fitEx.goal || 20, reps:0, phase:'rest', lastRep:0, active:false, cdEnd: now + 3200, maxEnd:0, doneAt:0, kL:false, kR:false, pL:false, pR:false, fb:'Mach dich bereit', prog:0, lastTs:0, raf:0 };
+    this._fit = { video:v, canvas:cv, ctx: cv.getContext('2d'), lm: this._poseLandmarker, exId: this.state.fitEx.id, goal: this.state.fitEx.goal || 20, reps:0, phase:'rest', lastRep:0, active:false, cdEnd: now + 3200, maxEnd:0, doneAt:0, paused:false, pausedAt:0, resumeAt:0, kL:false, kR:false, pL:false, pR:false, fb:'Mach dich bereit', prog:0, lastTs:0, raf:0 };
     this._fitLoop();
   };
   _fitStopCam = () => {
@@ -6029,74 +6030,115 @@ class Component extends DCLogic {
     return Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180 / Math.PI;
   };
   _fitVis = (lm, idxs) => idxs.every(i => lm[i] && (lm[i].visibility === undefined || lm[i].visibility > 0.35));
+  _FIT_NEED = {
+    squat: [23,24,25,26,27,28], knees: [23,24,25,26,27,28], jack: [11,12,15,16,27,28],
+    arms: [11,12,15,16], punch: [11,12,15,16], side: [11,12,23,24],
+  };
+  _FIT_NEED_TXT = {
+    squat: 'Beine und Füße müssen ins Bild', knees: 'Beine und Füße müssen ins Bild',
+    jack: 'Ganzer Körper muss ins Bild', arms: 'Oberkörper und Hände müssen ins Bild',
+    punch: 'Oberkörper und Hände müssen ins Bild', side: 'Oberkörper und Hüfte müssen ins Bild',
+  };
+  _fitAligned = (lm, id) => !!lm && this._fitVis(lm, this._FIT_NEED[id] || []);
+  _fitSm = (k, v) => {
+    const st = this._fit; if (!st.sm) st.sm = {};
+    const p = st.sm[k], s = (p == null) ? v : p + (v - p) * 0.45;
+    st.sm[k] = s; return s;
+  };
+  _fitClamp = (v) => Math.max(0, Math.min(1, v));
   _fitProcess = (lm, now) => {
     const st = this._fit, id = st.exId, L = (i) => lm[i];
     const torso = Math.abs(((L(11).y + L(12).y) / 2) - ((L(23).y + L(24).y) / 2)) || 0.2;
     if (id === 'knees') {
-      const ok = this._fitVis(lm, [23, 24, 25, 26, 27, 28]);
+      const ok = this._fitAligned(lm, id);
       if (ok) {
         const hipY = (L(23).y + L(24).y) / 2, legL = Math.abs(hipY - ((L(27).y + L(28).y) / 2)) || 0.4;
-        const lUp = (L(25).y - hipY) < 0.30 * legL, rUp = (L(26).y - hipY) < 0.30 * legL;
-        if (!st.kL && lUp && now - st.lastRep > 220) { st.reps++; st.lastRep = now; st.kL = true; this._fitBump(); }
-        if (st.kL && (L(25).y - hipY) > 0.48 * legL) st.kL = false;
-        if (!st.kR && rUp && now - st.lastRep > 220) { st.reps++; st.lastRep = now; st.kR = true; this._fitBump(); }
-        if (st.kR && (L(26).y - hipY) > 0.48 * legL) st.kR = false;
+        const dL = this._fitSm('kl', (L(25).y - hipY) / legL), dR = this._fitSm('kr', (L(26).y - hipY) / legL);
+        const lUp = dL < 0.34, rUp = dR < 0.34;
+        if (!st.kL && lUp && now - st.lastRep > 200) { st.reps++; st.lastRep = now; st.kL = true; this._fitBump(); }
+        if (st.kL && dL > 0.5) st.kL = false;
+        if (!st.kR && rUp && now - st.lastRep > 200) { st.reps++; st.lastRep = now; st.kR = true; this._fitBump(); }
+        if (st.kR && dR > 0.5) st.kR = false;
         st.fb = (lUp || rUp) ? 'Knie hoch, weiter so!' : 'Lauf auf der Stelle';
-        st.prog = Math.max(lUp ? 1 : 0, rUp ? 1 : 0);
+        st.prog = this._fitClamp((0.62 - Math.min(dL, dR)) / (0.62 - 0.34));
       } else { st.fb = 'Stell dich ganz ins Bild'; st.prog = 0; }
       return;
     }
     if (id === 'punch') {
-      const ok = this._fitVis(lm, [11, 12, 15, 16]);
+      const ok = this._fitAligned(lm, id);
       if (ok) {
-        const rL = (L(11).y - L(15).y) / torso, rR = (L(12).y - L(16).y) / torso;
-        if (!st.pL && rL > 0.15 && now - st.lastRep > 150) { st.reps++; st.lastRep = now; st.pL = true; this._fitBump(); }
-        if (st.pL && rL < -0.15) st.pL = false;
-        if (!st.pR && rR > 0.15 && now - st.lastRep > 150) { st.reps++; st.lastRep = now; st.pR = true; this._fitBump(); }
-        if (st.pR && rR < -0.15) st.pR = false;
-        st.fb = (rL > 0.1 || rR > 0.1) ? 'Zack, weiter!' : 'Fäuste abwechselnd nach vorne';
-        st.prog = Math.max(0, Math.min(1, Math.max(rL, rR) / 0.4));
+        const rL = this._fitSm('pl', (L(11).y - L(15).y) / torso), rR = this._fitSm('pr', (L(12).y - L(16).y) / torso);
+        if (!st.pL && rL > 0.12 && now - st.lastRep > 140) { st.reps++; st.lastRep = now; st.pL = true; this._fitBump(); }
+        if (st.pL && rL < -0.1) st.pL = false;
+        if (!st.pR && rR > 0.12 && now - st.lastRep > 140) { st.reps++; st.lastRep = now; st.pR = true; this._fitBump(); }
+        if (st.pR && rR < -0.1) st.pR = false;
+        st.fb = (rL > 0.08 || rR > 0.08) ? 'Zack, weiter!' : 'Fäuste abwechselnd nach vorne';
+        st.prog = this._fitClamp(Math.max(rL, rR) / 0.12);
       } else { st.fb = 'Arme müssen sichtbar sein'; st.prog = 0; }
       return;
     }
     let poseOk = true, restOk = false, effortOk = false, fb = '', prog = 0;
     if (id === 'squat') {
-      poseOk = this._fitVis(lm, [23, 24, 25, 26, 27, 28]);
-      const a = (this._fitAngle(L(23), L(25), L(27)) + this._fitAngle(L(24), L(26), L(28))) / 2;
-      restOk = a > 155; effortOk = a < 105; prog = Math.max(0, Math.min(1, (168 - a) / (168 - 95)));
-      fb = !poseOk ? 'Stell dich ganz ins Bild' : effortOk ? 'Tief, stark!' : a < 135 ? 'Noch etwas tiefer' : (st.phase === 'effort' ? 'Und wieder hoch' : 'Bereit');
+      poseOk = this._fitAligned(lm, id);
+      const a = this._fitSm('a', (this._fitAngle(L(23), L(25), L(27)) + this._fitAngle(L(24), L(26), L(28))) / 2);
+      restOk = a > 148; effortOk = a < 118; prog = this._fitClamp((168 - a) / (168 - 118));
+      fb = !poseOk ? 'Stell dich ganz ins Bild' : effortOk ? 'Tief, stark!' : a < 138 ? 'Noch etwas tiefer' : (st.phase === 'effort' ? 'Und wieder hoch' : 'Bereit');
     } else if (id === 'arms') {
-      poseOk = this._fitVis(lm, [11, 12, 15, 16]);
-      const r = (((L(11).y - L(15).y) + (L(12).y - L(16).y)) / 2) / torso;
-      restOk = r < -0.5; effortOk = r > 0.35; prog = Math.max(0, Math.min(1, (r + 0.9) / 1.3));
+      poseOk = this._fitAligned(lm, id);
+      const r = this._fitSm('r', (((L(11).y - L(15).y) + (L(12).y - L(16).y)) / 2) / torso);
+      restOk = r < -0.35; effortOk = r > 0.28; prog = this._fitClamp((r + 0.35) / (0.28 + 0.35));
       fb = !poseOk ? 'Arme müssen sichtbar sein' : effortOk ? 'Oben, super!' : (st.phase === 'effort' ? 'Wieder senken' : 'Arme hoch');
     } else if (id === 'jack') {
-      poseOk = this._fitVis(lm, [11, 12, 15, 16, 27, 28]);
-      const r = (((L(11).y - L(15).y) + (L(12).y - L(16).y)) / 2) / torso;
-      const shoulderW = Math.abs(L(11).x - L(12).x) || 0.1, ankleW = Math.abs(L(27).x - L(28).x);
-      effortOk = r > 0.3 && ankleW > shoulderW * 1.35; restOk = r < -0.2 && ankleW < shoulderW * 1.12;
-      prog = Math.max(0, Math.min(1, (r + 0.5) / 0.9)); fb = !poseOk ? 'Ganzer Körper ins Bild' : effortOk ? 'Auf!' : 'Zu';
+      poseOk = this._fitAligned(lm, id);
+      const r = this._fitSm('r', (((L(11).y - L(15).y) + (L(12).y - L(16).y)) / 2) / torso);
+      const shoulderW = Math.abs(L(11).x - L(12).x) || 0.1;
+      const wRat = this._fitSm('w', Math.abs(L(27).x - L(28).x) / shoulderW);
+      const armP = this._fitClamp((r + 0.2) / (0.25 + 0.2)), legP = this._fitClamp((wRat - 1.0) / (1.25 - 1.0));
+      effortOk = armP >= 1 && legP >= 1; restOk = r < -0.1 && wRat < 1.15;
+      prog = Math.min(armP, legP);
+      fb = !poseOk ? 'Ganzer Körper ins Bild' : effortOk ? 'Auf!' : (st.phase === 'effort' ? 'Und zu' : (armP < legP ? 'Arme höher' : 'Beine weiter auf'));
     } else if (id === 'side') {
-      poseOk = this._fitVis(lm, [11, 12, 23, 24]);
+      poseOk = this._fitAligned(lm, id);
       const shMid = (L(11).x + L(12).x) / 2, hipMid = (L(23).x + L(24).x) / 2, shoulderW = Math.abs(L(11).x - L(12).x) || 0.12;
-      const off = Math.abs(shMid - hipMid) / shoulderW;
-      restOk = off < 0.15; effortOk = off > 0.4; prog = Math.max(0, Math.min(1, off / 0.5));
+      const off = this._fitSm('o', Math.abs(shMid - hipMid) / shoulderW);
+      restOk = off < 0.18; effortOk = off > 0.35; prog = this._fitClamp(off / 0.35);
       fb = !poseOk ? 'Oberkörper ganz ins Bild' : effortOk ? 'Gut, und zurück zur Mitte' : (st.phase === 'effort' ? 'Zurück zur Mitte' : 'Zur Seite neigen');
     }
     st.prog = prog;
     if (!poseOk) { st.fb = fb; return; }
     if (st.phase === 'rest' && effortOk) { st.phase = 'effort'; }
-    else if (st.phase === 'effort' && restOk) { if (now - st.lastRep > 300) { st.reps++; st.lastRep = now; this._fitBump(); } st.phase = 'rest'; }
+    else if (st.phase === 'effort' && restOk) { if (now - st.lastRep > 280) { st.reps++; st.lastRep = now; this._fitBump(); } st.phase = 'rest'; }
     st.fb = fb;
   };
   _fitBump = () => {};
   _FIT_CONN = [[11,12],[11,13],[13,15],[12,14],[14,16],[11,23],[12,24],[23,24],[23,25],[25,27],[24,26],[26,28]];
+  _fitUV = (ctx, cv) => { ctx.fillStyle = 'rgba(10,4,28,.55)'; ctx.fillRect(0, 0, cv.width, cv.height); };
+  _fitGlowLine = (ctx, x1, y1, x2, y2, c1, c2) => {
+    const g = ctx.createLinearGradient(x1, y1, x2, y2);
+    g.addColorStop(0, c1); g.addColorStop(1, c2);
+    ctx.strokeStyle = g; ctx.shadowColor = c1; ctx.shadowBlur = 20; ctx.globalAlpha = 0.5; ctx.lineWidth = 11;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.lineWidth = 2.5; ctx.strokeStyle = '#eafcff';
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  };
+  _fitGlowDot = (ctx, x, y, r, c) => {
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+    g.addColorStop(0, 'rgba(255,255,255,.95)'); g.addColorStop(0.3, c); g.addColorStop(1, 'rgba(168,85,247,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  };
   _fitDraw = (ctx, lm, cv) => {
-    const W = cv.width, H = cv.height;
-    ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(163,230,53,.85)';
-    for (const [a, b] of this._FIT_CONN) { const p = lm[a], q = lm[b]; if (!p || !q) continue; ctx.beginPath(); ctx.moveTo(p.x * W, p.y * H); ctx.lineTo(q.x * W, q.y * H); ctx.stroke(); }
-    ctx.fillStyle = '#2dd4bf';
-    for (const i of [11,12,13,14,15,16,23,24,25,26,27,28]) { const p = lm[i]; if (!p) continue; ctx.beginPath(); ctx.arc(p.x * W, p.y * H, 5, 0, 7); ctx.fill(); }
+    const W = cv.width, H = cv.height, t = performance.now();
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    for (const [a, b] of this._FIT_CONN) {
+      const p = lm[a], q = lm[b]; if (!p || !q) continue;
+      this._fitGlowLine(ctx, p.x * W, p.y * H, q.x * W, q.y * H, '#22d3ee', '#c026d3');
+    }
+    const r = 11 + Math.sin(t / 240) * 2.2;
+    for (const i of [11,12,13,14,15,16,23,24,25,26,27,28]) {
+      const p = lm[i]; if (!p) continue;
+      this._fitGlowDot(ctx, p.x * W, p.y * H, r, 'rgba(34,211,238,.7)');
+    }
+    ctx.globalCompositeOperation = 'source-over';
   };
   _FIT_ALL_CONN = [[0,1],[1,2],[2,3],[3,7],[0,4],[4,5],[5,6],[6,8],[9,10],[11,12],[11,13],[13,15],[15,17],[15,19],[15,21],[17,19],[12,14],[14,16],[16,18],[16,20],[16,22],[18,20],[11,23],[12,24],[23,24],[23,25],[25,27],[27,29],[27,31],[29,31],[24,26],[26,28],[28,30],[28,32],[30,32]];
   _FIT_GROUPS = [{ c:'#f472b6', idx:[0,1,2,3,4,5,6,7,8,9,10] }, { c:'#34d399', idx:[11,12,13,14] }, { c:'#fbbf24', idx:[15,16,17,18,19,20,21,22] }, { c:'#60a5fa', idx:[23,24] }, { c:'#a78bfa', idx:[25,26,27,28,29,30,31,32] }];
@@ -6123,6 +6165,7 @@ class Component extends DCLogic {
       ctx.save(); ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.translate(cv.width, 0); ctx.scale(-1, 1);
       try { ctx.drawImage(v, 0, 0, cv.width, cv.height); } catch (e) {}
+      this._fitUV(ctx, cv);
       if (lm) this._fitTestDraw(ctx, lm, cv);
       this._fitTestDrawHands(ctx, handList, cv);
       ctx.restore();
@@ -6133,19 +6176,28 @@ class Component extends DCLogic {
   };
   _fitTestDraw = (ctx, lm, cv) => {
     const W = cv.width, H = cv.height, vis = (i) => lm[i] && (lm[i].visibility === undefined || lm[i].visibility > 0.4);
-    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(163,230,53,.55)';
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(120,200,255,.5)'; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 12; ctx.lineWidth = 5;
     for (const [a, b] of this._FIT_ALL_CONN) { if (!vis(a) || !vis(b)) continue; ctx.beginPath(); ctx.moveTo(lm[a].x * W, lm[a].y * H); ctx.lineTo(lm[b].x * W, lm[b].y * H); ctx.stroke(); }
-    for (const g of this._FIT_GROUPS) { ctx.fillStyle = g.c; for (const i of g.idx) { if (!vis(i)) continue; ctx.beginPath(); ctx.arc(lm[i].x * W, lm[i].y * H, 4.5, 0, 7); ctx.fill(); } }
+    ctx.shadowBlur = 0; ctx.lineWidth = 1.6; ctx.strokeStyle = 'rgba(234,252,255,.9)';
+    for (const [a, b] of this._FIT_ALL_CONN) { if (!vis(a) || !vis(b)) continue; ctx.beginPath(); ctx.moveTo(lm[a].x * W, lm[a].y * H); ctx.lineTo(lm[b].x * W, lm[b].y * H); ctx.stroke(); }
+    for (const g of this._FIT_GROUPS) { for (const i of g.idx) { if (!vis(i)) continue; ctx.shadowColor = g.c; ctx.shadowBlur = 14; ctx.fillStyle = g.c; ctx.beginPath(); ctx.arc(lm[i].x * W, lm[i].y * H, 5, 0, 7); ctx.fill(); } }
+    ctx.shadowBlur = 0; ctx.globalCompositeOperation = 'source-over';
   };
   _HAND_CONN = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],[9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]];
   _fitTestDrawHands = (ctx, handList, cv) => {
     const W = cv.width, H = cv.height;
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const hand of handList) {
-      ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(45,212,191,.9)';
+      ctx.strokeStyle = 'rgba(45,212,191,.6)'; ctx.shadowColor = '#2dd4bf'; ctx.shadowBlur = 12; ctx.lineWidth = 4.5;
       for (const [a, b] of this._HAND_CONN) { const p = hand[a], q = hand[b]; if (!p || !q) continue; ctx.beginPath(); ctx.moveTo(p.x * W, p.y * H); ctx.lineTo(q.x * W, q.y * H); ctx.stroke(); }
-      ctx.fillStyle = '#fbbf24';
+      ctx.shadowBlur = 0; ctx.lineWidth = 1.4; ctx.strokeStyle = 'rgba(234,252,255,.9)';
+      for (const [a, b] of this._HAND_CONN) { const p = hand[a], q = hand[b]; if (!p || !q) continue; ctx.beginPath(); ctx.moveTo(p.x * W, p.y * H); ctx.lineTo(q.x * W, q.y * H); ctx.stroke(); }
+      ctx.shadowColor = '#fbbf24'; ctx.shadowBlur = 10; ctx.fillStyle = '#fbbf24';
       for (const p of hand) { ctx.beginPath(); ctx.arc(p.x * W, p.y * H, 3.5, 0, 7); ctx.fill(); }
+      ctx.shadowBlur = 0;
     }
+    ctx.globalCompositeOperation = 'source-over';
   };
   _fitTestHud = (ctx, cv, lm, handList) => {
     const W = cv.width, H = cv.height, vis = (i) => !!(lm && lm[i] && (lm[i].visibility === undefined || lm[i].visibility > 0.4));
@@ -6165,14 +6217,51 @@ class Component extends DCLogic {
     }
     ctx.textBaseline = 'alphabetic';
   };
-  _fitHud = (ctx, cv, now) => {
+  _fitGuide = (ctx, W, H, ok) => {
+    const cx = W / 2, top = H * 0.12, bot = H * 0.94, hh = (bot - top) * 0.16, bw = (bot - top) * 0.26;
+    ctx.save();
+    ctx.setLineDash([9, 8]); ctx.lineWidth = 2.5;
+    ctx.strokeStyle = ok ? 'rgba(163,230,53,.8)' : 'rgba(251,191,36,.75)';
+    ctx.beginPath(); ctx.arc(cx, top + hh * 0.7, hh * 0.62, 0, 7); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx - bw / 2, top + hh * 1.5); ctx.lineTo(cx + bw / 2, top + hh * 1.5);
+    ctx.lineTo(cx + bw * 0.42, bot); ctx.lineTo(cx - bw * 0.42, bot); ctx.closePath(); ctx.stroke();
+    ctx.restore();
+  };
+  _fitBanner = (ctx, W, H, title, sub, warn) => {
+    ctx.fillStyle = 'rgba(11,13,19,.62)'; ctx.fillRect(0, 0, W, H);
+    ctx.textAlign = 'center';
+    ctx.fillStyle = warn ? '#fbbf24' : '#e8ecf2'; ctx.font = 'bold 34px "Space Grotesk",sans-serif';
+    ctx.fillText(title, W / 2, H / 2 - 4);
+    if (sub) { ctx.fillStyle = '#c7d0dc'; ctx.font = '600 16px "Space Grotesk",sans-serif'; ctx.fillText(sub, W / 2, H / 2 + 28); }
+    ctx.textAlign = 'left';
+  };
+  _fitHud = (ctx, cv, now, aligned) => {
     const st = this._fit, W = cv.width, H = cv.height;
     if (!st.active) {
+      if (!aligned) {
+        this._fitGuide(ctx, W, H, false);
+        this._fitBanner(ctx, W, H, 'Bitte ausrichten', this._FIT_NEED_TXT[st.exId] || 'Stell dich ganz ins Bild', true);
+        return;
+      }
       const left = Math.ceil((st.cdEnd - now) / 1000);
+      this._fitGuide(ctx, W, H, true);
       ctx.fillStyle = 'rgba(11,13,19,.55)'; ctx.fillRect(0, 0, W, H);
       ctx.fillStyle = '#e8ecf2'; ctx.textAlign = 'center'; ctx.font = 'bold 92px "Space Grotesk",sans-serif';
       ctx.fillText(left > 0 ? String(left) : 'Los!', W / 2, H / 2 + 20);
       ctx.textAlign = 'left'; return;
+    }
+    if (st.paused) {
+      this._fitGuide(ctx, W, H, aligned);
+      if (st.resumeAt) {
+        const back = Math.ceil((st.resumeAt - now) / 1000);
+        this._fitBanner(ctx, W, H, back > 0 ? 'Weiter in ' + back : 'Los!', 'Bleib so stehen', false);
+      } else {
+        this._fitBanner(ctx, W, H, 'Pausiert', this._FIT_NEED_TXT[st.exId] || 'Stell dich ganz ins Bild', true);
+      }
+      ctx.fillStyle = '#a3e635'; ctx.font = 'bold 30px "Space Grotesk",monospace'; ctx.textBaseline = 'middle';
+      ctx.fillText(st.reps + ' / ' + st.goal, 20, 28); ctx.textBaseline = 'alphabetic';
+      return;
     }
     const pct = Math.min(100, Math.round(st.reps / st.goal * 100)), done = st.reps >= st.goal;
     ctx.fillStyle = 'rgba(11,13,19,.42)'; ctx.fillRect(0, 0, W, 66);
@@ -6182,9 +6271,18 @@ class Component extends DCLogic {
     ctx.fillText(pct + '%', W - 20, 36); ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
     if (st.fb) { ctx.textAlign = 'center'; ctx.font = '600 20px "Space Grotesk",sans-serif'; const tw = ctx.measureText(st.fb).width; ctx.fillStyle = 'rgba(11,13,19,.6)'; ctx.fillRect(W/2 - tw/2 - 16, H - 96, tw + 32, 38); ctx.fillStyle = '#e8ecf2'; ctx.fillText(st.fb, W/2, H - 70); ctx.textAlign = 'left'; }
     const bw = W - 40, bx = 20, by = H - 40;
+    const mp = Math.max(0, Math.min(1, st.prog || 0)), hot = mp >= 0.999;
+    ctx.fillStyle = 'rgba(255,255,255,.10)'; ctx.fillRect(bx, by - 15, bw, 7);
+    if (hot) { ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = 16; }
+    ctx.fillStyle = hot ? '#22d3ee' : 'rgba(255,255,255,.38)';
+    ctx.fillRect(bx, by - 15, bw * mp, 7);
+    ctx.shadowBlur = 0;
+    if (hot) {
+      ctx.textAlign = 'right'; ctx.font = 'bold 11px "Space Grotesk",monospace'; ctx.fillStyle = '#22d3ee';
+      ctx.fillText('ZÄHLT', bx + bw, by - 21); ctx.textAlign = 'left';
+    }
     ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(bx, by, bw, 14);
     ctx.fillStyle = '#a3e635'; ctx.fillRect(bx, by, bw * (pct / 100), 14);
-    if (st.prog) { ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.fillRect(bx, by + 16, bw * Math.max(0, Math.min(1, st.prog)), 4); }
   };
   _fitLoop = () => {
     const st = this._fit; if (!st || this.state.modal !== 'fitness' || this.state.fitView !== 'play') return;
@@ -6192,26 +6290,46 @@ class Component extends DCLogic {
     if (v && v.readyState >= 2) {
       let ts = Math.max((st.lastTs || 0) + 1, Math.round(now)); st.lastTs = ts;
       let res = null; try { res = st.lm.detectForVideo(v, ts); } catch (e) {}
+      const lm = res && res.landmarks && res.landmarks[0];
+      const aligned = this._fitAligned(lm, st.exId);
       ctx.save(); ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.translate(cv.width, 0); ctx.scale(-1, 1);
       try { ctx.drawImage(v, 0, 0, cv.width, cv.height); } catch (e) {}
-      if (res && res.landmarks && res.landmarks[0]) { this._fitDraw(ctx, res.landmarks[0], cv); if (st.active) this._fitProcess(res.landmarks[0], now); }
+      this._fitUV(ctx, cv);
+      if (lm) { this._fitDraw(ctx, lm, cv); if (st.active && !st.paused) this._fitProcess(lm, now); }
       ctx.restore();
-      if (!res || !res.landmarks || !res.landmarks[0]) { st.fb = 'Ich sehe dich nicht ganz'; st.prog = 0; }
-      this._fitHud(ctx, cv, now);
+      if (!lm) { st.fb = 'Ich sehe dich nicht ganz'; st.prog = 0; }
+      if (st.active) {
+        if (!st.paused && !aligned) { st.paused = true; st.pausedAt = now; st.resumeAt = 0; st.prog = 0; }
+        else if (st.paused) {
+          if (!aligned) st.resumeAt = 0;
+          else if (!st.resumeAt) st.resumeAt = now + 3000;
+          else if (now >= st.resumeAt) { st.maxEnd += (now - st.pausedAt); st.paused = false; st.resumeAt = 0; }
+        }
+      }
+      this._fitHud(ctx, cv, now, aligned);
       if (!st.warmOff) { st.warmOff = true; this._fitWarm(false); }
-      if (!st.active) { if (now >= st.cdEnd) { st.active = true; st.maxEnd = now + 180000; } }
+      if (!st.active) {
+        if (!aligned) st.cdEnd = now + 3200;
+        else if (now >= st.cdEnd) { st.active = true; st.maxEnd = now + 180000; this.api('/games/fitness/start', { method:'POST', body:{ ex: st.exId } }).catch(() => {}); }
+      }
       else if (st.reps >= st.goal) { if (!st.doneAt) st.doneAt = now; st.fb = 'Geschafft!'; if (now - st.doneAt > 900) { this._fitEnd(); return; } }
-      else if (now >= st.maxEnd) { this._fitEnd(); return; }
+      else if (!st.paused && now >= st.maxEnd) { this._fitEnd(); return; }
     }
     st.raf = requestAnimationFrame(this._fitLoop);
   };
   _fitEnd = async () => {
-    const reps = this._fit ? this._fit.reps : 0;
+    const st = this._fit, exId = st ? st.exId : '', goal = st ? st.goal : 0;
+    let reps = st ? st.reps : 0;
     this._fitStopCam();
-    let reward = { xp:0, nutris:0 }, game = this.state.game;
-    try { const r = await this.api('/games/reward', { method:'POST', body:{ game:'fitness', reps } }); reward = r.earned; game = r.state; } catch (e) {}
-    this.setState({ fitView:'result', fitReps: reps, fitReward: reward, game });
+    let reward = { xp:0, nutris:0 }, game = this.state.game, done = reps >= goal;
+    try {
+      const r = await this.api('/games/reward', { method:'POST', body:{ game:'fitness', ex: exId, reps } });
+      reward = r.earned; game = r.state;
+      if (typeof r.reps === 'number') reps = r.reps;
+      if (typeof r.done === 'boolean') done = r.done;
+    } catch (e) {}
+    this.setState({ fitView:'result', fitReps: reps, fitGoalHit: done, fitReward: reward, game });
   };
   fitStop = () => { this._fitEnd(); };
   _SHOP = [
@@ -6287,6 +6405,13 @@ class Component extends DCLogic {
       fitList: this._FITX.map(x => ({ id: x.id, icon: x.icon, name: x.name, hint: x.hint, goal: x.goal })),
       fitExName: s.fitEx ? s.fitEx.name : '', fitExHint: s.fitEx ? s.fitEx.hint : '', fitExIcon: s.fitEx ? s.fitEx.icon : 'dumbbell', fitExGoal: s.fitEx ? s.fitEx.goal : 0,
       fitReps: s.fitReps || 0, fitErr: s.fitErr || '',
+      fitResGoal: s.fitEx ? s.fitEx.goal : 0,
+      fitResTitle: s.fitGoalHit ? 'Challenge geschafft!' : 'Abgebrochen',
+      fitResIcon: s.fitGoalHit ? 'party-popper' : 'circle-slash-2',
+      fitResC: s.fitGoalHit ? 'var(--acc)' : '#fbbf24',
+      fitResBg: s.fitGoalHit ? 'var(--acc-bg)' : 'rgba(251,191,36,.12)',
+      fitResBd: s.fitGoalHit ? 'var(--acc-bd)' : 'rgba(251,191,36,.4)',
+      fitResHintD: s.fitGoalHit ? 'none' : 'block',
       fitRewardXp: (s.fitReward && s.fitReward.xp) || 0, fitRewardNut: (s.fitReward && s.fitReward.nutris) || 0,
     };
   }
