@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "NutriDesk",
-  "version": "1.0.1",
+  "version": "../package.json",
   "identifier": "de.nutridesk.app",
   "build": {
     "frontendDist": "../src/renderer"

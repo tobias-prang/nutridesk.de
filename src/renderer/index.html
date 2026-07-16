@@ -4212,6 +4212,7 @@
       <div style="position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line3);background:#0b0d13;">
         <video id="fit-video" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" muted playsinline autoplay></video>
         <canvas id="fit-canvas" width="640" height="480" style="display:block;width:100%;height:auto;"></canvas>
+        <div id="fit-warm" style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0b0d13;"><i data-lucide="loader-2" class="nd-spin" style="width:34px;height:34px;color:var(--acc);"></i><div style="font-size:13px;color:var(--ink3);">Kamera startet …</div></div>
       </div>
       <div style="display:flex;justify-content:center;margin-top:14px;">
         <div onclick="{{ fitStop }}" style="display:flex;align-items:center;gap:8px;padding:11px 22px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="border-color:#f87171;color:#f87171;"><i data-lucide="square" style="width:15px;height:15px;"></i>Beenden</div>
@@ -4221,6 +4222,7 @@
       <div style="position:relative;border-radius:14px;overflow:hidden;border:1px solid var(--line3);background:#0b0d13;">
         <video id="fit-video" style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;" muted playsinline autoplay></video>
         <canvas id="fit-canvas" width="640" height="480" style="display:block;width:100%;height:auto;"></canvas>
+        <div id="fit-warm" style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#0b0d13;"><i data-lucide="loader-2" class="nd-spin" style="width:34px;height:34px;color:var(--acc);"></i><div style="font-size:13px;color:var(--ink3);">Kamera startet …</div></div>
       </div>
       <div style="font-size:12.5px;color:var(--ink3);text-align:center;margin-top:10px;line-height:1.5;">Beweg dich vor der Kamera. Die farbigen Punkte zeigen, was erkannt wird, die Häkchen unten links, welche Körperteile sichtbar sind.</div>
       <div style="display:flex;justify-content:center;margin-top:12px;">
@@ -5941,6 +5943,7 @@ class Component extends DCLogic {
     this._mpWarmAbort = null;
   };
   _mpWarmStop = () => { if (this._mpWarmAbort) { try { this._mpWarmAbort.abort(); } catch (e) {} this._mpWarmAbort = null; } };
+  _fitWarm = (on) => { const w = document.getElementById('fit-warm'); if (w) w.style.display = on ? 'flex' : 'none'; };
   _FITX = [
     { id:'squat', icon:'chevrons-down', name:'Kniebeugen', goal:15, hint:'Steh mittig ins Bild, Beine hüftbreit. Geh in die Knie bis die Oberschenkel etwa waagerecht sind, dann kontrolliert wieder hoch.' },
     { id:'jack', icon:'move', name:'Hampelmann', goal:25, hint:'Ganzer Körper ins Bild. Arme und Beine gleichzeitig öffnen (Hände über den Kopf) und wieder schließen.' },
@@ -6010,6 +6013,7 @@ class Component extends DCLogic {
     const p = v.play(); if (p && p.catch) p.catch(() => {});
     cv.width = 640; cv.height = 480;
     const now = (typeof performance !== 'undefined' ? performance.now() : 0);
+    this._fitWarm(true);
     this._fit = { video:v, canvas:cv, ctx: cv.getContext('2d'), lm: this._poseLandmarker, exId: this.state.fitEx.id, goal: this.state.fitEx.goal || 20, reps:0, phase:'rest', lastRep:0, active:false, cdEnd: now + 3200, maxEnd:0, doneAt:0, kL:false, kR:false, pL:false, pR:false, fb:'Mach dich bereit', prog:0, lastTs:0, raf:0 };
     this._fitLoop();
   };
@@ -6102,6 +6106,7 @@ class Component extends DCLogic {
     v.srcObject = this._fitStream; v.muted = true; v.playsInline = true; v.setAttribute('playsinline', '');
     const p = v.play(); if (p && p.catch) p.catch(() => {});
     cv.width = 640; cv.height = 480;
+    this._fitWarm(true);
     this._fitTest = { video:v, canvas:cv, ctx: cv.getContext('2d'), pose: this._poseFull, hand: this._handLm, lastTs:0, raf:0 };
     this._fitTestLoop();
   };
@@ -6122,6 +6127,7 @@ class Component extends DCLogic {
       this._fitTestDrawHands(ctx, handList, cv);
       ctx.restore();
       this._fitTestHud(ctx, cv, lm, handList);
+      if (!st.warmOff) { st.warmOff = true; this._fitWarm(false); }
     }
     st.raf = requestAnimationFrame(this._fitTestLoop);
   };
@@ -6193,6 +6199,7 @@ class Component extends DCLogic {
       ctx.restore();
       if (!res || !res.landmarks || !res.landmarks[0]) { st.fb = 'Ich sehe dich nicht ganz'; st.prog = 0; }
       this._fitHud(ctx, cv, now);
+      if (!st.warmOff) { st.warmOff = true; this._fitWarm(false); }
       if (!st.active) { if (now >= st.cdEnd) { st.active = true; st.maxEnd = now + 180000; } }
       else if (st.reps >= st.goal) { if (!st.doneAt) st.doneAt = now; st.fb = 'Geschafft!'; if (now - st.doneAt > 900) { this._fitEnd(); return; } }
       else if (now >= st.maxEnd) { this._fitEnd(); return; }
