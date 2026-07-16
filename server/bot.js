@@ -154,7 +154,9 @@ module.exports = function registerBot(app, deps) {
   // die App "feuert dich an und lobt deine Fortschritte" verspricht.
   // WICHTIG: nur bei unverfaenglichen Intents anwenden. Ein "Du packst das!" hinter der
   // Telefonseelsorge-Antwort oder hinter einer Beleidigungsgrenze waere uebergriffig.
-  const TONE_SAFE = new Set(['data', 'domain', 'food_info', 'help', 'wiki', 'smalltalk', 'greet', 'joke', 'memory', 'weather']);
+  // Nur echte Sachfragen. Bei Reaktionen wirkt der Ton albern: "Du heißt Tobias. Du packst das."
+  // oder "Stark, dass du fragst: Freut mich, wenn du was zu lachen hast." nach einem "lol".
+  const TONE_SAFE = new Set(['data', 'domain', 'food_info', 'help', 'wiki']);
   const TONE_ADD = {
     locker: ['', '', '', 'Sag Bescheid, wenn du noch was brauchst.', 'Passt das so?', 'Frag ruhig weiter.'],
     coach: ['Dranbleiben lohnt sich!', 'Du packst das.', 'Weiter so!', 'Kleine Schritte zählen auch.', 'Bleib dran, das zahlt sich aus.', ''],
@@ -517,6 +519,54 @@ module.exports = function registerBot(app, deps) {
     return JOKES[i];
   };
 
+  // ---------- Gedaechtnis: gezielte Rueckfrage ----------
+  // Der Bot kannte die Antwort und fand sie nicht: "was weisst du ueber mich" lieferte
+  // "Name: Tobias", aber "wie heisse ich" antwortete "Das weiss ich leider nicht" plus Ticket.
+  async function memoryGet(uid, mkey) {
+    const [rows] = await pool.execute('SELECT mval FROM bot_user_memory WHERE user_id=? AND mkey=? LIMIT 1', [uid, mkey]).catch(() => [[]]);
+    return rows && rows[0] ? rows[0].mval : null;
+  }
+  const MEM_FRAGEN = [
+    { re: /\bwie hei(ss|ß)e ich\b|\bwas ist mein name\b|\bkennst du meinen namen\b|\bwei(ss|ß)t du wie ich hei(ss|ß)e\b/, key: 'Name',
+      ja: (v) => `Du heißt ${v}.`, nein: 'Deinen Namen hast du mir noch nicht verraten. Sag einfach "Ich heiße ..." , dann merke ich ihn mir.' },
+    { re: /\bwo wohne ich\b|\bwo lebe ich\b|\bwei(ss|ß)t du wo ich wohne\b|\bwas ist mein wohnort\b/, key: 'Wohnort',
+      ja: (v) => `Du wohnst in ${v}.`, nein: 'Deinen Wohnort kenne ich noch nicht. Sag mir einfach "Ich wohne in ...".' },
+    { re: /\besse ich fleisch\b|\bbin ich vegetarier(in)?\b|\bbin ich vegan(er|erin)?\b|\bwas esse ich\b|\bwie ernaehre ich mich\b/, key: 'Ernährung',
+      ja: (v) => `Du hast mir gesagt, dass du dich ${v} ernährst.`, nein: 'Wie du dich ernährst, hast du mir noch nicht gesagt.' },
+    { re: /\bwas ist mein (kalorien)?ziel\b|\bwie viel(e)? kalorien (ist|sind) mein ziel\b|\bmein kalorienziel\b/, key: 'Kalorien-Ziel',
+      ja: (v) => `Dein Ziel liegt bei ${v} am Tag.`, nein: 'Ein Kalorienziel hast du mir noch nicht genannt. Du kannst es in den Einstellungen unter Profil und Ziele festlegen.' },
+    { re: /\bwas mag ich nicht\b|\bwas esse ich nicht\b|\bwas vertrage ich nicht\b/, key: 'Mag nicht',
+      ja: (v) => `Du magst ${v} nicht.`, nein: 'Da hast du mir noch nichts gesagt.' },
+    { re: /\bworauf spare ich\b|\bwas ist mein sparziel\b/, key: 'Sparziel',
+      ja: (v) => `Du sparst auf ${v}.`, nein: 'Ein Sparziel hast du mir noch nicht genannt.' },
+  ];
+
+  // ---------- Gefuehle: auch die schoenen ----------
+  // Vorher waren nur negative Gefuehle abgedeckt. Wer schreibt "ich hab heute geburtstag",
+  // bekam "Das habe ich nicht verstanden".
+  const HAPPY = [
+    { re: /\bgeburtstag\b/, a: 'Alles Gute zum Geburtstag! Lass es dir heute gutgehen, das Kalorienzählen läuft dir nicht weg.' },
+    { re: /\b(heirate|hochzeit|verlobt)\b/, a: 'Glückwunsch, das ist wirklich schön! Ich hoffe, du genießt die Zeit.' },
+    { re: /\b(befoerderung|befördert|neuen job|job bekommen|zugesagt|eingestellt)\b/, a: 'Glückwunsch, das ist stark! Das hast du dir verdient.' },
+    { re: /\b(bestanden|pruefung geschafft|abschluss)\b/, a: 'Glückwunsch, das ist eine echte Leistung!' },
+    { re: /\b(verliebt|zusammen mit)\b/, a: 'Schön für dich! Das klingt nach guter Laune.' },
+    { re: /\b(urlaub|ferien|frei heute)\b/, a: 'Das klingt gut. Erhol dich richtig.' },
+    { re: /\b(gewonnen|gewinn)\b/, a: 'Glückwunsch! Das ist ein guter Tag.' },
+    { re: /\b(bin so gluecklich|bin gluecklich|freue mich|bin happy|bester tag|laeuft bei mir|super drauf)\b/, a: 'Das freut mich zu hören. Solche Tage sollte man festhalten.' },
+    { re: /\b(schoenes wochenende|schoenen tag|schoenen abend|gute nacht)\b/, a: 'Danke, dir auch! Ich bin da, wenn du was brauchst.' },
+  ];
+
+  // ---------- Fragen ueber den Bot selbst ----------
+  const UEBER_MICH = [
+    { re: /\bhast du gefuehle\b|\bkannst du fuehlen\b|\bbist du traurig\b|\bhast du emotionen\b/, a: 'Nein, ehrlich nicht. Ich bin regelbasiert, ich erkenne Muster und antworte darauf. Ich tue nur so, als hätte ich Laune. Was ich dafür kann: dir bei deinen Zahlen und deiner App helfen.' },
+    { re: /\bwie alt bist du\b|\bwann wurdest du (geboren|gebaut)\b/, a: 'Ich habe kein Alter. Es gibt mich, seit jemand meine Regeln geschrieben hat, und die wachsen mit der App.' },
+    { re: /\bwer hat dich (gebaut|gemacht|programmiert|erschaffen)\b|\bvon wem bist du\b/, a: 'Ich bin Teil von NutriDesk und wurde für diese App gebaut. Kein fremder KI-Dienst, alles läuft auf dem Server deiner App.' },
+    { re: /\bwas ist dein lieblings(essen|gericht|farbe)\b|\bwas isst du\b/, a: 'Ich esse nichts, ich rechne nur nach. Aber wenn ich müsste: alles, was in der Datenbank ordentliche Nährwerte hat. Was ist deins?' },
+    { re: /\bmagst du mich\b|\bhast du mich lieb\b|\bfindest du mich\b/, a: 'Ich bin ein Programm, mögen kann ich ehrlich gesagt nicht. Aber ich bin gern für dich da, wenn du etwas brauchst.' },
+    { re: /\bwas machst du wenn ich (weg|nicht da) bin\b|\blangweilst du dich\b/, a: 'Nichts, ich warte einfach. Ohne dich passiert hier gar nichts.' },
+    { re: /\btraeumst du\b|\bschlaefst du\b/, a: 'Weder noch. Ich bin einfach da, wenn du schreibst.' },
+  ];
+
   // ---------- Gedaechtnis-Auskunft ----------
   async function memorySummary(uid) {
     const [rows] = await pool.execute('SELECT mkey, mval FROM bot_user_memory WHERE user_id=? ORDER BY updated_at DESC LIMIT 12', [uid]).catch(() => [[]]);
@@ -741,6 +791,41 @@ module.exports = function registerBot(app, deps) {
     // Lockere Absagen: "nein danke kb", "keine lust", "passt schon"
     if (/^(nein|ne|noe|nö|nee)?\s*(danke|dank)?\s*(kb|kein bock|keine lust|passt schon|schon gut|alles gut|lass mal|nichts)\s*$/.test(n) || /^(kb|nix|nichts|passt)$/.test(n)) {
       return { intent: 'smalltalk', reply: 'Alles klar, kein Ding. Ich bin da, falls dir doch noch was einfällt.' };
+    }
+
+    // Gezielte Frage ans Gedaechtnis. Muss vor die Wissens- und Hilfe-Suche.
+    for (const q of MEM_FRAGEN) {
+      if (q.re.test(n)) {
+        const v = await memoryGet(uid, q.key);
+        return { intent: 'memory', reply: v ? q.ja(v) : q.nein };
+      }
+    }
+
+    // Schoene Nachrichten. Vorher waren nur negative Gefuehle abgedeckt.
+    for (const h of HAPPY) { if (h.re.test(n)) return { intent: 'empathy', reply: h.a }; }
+
+    // Fragen ueber den Bot selbst, statt Support-Ticket anzubieten.
+    for (const u of UEBER_MICH) { if (u.re.test(n)) return { intent: 'smalltalk', reply: u.a }; }
+
+    // Schlaf: landete vorher grotesk in einer Anleitung zum Ausschliessen von Zutaten.
+    if (/\b(kann nicht schlafen|schlaflos|schlafe schlecht|liege wach|nicht einschlafen)\b/.test(n)) {
+      return { intent: 'empathy', reply: 'Das ist mies, gerade wenn man weiß, dass man eigentlich schlafen sollte. Ich bin kein Arzt und kann dir dabei nicht wirklich helfen. Was manchen hilft: spätes Koffein weglassen und schwere Mahlzeiten kurz vorm Schlafen vermeiden. Wenn es länger anhält, sprich das bitte ärztlich ab.' };
+    }
+    if (/\b(bin (so )?(wuetend|sauer|genervt)|hab die schnauze voll|kotzt mich an|regt mich auf)\b/.test(n) && !INSULT_RE.test(n)) {
+      return { intent: 'empathy', reply: 'Klingt, als wäre gerade richtig Druck drauf. Manchmal hilft es schon, es einmal auszusprechen. Wenn ich dir bei irgendwas den Kopf frei machen kann, sag Bescheid.' };
+    }
+    if (/\b(niemanden zum reden|keiner hoert mir zu|niemand hoert zu|bin allein damit|habe niemanden)\b/.test(n)) {
+      return { intent: 'empathy', reply: 'Das klingt einsam, und das tut mir leid. Ich bin nur ein Programm und kann ein echtes Gespräch nicht ersetzen. Wenn du wirklich mal reden musst: die Telefonseelsorge ist kostenlos und anonym unter 0800 111 0 111 erreichbar, rund um die Uhr.' };
+    }
+    // Lachen und Fuellwoerter
+    if (/^(lol|haha+|hehe|hihi|xd|:d|:\)|lachen|witzig|lustig)\b/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Freut mich, wenn du was zu lachen hast. Noch einen Witz?', quicks: [{ label: 'Noch einen Witz', send: 'erzähl mir einen witz' }] };
+    }
+    if (/^(erzaehl (mir )?(mal )?was|und sonst so|was gibts neues|wie war dein tag|was machst du gerade|erzaehl)\b/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Bei mir passiert wenig, ich warte einfach, bis du was brauchst. Bei dir? Wenn du magst, zeige ich dir deine Zahlen für heute oder erzähle einen Witz.', quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Witz', send: 'erzähl mir einen witz' }] };
+    }
+    if (/^(ja|jo|jup|nein|ne|noe|nö|k|kk)[.!]*$/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Alles klar. Sag einfach, wenn du was brauchst.' };
     }
 
     // Gefuehle: erst zuhoeren, nicht mit einem Support-Ticket antworten.
