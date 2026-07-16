@@ -590,6 +590,10 @@ module.exports = function registerBot(app, deps) {
     { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(intervallfasten|intermittierendes fasten|16 ?: ?8)\b/, a: 'Beim Intervallfasten isst du nur in einem festen Zeitfenster, oft 8 Stunden, und lässt den Rest des Tages aus. Es hilft manchen beim Abnehmen, vor allem weil sie insgesamt weniger essen, nicht durch Magie. Ob es zu dir passt, ist Geschmackssache. Ich bin keine Ernährungsberatung.' },
     { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(konto|kontostand|saldo)\b/, a: 'Der Kontostand, auch Saldo, ist die Summe deiner Einnahmen minus deiner Ausgaben. In der App siehst du ihn im Finanzbuch. Frag mich einfach "Wie ist mein Kontostand?", dann sage ich dir deinen aktuellen Stand.' },
     { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\bzinsen?\b/, a: 'Zinsen sind der Preis für geliehenes Geld. Zahlst du einen Kredit ab, gehen sie an die Bank. Legst du Geld an, bekommst du sie. In der App kannst du bei Krediten den Zinssatz hinterlegen, dann rechne ich dir die Belastung mit.' },
+    { re: /\b(dark ?mode|dunkelmodus|hellmodus|nachtmodus|design aendern|theme|farbe aendern|akzentfarbe|heller machen|dunkler machen)\b/, a: 'Das Aussehen stellst du in den Einstellungen unter Anpassen ein. Dort kannst du zwischen hell und dunkel wechseln und die Akzentfarbe wählen, es gibt zwölf zur Auswahl.' },
+    { re: /\b(was kostet die app|kostet.{0,12}(was|etwas|geld)|ist die app (kostenlos|gratis|umsonst)|abo|preis|abopreis)\b[^.?!]{0,10}(app|nutridesk)?\b/, a: 'NutriDesk kostet dich nichts und ist gerade im Early Access. Deine Daten liegen auf deinem eigenen Server, es gibt keine Werbung und keinen Weiterverkauf.' },
+    { re: /\b(offline nutzen|ohne internet|kein internet|offline funktionieren)\b/, a: 'Nur eingeschränkt: die App holt deine Daten vom Server, ganz ohne Internet geht es also nicht. Was lokal läuft, ist die Kamera-Erkennung im Training, die verlässt dein Gerät nie.' },
+    { re: /\b(auf englisch|andere sprache|sprache aendern|english version)\b/, a: 'Aktuell gibt es NutriDesk nur auf Deutsch. Ich verstehe zwar ein paar englische Fragen zu Nährwerten, aber die Oberfläche ist deutsch.' },
     { re: /\b(was (ist|sind)|erklaer|definier)[^.?!]{0,12}\b(budget)\b/, a: 'Ein Budget ist ein Limit, das du dir für eine Ausgabenkategorie im Monat setzt. Die App warnt dich bei 80, 100 und 120 Prozent, damit du früh merkst, wenn es eng wird.' },
   ];
 
@@ -867,6 +871,13 @@ module.exports = function registerBot(app, deps) {
       return { intent: 'domain', reply: `${viel}: ${lf.name} hat ${lf.kcal} kcal pro 100 g. Ob das für dich passt, hängt von der Menge und deinem restlichen Tag ab, nicht vom Lebensmittel allein. Ich bin keine Ernährungsberatung, aber die Zahlen helfen dir beim Einordnen.`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Eintragen', send: 'Essen eintragen: ' + lf.name }] };
     }
 
+    // Echte Stoerung: hier ist ein Ticket genau richtig. Vorher kam ausgerechnet hier
+    // "Da bin ich raus", waehrend Quatsch-Eingaben ein Ticket angeboten bekamen.
+    if (/\b(stuerzt ab|abgestuerzt|absturz|haengt sich auf|friert ein|geht nicht mehr|startet nicht|laedt nicht|reagiert nicht|ist kaputt|fehlermeldung|funktioniert nicht mehr)\b/.test(n)) {
+      return { intent: 'unknown', reply: 'Das klingt nach einem echten Fehler, und den kann ich hier nicht reparieren. Soll ich ein Ticket an den Support anlegen? Dann schaut sich das ein Mensch an.',
+        quicks: [{ label: 'Ja, Ticket anlegen', send: 'Ich möchte ein Support-Ticket erstellen' }, { label: 'Nein danke', send: 'nein danke' }] };
+    }
+
     // Eigenes Glossar VOR Hilfe und Wikipedia: Kernbegriffe beantwortet die App selbst.
     for (const g of GLOSSAR) { if (g.re.test(n)) return { intent: 'domain', reply: g.a }; }
 
@@ -878,6 +889,17 @@ module.exports = function registerBot(app, deps) {
     // Begrüßung
     if (/^(hi+|hallo|hey+|moin|servus|grü(ß|ss)|guten (morgen|tag|abend)|na\b|yo\b|hallöchen)/.test(low)) {
       return { intent: 'greet', reply: `Hallo! Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Ich helfe dir bei der App, bei Nährwerten, deinen Daten und kann Sachen für dich eintragen. Was brauchst du?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Hilfe', send: 'Wie funktioniert der Ernährungsplan?' }] };
+    }
+
+    // "ich wiege 80 kg" fiel durch, obwohl der Bot Gewicht selbst als eintragbar bewirbt.
+    // Braucht kein "eintragen": so sagt man es einfach.
+    if (/\b(ich )?(wiege|wieg|hab|habe)\b[^.?!]{0,12}\b\d{2,3}([.,]\d)?\s*(kg|kilo)\b/.test(n) || /^\d{2,3}([.,]\d)?\s*(kg|kilo)$/.test(n)) {
+      const kg = parseAmount(low);
+      if (kg != null && kg >= 20 && kg <= 400) {
+        const f = startFlow(uid, sid, 'weight');
+        f.data.kg = kg; f.step = 1; f.awaitConfirm = true;
+        return { intent: 'flow_confirm', reply: await confirmSummary(uid, f), quicks: [{ label: 'Ja', send: 'ja' }, { label: 'Abbrechen', send: 'abbrechen' }] };
+      }
     }
 
     // Letzte Buchung loeschen. Fehlte komplett: wer sich vertippt hatte, kam nicht zurueck, und
@@ -1051,11 +1073,20 @@ module.exports = function registerBot(app, deps) {
     // Hilfe / Wissen. App-Hilfe nur, wenn der Treffer inhaltlich zur Frage passt (teilt ein Wort in Titel/Keywords),
     // sonst rutscht z.B. "Wer war Angela Merkel" faelschlich in einen Hilfe-Artikel (Score allein reicht nicht).
     const fold = (x) => String(x).toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss');
-    const STOPW = new Set(['eine', 'einen', 'einer', 'einem', 'mein', 'meine', 'meinen', 'wie', 'was', 'wer', 'war', 'sind', 'wird', 'warum', 'wieso', 'welche', 'kann', 'ich', 'den', 'der', 'die', 'das', 'fuer', 'ueber', 'mich', 'dich', 'ist', 'und', 'oder', 'sich', 'man', 'wann', 'habe', 'gibt']);
+    // Generische Verben MUESSEN raus, sonst zaehlen sie als inhaltlicher Treffer: "Wie funktioniert
+    // der Ernaehrungsplan?" landete im Artikel "Wie funktioniert der Assistent?", nur wegen
+    // "funktioniert". Das war ausgerechnet der eigene Quick-Reply des Bots.
+    const STOPW = new Set(['eine', 'einen', 'einer', 'einem', 'mein', 'meine', 'meinen', 'meinem', 'wie', 'was', 'wer', 'war', 'sind', 'wird', 'warum', 'wieso', 'welche', 'kann', 'kannst', 'ich', 'den', 'der', 'die', 'das', 'fuer', 'ueber', 'mich', 'dich', 'ist', 'und', 'oder', 'sich', 'man', 'wann', 'habe', 'gibt',
+      'funktioniert', 'funktionieren', 'stelle', 'stellen', 'mache', 'machen', 'macht', 'bekomme', 'bekommen',
+      'aendere', 'aendern', 'loesche', 'loeschen', 'erstelle', 'erstellen', 'nutze', 'nutzen', 'benutze',
+      'geht', 'gehen', 'finde', 'finden', 'sehe', 'sehen', 'brauche', 'brauchen', 'moechte', 'will', 'soll',
+      'diese', 'dieser', 'dieses', 'meiner', 'einfach', 'bitte', 'nochmal', 'wieder']);
     const qWords = (fold(t).match(/[a-z0-9]{4,}/g) || []).filter((w) => !STOPW.has(w));
     const helpRelevant = (a) => { const at = fold((a.title || '') + ' ' + (a.keywords || '') + ' ' + (a.slug || '')).match(/[a-z0-9]{4,}/g) || []; return qWords.some((w) => at.indexOf(w) >= 0); };
     const help = await searchHelp(t);
-    const helpTop = (help.length && help[0].score >= 1 && helpRelevant(help[0])) ? help[0] : null;
+    // Den besten PASSENDEN nehmen, nicht nur den Bestplatzierten. Vorher gab der Bot auf, wenn
+    // help[0] unpassend war, obwohl der richtige Artikel auf Platz 2 stand.
+    const helpTop = help.find((h) => h.score >= 1 && helpRelevant(h)) || null;
     if (helpTop) {
       const body = String(helpTop.body).replace(/\s+/g, ' ').slice(0, 700);
       return { intent: 'help', reply: body, sources: [{ kind: 'help', slug: helpTop.slug, label: helpTop.title }], quicks: help.slice(1, 3).filter((h) => helpRelevant(h)).map((h) => ({ label: h.title.slice(0, 30), send: h.title })) };
