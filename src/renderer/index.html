@@ -5334,11 +5334,12 @@ class Component extends DCLogic {
     };
     window.addEventListener('keydown', this._key);
     this._loadBreakSeen();
-    this._notifTick = setInterval(() => { if (this.state.phase === 'app') { if (!this.state.modal) this.setState({}); this._breakTick(); this._syncBot(); } }, 30000);
+    this._notifTick = setInterval(() => { if (this.state.phase === 'app') { if (!this.state.modal) this.setState({}); this._breakTick(); this._syncBot(); this._mpWarm(); } }, 30000);
     // Insights systembasiert im Hintergrund aktualisieren (alle 12 Min), plus einmal kurz nach dem Start.
     this._insTick = setInterval(() => this._autoInsights(), 12 * 60000);
     setTimeout(() => this._autoInsights(), 20000);
     setTimeout(() => this._syncBot(), 9000);
+    setTimeout(() => { const go = () => this._mpWarm(); window.requestIdleCallback ? window.requestIdleCallback(go, { timeout:8000 }) : go(); }, 12000);
     if (this._token) { this.loadData(); this.loadBank(); }
     if (window.nutridesk) {
       window.nutridesk.getVersion().then(v => this.setState({ appVersion: v })).catch(() => {});
@@ -5364,7 +5365,7 @@ class Component extends DCLogic {
       });
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); clearTimeout(this._toastT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); clearTimeout(this._toastT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); }
   _applyAccent() {
     const inApp = this.state.phase === 'app';
@@ -5922,6 +5923,24 @@ class Component extends DCLogic {
     this.setState({ ninjaView:'over', ninjaScore: score, ninjaReward: reward, game });
   };
   _fitCdn = 'https://nutridesk.de/assets/mp';
+  _MP_WARM = ['vision_bundle.mjs', 'wasm/vision_wasm_internal.js', 'wasm/vision_wasm_internal.wasm', 'pose_landmarker_full.task', 'hand_landmarker.task'];
+  _mpWarm = async () => {
+    if (this._mpWarmed || this._mpWarmAbort || navigator.onLine === false) return;
+    if (this.state.phase !== 'app') return;
+    const ac = new AbortController();
+    this._mpWarmAbort = ac;
+    try {
+      for (const f of this._MP_WARM) {
+        const r = await fetch(this._fitCdn + '/' + f, { priority:'low', cache:'force-cache', signal: ac.signal });
+        if (!r.ok || !r.body) continue;
+        const rd = r.body.getReader();
+        while (!(await rd.read()).done) {}
+      }
+      this._mpWarmed = true;
+    } catch (e) {}
+    this._mpWarmAbort = null;
+  };
+  _mpWarmStop = () => { if (this._mpWarmAbort) { try { this._mpWarmAbort.abort(); } catch (e) {} this._mpWarmAbort = null; } };
   _FITX = [
     { id:'squat', icon:'chevrons-down', name:'Kniebeugen', goal:15, hint:'Steh mittig ins Bild, Beine hüftbreit. Geh in die Knie bis die Oberschenkel etwa waagerecht sind, dann kontrolliert wieder hoch.' },
     { id:'jack', icon:'move', name:'Hampelmann', goal:25, hint:'Ganzer Körper ins Bild. Arme und Beine gleichzeitig öffnen (Hände über den Kopf) und wieder schließen.' },
@@ -5959,12 +5978,14 @@ class Component extends DCLogic {
   };
   fitStart = async () => {
     if (!this.state.fitEx) return;
+    this._mpWarmStop();
     this.setState({ fitView:'loading', fitErr:'' });
     try { await this._fitOpenCamera(); this.setState({ fitView:'play', fitReps:0 }); setTimeout(() => this._fitBegin(), 90); }
     catch (e) { this._fitCamError(e); }
   };
   fitCamTest = async () => {
     this._fitStopCam();
+    this._mpWarmStop();
     this.setState({ fitView:'loading', fitErr:'' });
     try {
       await this._fitStreamGet();
