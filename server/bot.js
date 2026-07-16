@@ -7,6 +7,7 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const badwords = require('./badwords');
 
 module.exports = function registerBot(app, deps) {
   const {
@@ -1198,6 +1199,8 @@ module.exports = function registerBot(app, deps) {
       return res.json({ session_id: sid, reply: applyTone(reply, settings.bot_tone, 'flow'), intent: 'flow', message_id: tid, tts: { classification: tcls.classification, cloudEligible: false, localEligible: ttsPolicy.isLocalTtsAllowed(tcls.classification, tcls.forbidden), policyVersion: tcls.policyVersion } });
     }
     const out = await route(req.uid, sid, text, settings);
+    out.reply = badwords.mask(out.reply);
+    if (Array.isArray(out.quicks)) out.quicks = out.quicks.map(q => (q && q.label ? { ...q, label: badwords.mask(q.label) } : q));
     const meta = ttsMetaFor(out.intent);
     const cls = ttsPolicy.classifyTtsContent(meta, out.reply);
     const botMsgId = await saveChat(sid, req.uid, 'bot', out.reply, out.intent, meta);

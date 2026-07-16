@@ -13,6 +13,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const { serveCloudFile } = require('./lib/cloud-download'); // SEC-004A: sichere Datei-Auslieferung
 const { validateUpload } = require('./lib/upload-guard'); // SEC-004B: Upload-Validierung (Allowlist + Magic-Bytes)
+const badwords = require('./badwords');
 const { scanFile } = require('./lib/malware-scan'); // SEC-004B: Malware-Scan (fail-closed)
 
 const PORT = parseInt(process.env.PORT || '8420', 10);
@@ -640,6 +641,61 @@ app.delete('/admin/recipes/:id', auth, requireAdmin, asyncRoute(async (req, res)
   const [r] = await pool.execute('DELETE FROM recipes WHERE id = ?', [req.params.id]);
   if (!r.affectedRows) return res.status(404).json({ error: 'Nicht gefunden' });
   res.json({ ok: true });
+}));
+
+// ---------- Admin: Nutzer-Rezepte (Freigabe) ----------
+async function adminUserRecipeRows(where, params) {
+  const [rows] = await pool.execute(
+    'SELECT r.id,r.name,r.meal,r.time_min,r.kcal,r.carbs,r.protein,r.fat,r.steps,r.is_public,r.status,r.reject_reason,r.created_at,r.reviewed_at,u.id AS user_id,COALESCE(NULLIF(u.username,""),u.name) AS author '
+    + 'FROM user_recipes r JOIN users u ON u.id=r.user_id WHERE ' + where + ' ORDER BY r.id DESC LIMIT 200', params);
+  if (!rows.length) return [];
+  const [ings] = await pool.query('SELECT recipe_id,name,amount_g FROM user_recipe_ingredients WHERE recipe_id IN (?)', [rows.map(r => r.id)]);
+  const byId = new Map();
+  for (const i of ings) { if (!byId.has(i.recipe_id)) byId.set(i.recipe_id, []); byId.get(i.recipe_id).push(i); }
+  return rows.map(r => {
+    let steps = []; try { steps = JSON.parse(r.steps) || []; } catch (e) {}
+    const ingredients = byId.get(r.id) || [];
+    const flag = recipeScan({ name: r.name, steps, ingredients });
+    return { ...r, steps, ingredients, flag: { worst: flag.worst, hits: flag.hits } };
+  });
+}
+
+app.get('/admin/user-recipes', auth, requireAdmin, asyncRoute(async (req, res) => {
+  const view = vEnum(req.query.view, 'Ansicht', ['pending', 'approved', 'rejected', 'all'], { optional: true }) || 'pending';
+  const where = view === 'pending' ? "r.is_public=1 AND r.status='pending'"
+    : view === 'all' ? '1=1' : 'r.status=?';
+  const recipes = await adminUserRecipeRows(where, view === 'pending' || view === 'all' ? [] : [view]);
+  const [[c]] = await pool.execute("SELECT COUNT(*) AS n FROM user_recipes WHERE is_public=1 AND status='pending'");
+  res.json({ recipes, pending: Number(c.n) });
+}));
+
+app.post('/admin/user-recipes/:id/review', auth, requireAdmin, asyncRoute(async (req, res) => {
+  const id = vInt(req.params.id, 'Rezept', 1, 4294967295);
+  const approve = vBool(req.body.approve);
+  const reason = vStr(req.body.reason, 'Grund', 300, { optional: true }) || '';
+  if (!approve && !reason.trim()) throw bad('Bitte gib einen Grund für die Ablehnung an');
+  const [[r]] = await pool.execute('SELECT id,user_id,name,status FROM user_recipes WHERE id=?', [id]);
+  if (!r) return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  const status = approve ? 'approved' : 'rejected';
+  await pool.execute('UPDATE user_recipes SET status=?, reject_reason=?, reviewed_at=NOW() WHERE id=?', [status, approve ? null : reason.trim(), id]);
+  if (!approve) await pool.execute('UPDATE user_recipes SET is_public=0 WHERE id=?', [id]);
+  await pool.execute("DELETE FROM bot_messages WHERE user_id=? AND kind IN ('recipe_ok','recipe_no') AND ref=?", [r.user_id, String(id)]);
+  if (approve) {
+    await botPost(r.user_id, 'recipe_ok', String(id), 'party-popper', '#34d399',
+      `Rezept freigegeben: ${r.name}`, 'Dein Rezept ist ab sofort in der Community sichtbar. Danke fürs Teilen!');
+  } else {
+    await botPost(r.user_id, 'recipe_no', String(id), 'file-x', '#f87171',
+      `Rezept abgelehnt: ${r.name}`, `Grund: ${reason.trim()} · Es bleibt privat in deinen Rezepten sichtbar.`);
+  }
+  logEvent('info', 'my_recipe', (approve ? 'Rezept freigegeben: ' : 'Rezept abgelehnt: ') + String(r.name).slice(0, 60), { uid: req.uid, ip: req.ip, recipe: id, reason: reason.trim() || undefined });
+  res.json({ ok: true, status });
+}));
+
+app.post('/admin/user-recipes/checkup', auth, requireAdmin, asyncRoute(async (req, res) => {
+  const rows = await adminUserRecipeRows("r.is_public=1 AND r.status='pending'", []);
+  const flagged = rows.filter(r => r.flag.worst !== 'none')
+    .map(r => ({ id: r.id, name: r.name, author: r.author, worst: r.flag.worst, hits: r.flag.hits.map(h => h.word) }));
+  res.json({ checked: rows.length, flagged });
 }));
 
 // ---------- Profil & Einstellungen ----------
@@ -2781,24 +2837,28 @@ async function computeUserRecipe(ings) {
 }
 
 app.get('/my-recipes', auth, asyncRoute(async (req, res) => {
-  const [rows] = await pool.execute('SELECT id,name,meal,time_min,kcal,carbs,protein,fat,is_public,created_at FROM user_recipes WHERE user_id=? ORDER BY id DESC', [req.uid]);
+  const [rows] = await pool.execute('SELECT id,name,meal,time_min,kcal,carbs,protein,fat,is_public,status,reject_reason,created_at FROM user_recipes WHERE user_id=? ORDER BY id DESC', [req.uid]);
   res.json({ recipes: rows });
 }));
 
 app.get('/community/recipes', auth, asyncRoute(async (req, res) => {
   const [rows] = await pool.execute(
-    'SELECT r.id,r.name,r.meal,r.time_min,r.kcal,r.carbs,r.protein,r.fat,r.created_at,u.name AS author,u.id AS author_id FROM user_recipes r JOIN users u ON u.id=r.user_id WHERE r.is_public=1 ORDER BY r.id DESC LIMIT 100');
+    "SELECT r.id,r.name,r.meal,r.time_min,r.kcal,r.carbs,r.protein,r.fat,r.created_at,u.name AS author,u.id AS author_id FROM user_recipes r JOIN users u ON u.id=r.user_id WHERE r.is_public=1 AND r.status='approved' ORDER BY r.id DESC LIMIT 100");
   res.json({ recipes: rows.map(r => ({ ...r, mine: r.author_id === req.uid })) });
 }));
 
 app.get('/my-recipes/:id', auth, asyncRoute(async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  const [[r]] = await pool.execute('SELECT * FROM user_recipes WHERE id=? AND (user_id=? OR is_public=1)', [id, req.uid]);
+  const [[r]] = await pool.execute("SELECT * FROM user_recipes WHERE id=? AND (user_id=? OR (is_public=1 AND status='approved'))", [id, req.uid]);
   if (!r) return res.status(404).json({ error: 'Rezept nicht gefunden' });
   const [ings] = await pool.execute('SELECT food_id,name,amount_g,kcal,carbs,protein,fat FROM user_recipe_ingredients WHERE recipe_id=?', [id]);
   let steps = []; try { steps = JSON.parse(r.steps) || []; } catch (e) {}
-  res.json({ recipe: { id: r.id, name: r.name, meal: r.meal, time_min: r.time_min, kcal: r.kcal, carbs: r.carbs, protein: r.protein, fat: r.fat, is_public: r.is_public, steps, ingredients: ings, mine: r.user_id === req.uid } });
+  res.json({ recipe: { id: r.id, name: r.name, meal: r.meal, time_min: r.time_min, kcal: r.kcal, carbs: r.carbs, protein: r.protein, fat: r.fat, is_public: r.is_public, status: r.status, reject_reason: r.reject_reason, steps, ingredients: ings, mine: r.user_id === req.uid } });
 }));
+
+function recipeScan(r) {
+  return badwords.scan([r.name, ...(r.steps || []), ...(r.ingredients || []).map(i => i && i.name)].filter(Boolean).join(' . '));
+}
 
 app.post('/my-recipes', auth, asyncRoute(async (req, res) => {
   const b = req.body || {};
@@ -2808,26 +2868,33 @@ app.post('/my-recipes', auth, asyncRoute(async (req, res) => {
   const isPublic = vBool(b.is_public);
   const steps = Array.isArray(b.steps) ? b.steps.map(x => String(x).slice(0, 400)).filter(Boolean).slice(0, 20) : [];
   if (!Array.isArray(b.ingredients) || !b.ingredients.length) throw bad('Füge mindestens eine Zutat hinzu');
+  const flag = recipeScan({ name, steps, ingredients: b.ingredients });
+  if (flag.worst === 'hard' || flag.worst === 'slur') {
+    logEvent('warn', 'my_recipe', 'Rezept mit Fäkal-/Beleidigungssprache abgewiesen: ' + name.slice(0, 60), { uid: req.uid, ip: req.ip, hits: flag.hits.map(h => h.word) });
+    throw bad('Bitte formuliere Name, Zutaten und Schritte ohne Beleidigungen oder Fäkalsprache.');
+  }
   const n = await computeUserRecipe(b.ingredients);
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const [ins] = await conn.execute('INSERT INTO user_recipes (user_id,name,meal,servings,time_min,kcal,carbs,protein,fat,steps,is_public) VALUES (?,?,?,1,?,?,?,?,?,?,?)',
+    const [ins] = await conn.execute("INSERT INTO user_recipes (user_id,name,meal,servings,time_min,kcal,carbs,protein,fat,steps,is_public,status) VALUES (?,?,?,1,?,?,?,?,?,?,?,'pending')",
       [req.uid, name, meal, time_min, n.kcal, n.c, n.p, n.f, JSON.stringify(steps), isPublic]);
     const rid = ins.insertId;
     for (const r of n.rows) await conn.execute('INSERT INTO user_recipe_ingredients (recipe_id,food_id,name,amount_g,kcal,carbs,protein,fat) VALUES (?,?,?,?,?,?,?,?)', [rid, ...r]);
     await conn.commit(); conn.release();
-    logEvent('info', 'my_recipe', 'Eigenes Rezept angelegt: ' + name.slice(0, 60) + (isPublic ? ' (öffentlich)' : ''), { uid: req.uid, ip: req.ip });
-    res.json({ ok: true, id: rid, kcal: n.kcal });
+    logEvent('info', 'my_recipe', 'Eigenes Rezept angelegt: ' + name.slice(0, 60) + (isPublic ? ' (wartet auf Freigabe)' : ''), { uid: req.uid, ip: req.ip });
+    res.json({ ok: true, id: rid, kcal: n.kcal, status: 'pending', pending: !!isPublic });
   } catch (e) { await conn.rollback(); conn.release(); throw e; }
 }));
 
 app.put('/my-recipes/:id/visibility', auth, asyncRoute(async (req, res) => {
   const id = parseInt(req.params.id, 10);
   const isPublic = vBool(req.body.is_public);
-  const [r] = await pool.execute('UPDATE user_recipes SET is_public=? WHERE id=? AND user_id=?', [isPublic, id, req.uid]);
-  if (!r.affectedRows) return res.status(404).json({ error: 'Rezept nicht gefunden' });
-  res.json({ ok: true, is_public: isPublic });
+  const [[r]] = await pool.execute('SELECT status FROM user_recipes WHERE id=? AND user_id=?', [id, req.uid]);
+  if (!r) return res.status(404).json({ error: 'Rezept nicht gefunden' });
+  if (isPublic && r.status === 'rejected') throw bad('Dieses Rezept wurde abgelehnt und kann nicht geteilt werden.');
+  await pool.execute('UPDATE user_recipes SET is_public=? WHERE id=? AND user_id=?', [isPublic, id, req.uid]);
+  res.json({ ok: true, is_public: isPublic, status: r.status, pending: !!isPublic && r.status !== 'approved' });
 }));
 
 app.delete('/my-recipes/:id', auth, asyncRoute(async (req, res) => {

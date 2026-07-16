@@ -1067,6 +1067,7 @@
               <div onclick="{{ openRecipeView }}" data-id="{{ r.id }}" style="cursor:pointer;">
                 <div style="font-size:15px;font-weight:700;color:var(--ink);">{{ r.name }}</div>
                 <div style="font-size:12.5px;color:var(--ink3);margin-top:3px;">{{ r.meta }}</div>
+                <div style="display:{{ r.stDisp }};margin-top:9px;font-size:11.5px;font-weight:700;padding:5px 10px;border-radius:8px;line-height:1.45;color:{{ r.stColor }};background:{{ r.stBg }};">{{ r.stText }}</div>
               </div>
               <div style="display:flex;align-items:center;justify-content:space-between;margin-top:16px;">
                 <div style="display:flex;align-items:center;gap:9px;">
@@ -3805,7 +3806,7 @@
         </sc-for>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;padding:12px 14px;background:var(--bg2);border-radius:11px;">
-        <div><div style="font-size:14px;font-weight:600;">Öffentlich teilen</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Andere in der Community sehen dein Rezept.</div></div>
+        <div><div style="font-size:14px;font-weight:600;">Öffentlich teilen</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Wird erst nach einer kurzen Prüfung in der Community sichtbar.</div></div>
         <div onclick="{{ mrTogglePublic }}" style="width:46px;height:26px;border-radius:14px;background:{{ mrPubTrack }};position:relative;cursor:pointer;flex:0 0 auto;"><div style="position:absolute;top:2px;left:{{ mrPubKnob }};width:22px;height:22px;border-radius:50%;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></div></div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
@@ -8605,7 +8606,7 @@ class Component extends DCLogic {
         ingredients: s.mrIngredients.map(i => ({ food_id: i.food_id, name: i.name, amount_g: i.amount_g, k100: i.k100, c100: i.c100, p100: i.p100, f100: i.f100 })),
       } });
       this.setState({ modal:'', mrBusy:false });
-      this._toast('Rezept gespeichert' + (s.mrPublic ? ' und geteilt' : ''));
+      this._toast(s.mrPublic ? 'Rezept gespeichert, wartet auf Freigabe' : 'Rezept gespeichert');
       this.loadMyRecipes(); if (s.mrPublic) this.loadCommRecipes();
     } catch (e) { this.setState({ mrBusy:false }); this._toast(e.message); }
   };
@@ -8615,7 +8616,11 @@ class Component extends DCLogic {
     const rec = (this.state.myRecipes || []).find(r => r.id === id); if (!rec) return;
     const next = rec.is_public ? 0 : 1;
     this.setState({ myRecipes: this.state.myRecipes.map(r => r.id === id ? { ...r, is_public: next } : r) });
-    try { await this.api('/my-recipes/' + id + '/visibility', { method:'PUT', body:{ is_public: next } }); this._toast(next ? 'Öffentlich geteilt' : 'Auf privat gestellt'); this.loadCommRecipes(); }
+    try {
+      const r = await this.api('/my-recipes/' + id + '/visibility', { method:'PUT', body:{ is_public: next } });
+      this._toast(!next ? 'Auf privat gestellt' : (r && r.pending ? 'Zur Freigabe eingereicht, du bekommst Bescheid' : 'Öffentlich geteilt'));
+      this.loadMyRecipes(); this.loadCommRecipes();
+    }
     catch (e2) { this._toast(e2.message); this.loadMyRecipes(); }
   };
   delMyRecipe = async (e) => {
@@ -8642,7 +8647,18 @@ class Component extends DCLogic {
       recSegMine: seg(s.recView === 'mine'), recSegComm: seg(s.recView === 'community'),
       recViewMine: this.recViewMine, recViewComm: this.recViewComm,
       myRecipesEmpty: !(s.myRecipes || []).length, commRecipesEmpty: !(s.commRecipes || []).length,
-      myRecipesView: (s.myRecipes || []).map(r => ({ id: r.id, name: r.name, meta: meta(r), pubOn: !!r.is_public, pubTrack: r.is_public ? 'var(--acc)' : 'var(--line3)', pubKnob: r.is_public ? '18px' : '2px', pubLabel: r.is_public ? 'Öffentlich' : 'Privat' })),
+      myRecipesView: (s.myRecipes || []).map(r => {
+        const wait = !!r.is_public && r.status === 'pending', rej = r.status === 'rejected';
+        return {
+          id: r.id, name: r.name, meta: meta(r), pubOn: !!r.is_public,
+          pubTrack: rej ? 'var(--line3)' : (r.is_public ? 'var(--acc)' : 'var(--line3)'), pubKnob: r.is_public ? '18px' : '2px',
+          pubLabel: rej ? 'Nicht teilbar' : (wait ? 'In Prüfung' : (r.is_public ? 'Öffentlich' : 'Privat')),
+          stDisp: (wait || rej) ? 'block' : 'none',
+          stText: wait ? 'Wartet auf Freigabe, danach in der Community sichtbar.' : (rej ? 'Abgelehnt: ' + (r.reject_reason || 'kein Grund angegeben') : ''),
+          stColor: wait ? '#fbbf24' : '#f87171',
+          stBg: wait ? 'rgba(251,191,36,.12)' : 'rgba(248,113,113,.12)',
+        };
+      }),
       commRecipesView: (s.commRecipes || []).map(r => ({ id: r.id, name: r.name, meta: meta(r), author: 'von ' + (r.author || 'jemand'), mineTag: r.mine ? 'inline-flex' : 'none' })),
       openRecipe: this.openRecipe, openRecipeView: this.openRecipeView, toggleRecipePublic: this.toggleRecipePublic, delMyRecipe: this.delMyRecipe,
       mrName: s.mrName, mrSetName: this.mrSetName, mrTime: s.mrTime, mrSetTime: this.mrSetTime,
