@@ -341,7 +341,7 @@ module.exports = function registerBot(app, deps) {
       slots: [
         { key: 'name', ask: 'Was hast du gegessen?', parse: (t) => t.trim().slice(0, 120) || null },
         { key: 'grams', ask: 'Wie viel Gramm ungefähr? (Zahl, oder sag klein, normal oder groß)', parse: (t) => { const s = String(t).toLowerCase(); if (/\bklein|wenig/.test(s)) return 30; if (/normal|mittel|standard|durchschnitt|portion|wei(ß|ss) nicht|keine ahnung|egal/.test(s)) return 60; if (/gro(ß|ss)|viel/.test(s)) return 120; const n = parseAmount(t); return n != null && n > 0 && n <= 5000 ? Math.round(n) : null; } },
-        { key: 'meal', ask: 'Zu welcher Mahlzeit? (Frühstück, Mittag, Abend oder Snack)', parse: (t) => { const s = t.toLowerCase(); if (/früh|fruh|morgen/.test(s)) return 'fruh'; if (/mittag/.test(s)) return 'mittag'; if (/abend/.test(s)) return 'abend'; if (/snack|zwischen/.test(s)) return 'snack'; return null; } },
+        { key: 'meal', ask: 'Zu welcher Mahlzeit? (Frühstück, Mittag, Abend oder Snack)', parse: (t) => { const s = foldTxt(t); if (/frueh|fruh|morgen|breakfast/.test(s)) return 'fruh'; if (/mittag|lunch|mittags/.test(s)) return 'mittag'; if (/abend|dinner|nacht/.test(s)) return 'abend'; if (/snack|zwischen|zwischendurch/.test(s)) return 'snack'; return null; } },
       ],
     },
     delTx: {
@@ -617,6 +617,14 @@ module.exports = function registerBot(app, deps) {
       const slot = def.slots[flow.step];
       const val = slot.parse(t);
       if (val === null) return { intent: 'flow', reply: 'Das habe ich nicht verstanden. ' + slot.ask };
+      // Lebensmittel gegen die Datenbank pruefen. Ohne das landete "asdkjhasd" kommentarlos mit
+      // 0 kcal im Tagebuch und verfaelschte die Tagesbilanz.
+      if (flow.type === 'food' && slot.key === 'name') {
+        const probe = await foodCandidates(String(val), 1).catch(() => []);
+        if (!probe.length) {
+          return { intent: 'flow', reply: `"${String(val).slice(0, 40)}" finde ich nicht in der Lebensmittel-Datenbank. Schreib es vielleicht anders, oder sag "abbrechen".` };
+        }
+      }
       flow.data[slot.key] = val;
       flow.step++;
       if (flow.step < def.slots.length) return { intent: 'flow', reply: def.slots[flow.step].ask };
@@ -630,9 +638,37 @@ module.exports = function registerBot(app, deps) {
 
     // Antwort auf eine Lebensmittel-Auswahl. Wird gegen die gemerkte Liste aufgeloest, damit ein
     // Klick nicht erneut in derselben Rueckfrage landet.
-    if (asked && asked.kind === 'foodpick' && Array.isArray(asked.opts)) {
-      const hit = asked.opts.find(c => foldTxt((c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal') === foldTxt(t))
-        || asked.opts.find(c => foldTxt(t).indexOf(foldTxt(c.name)) >= 0 && (!c.brand || foldTxt(t).indexOf(foldTxt(c.brand)) >= 0));
+    // Eine Auswahl-Antwort ist kurz und keine neue Frage. Ohne diese Bremse wurde dieselbe Frage
+    // nochmal ("wie viele kalorien hat banane") als Auswahl gedeutet, weil "banane" darin vorkommt:
+    // daher die alternierenden Antworten bei wiederholter Eingabe.
+    const wirktWieFrage = /\b(wie viel|wieviel|kalorien|kcal|naehrwerte?|hat|habe|ist|sind|was|wer|wo|wann)\b/.test(n) && t.length > 22;
+    if (asked && asked.kind === 'foodpick' && Array.isArray(asked.opts) && !wirktWieFrage) {
+      const O = asked.opts;
+      // Abbruch der Auswahl zulassen
+      if (/^(keins|keines|keins davon|nichts davon|weder noch|egal|abbrechen|vergiss es)\b/.test(n)) {
+        return { intent: 'smalltalk', reply: 'Alles klar. Frag mich einfach nochmal, wenn du es genauer eingrenzen kannst.' };
+      }
+      // Ordnungszahlen und Ziffern: "der erste", "nummer 2", "1"
+      const ORD = { erste: 0, ersten: 0, erster: 0, zweite: 1, zweiten: 1, zweiter: 1, dritte: 2, dritten: 2, dritter: 2, vierte: 3, vierten: 3, fuenfte: 4, fuenften: 4, letzte: O.length - 1, letzten: O.length - 1 };
+      let idx = null;
+      const mo = n.match(/\b(erste[rn]?|zweite[rn]?|dritte[rn]?|vierte[rn]?|fuenfte[rn]?|letzte[rn]?)\b/);
+      if (mo) idx = ORD[mo[1]];
+      const mz = n.match(/^(?:nummer |nr\.? |die |der |das )?([1-9])\b/);
+      if (idx == null && mz) idx = parseInt(mz[1], 10) - 1;
+      let hit = (idx != null && idx >= 0 && idx < O.length) ? O[idx] : null;
+      // Exakter Knopftext
+      if (!hit) hit = O.find(c => foldTxt((c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal') === foldTxt(t));
+      // Nur die Marke genannt: "die von schwarzwaldmilch", "schwarzwaldmilch"
+      if (!hit) hit = O.find(c => c.brand && foldTxt(t).indexOf(foldTxt(c.brand)) >= 0);
+      // Kalorienzahl genannt: "die mit 336"
+      if (!hit) { const mk = n.match(/\b(\d{1,4})\s*(kcal|kalorien)?\b/); if (mk) hit = O.find(c => String(c.kcal) === mk[1]); }
+      if (!hit) hit = O.find(c => foldTxt(t).indexOf(foldTxt(c.name)) >= 0 && (!c.brand || foldTxt(t).indexOf(foldTxt(c.brand)) >= 0));
+      // Nichts erkannt: Auswahl offen halten statt sie zu verlieren
+      if (!hit) {
+        setAsk(uid, sid, { kind: 'foodpick', opts: O });
+        return { intent: 'food_choice', reply: 'Das konnte ich nicht zuordnen. Tipp einfach die Nummer (1 bis ' + O.length + ') oder den Markennamen.',
+          quicks: O.map(c => ({ label: (c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal', send: (c.name + (c.brand ? ' (' + c.brand + ')' : '')).slice(0, 42) + ' · ' + c.kcal + ' kcal' })) };
+      }
       if (hit) {
         rememberFood(uid, sid, hit.name, hit.kcal);
         return {
@@ -869,6 +905,20 @@ module.exports = function registerBot(app, deps) {
     if (/(wie viele?|wieviel).*(kalorien|kcal|eiweiss|protein|fett|kohlenhydrate|naehrwerte?)/.test(n) || /(kalorien|kcal|naehrwerte?)\s+(von|fuer|hat|in)/.test(n) || /(how many|how much).*(calories|protein|carbs|fat)/.test(n)) {
       let m = low.replace(/[?.!,]/g, ' ').replace(/^.*\b(hat|von|für|fuer|in|does|of)\s+/, '').replace(/\b(have|has|got|hat)\b/g, ' ').replace(/\s+/g, ' ').trim();
       if (!m || m.length < 2) m = low.replace(/(wie viele?|wieviel|kalorien|kcal|nährwerte?|naehrwerte?|hat|eine[nr]?|ein|der|die|das|how many|how much|calories|protein|carbs|fat|does|have)/g, ' ').replace(/[?.!,]/g, ' ').replace(/\s+/g, ' ').trim();
+      // Mengen und Einheiten raus: "100g reis" -> "reis", "2 scheiben brot" -> "brot".
+      // Vorher fand "100g reis wie viel kalorien" nichts.
+      m = m.replace(/\b(wie viele?|wieviel|kalorien|kcal|naehrwerte?|nährwerte?|eiwei(ss|ß)|protein|fett|kohlenhydrate|haben|hat|habe)\b/g, ' ')
+        .replace(/\b\d+([.,]\d+)?\s*(g|gramm|kg|ml|l|liter|stk|stueck|stück|scheiben?|glas|glaeser|gläser|tasse[n]?|portion(en)?|handvoll|el|tl|essloeffel|esslöffel|teeloeffel|teelöffel)\b/g, ' ')
+        .replace(/\b(ein|eine|einen|eine[rs]|ne|n|zwei|drei|vier|fuenf|fünf)\s+(scheiben?|glas|tasse|portion|handvoll|stueck|stück)\b/g, ' ')
+        .replace(/\b\d+\b/g, ' ').replace(/\s+/g, ' ').trim();
+      // Pronomen sind keine Lebensmittel: "wie viel eiweiss hat das" fand die japanische
+      // Dashi-Bruehe per Substring-Treffer.
+      if (/^(das|es|die|der|dies|dieses|sowas|davon|dem)$/.test(m)) {
+        const lfp = lastFood.get(uid + ':' + sid);
+        if (!lfp) return { intent: 'food_info', reply: 'Worauf beziehst du dich? Sag mir das Lebensmittel, dann schaue ich nach.' };
+        m = lfp.name;
+      }
+      if (!m || m.length < 2) return { intent: 'food_info', reply: 'Für welches Lebensmittel genau? Sag mir den Namen, dann schaue ich nach.' };
       const cands = await foodCandidates(m, 6);
       if (!cands.length) return { intent: 'food_info', reply: 'Dazu habe ich in der Lebensmittel-Datenbank nichts gefunden. Formulier es vielleicht anders.' };
 
@@ -884,15 +934,19 @@ module.exports = function registerBot(app, deps) {
         seen.add(k); return true;
       });
       const kc = uniq.map(c => c.kcal);
-      const spread = kc.length > 1 ? Math.max(...kc) - Math.min(...kc) : 0;
-      if (uniq.length >= 2 && spread >= 25) {
+      const lo = kc.length ? Math.min(...kc) : 0, hi = kc.length ? Math.max(...kc) : 0;
+      // Relativ statt absolut: 25 kcal Unterschied sind bei Haferflocken (368 vs 401) belanglos,
+      // bei Milch (47 vs 71) aber 51 Prozent. Vorher fragte er genau falschherum.
+      const relativ = hi > 0 ? (hi - lo) / hi : 0;
+      const nennenswert = (hi - lo) >= 20 && relativ >= 0.25;
+      if (uniq.length >= 2 && nennenswert) {
         const opts = uniq.slice(0, 5);
         // Auswahl merken, damit der Klick eindeutig aufgeloest wird. Ohne das landet "Banane"
         // wieder in derselben Rueckfrage: Endlosschleife.
         setAsk(uid, sid, { kind: 'foodpick', opts });
         return {
           intent: 'food_choice',
-          reply: `Davon habe ich mehrere, und die Werte gehen deutlich auseinander (${Math.min(...kc)} bis ${Math.max(...kc)} kcal pro 100 g). Welches meinst du?`,
+          reply: `Davon habe ich mehrere, und die Werte gehen deutlich auseinander (${lo} bis ${hi} kcal pro 100 g). Welches meinst du?`,
           quicks: opts.map((c, i) => ({ label: label(c) + ' · ' + c.kcal + ' kcal', send: label(c) + ' · ' + c.kcal + ' kcal' })),
           sources: [{ kind: 'food', label: 'Lebensmittel-Datenbank' }],
         };
@@ -948,6 +1002,26 @@ module.exports = function registerBot(app, deps) {
       return { intent: 'memory', reply: mem
         ? `Alles klar, das merke ich mir. Aktuell weiß ich das über dich: ${mem}.`
         : 'Alles klar, das merke ich mir für unsere Gespräche.' };
+    }
+
+    // Blankes Lebensmittelwort ("nutella", "käse"). Menschen tippen einfach das Wort, vorher kam
+    // "Da bin ich raus", obwohl "wie viel kcal hat nutella" sofort funktionierte.
+    // Ganz spaet, damit keine andere Regel ueberstimmt wird, und nur bei 1-3 kurzen Woertern.
+    const woerter = t.trim().split(/\s+/);
+    if (woerter.length <= 3 && t.length >= 3 && t.length <= 40 && /^[a-zA-ZäöüÄÖÜß][a-zA-ZäöüÄÖÜß \-]*$/.test(t.trim())
+        && !/\b(ich|du|er|sie|es|wir|ihr|das|die|der|und|oder|was|wie|wer|wo|ja|nein|ok|danke|hallo|hi|hey|tschuess|bitte|gut|schlecht|nichts|alles|mehr|noch)\b/.test(n)) {
+      const c = await foodCandidates(t.trim(), 3).catch(() => []);
+      // Nur wenn der Name wirklich passt, sonst matcht "kaputt" irgendein Produkt
+      const qq = foldTxt(t.trim()), nn = foldTxt(c.length ? c[0].name : '');
+      // Locker genug fuer "käse" -> "Kase", aber nicht so locker, dass Zufallstreffer durchgehen
+      const passt = c.length && (nn.indexOf(qq) >= 0 || qq.indexOf(nn) >= 0 || nn.replace(/e/g, '').indexOf(qq.replace(/e/g, '')) >= 0);
+      if (passt) {
+        rememberFood(uid, sid, c[0].name, c[0].kcal);
+        return { intent: 'food_info',
+          reply: `${c[0].name}${c[0].brand ? ' (' + c[0].brand + ')' : ''}: ${c[0].kcal} kcal pro 100 g, ${c[0].protein} g Eiweiß, ${c[0].carbs} g Kohlenhydrate, ${c[0].fat} g Fett.`,
+          quicks: [{ label: 'Ins Tagebuch', send: 'Essen eintragen: ' + c[0].name }],
+          sources: [{ kind: 'food', label: 'Lebensmittel-Datenbank' }] };
+      }
     }
 
     // Fallback gestaffelt: nicht auf jeden Murks ein Support-Ticket anbieten.
