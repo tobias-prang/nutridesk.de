@@ -2103,6 +2103,25 @@
           <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:26px;">
             <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Datenschutz</div>
             <div style="font-size:12.5px;color:var(--ink3);margin-bottom:18px;">Du entscheidest, was NutriDesk mit deinen Daten macht.</div>
+
+            <div style="border:1px solid var(--line3);border-radius:14px;padding:16px 18px;margin-bottom:18px;background:var(--bg2);">
+              <div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;"><i data-lucide="lock" style="width:16px;height:16px;color:var(--acc);"></i><span style="font-size:14px;font-weight:700;">App-Sperre</span><span style="font-size:11px;font-weight:700;color:{{ pinBadge.c }};background:{{ pinBadge.bg }};border:1px solid {{ pinBadge.bd }};border-radius:999px;padding:2px 9px;">{{ pinBadge.t }}</span></div>
+              <div style="font-size:12px;color:var(--ink3);line-height:1.55;margin-bottom:14px;">Sperrt die App nach einer Zeit ohne Eingabe mit einem PIN. Das schützt vor neugierigen Blicken, wenn du kurz weg bist. <b style="color:var(--ink2);">Es ist kein Schutz gegen jemanden mit Zugriff auf deinen Rechner</b>, deine Daten liegen auf dem Server.</div>
+
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--track);gap:16px;">
+                <div style="min-width:0;"><div style="font-size:13.5px;font-weight:600;">Sperren nach</div><div style="font-size:11.5px;color:var(--ink3);margin-top:2px;">{{ lockHint }}</div></div>
+                <select onchange="{{ setLockMin }}" style="flex:0 0 auto;background:var(--bg);border:1px solid var(--line3);color:var(--ink);border-radius:9px;padding:7px 10px;font-size:13px;font-weight:600;cursor:pointer;">
+                  <sc-for list="{{ lockOpts }}" as="o"><option value="{{ o.v }}" selected="{{ o.sel }}">{{ o.t }}</option></sc-for>
+                </select>
+              </div>
+
+              <div style="display:flex;gap:9px;padding-top:12px;border-top:1px solid var(--track);">
+                <div onclick="{{ openPinSet }}" style="display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;background:var(--acc);color:#0f1117;font-weight:600;font-size:12.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="key-round" style="width:14px;height:14px;"></i>{{ pinBtnLabel }}</div>
+                <div onclick="{{ openPinOff }}" style="display:{{ pinOffD }};align-items:center;gap:7px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:12.5px;cursor:pointer;" style-hover="border-color:#f87171;color:#f87171;">PIN entfernen</div>
+                <div onclick="{{ lockNow }}" style="display:{{ pinOffD }};align-items:center;gap:7px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:12.5px;cursor:pointer;" style-hover="background:var(--chip);"><i data-lucide="lock" style="width:14px;height:14px;"></i>Jetzt sperren</div>
+              </div>
+            </div>
+
             <div style="display:flex;flex-direction:column;gap:4px;">
               <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-top:1px solid var(--track);gap:16px;">
                 <div style="min-width:0;"><div style="font-size:14px;font-weight:600;">Chat-Verläufe zur Verbesserung senden</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;line-height:1.5;">Deine Unterhaltungen mit dem Assistenten werden anonymisiert an NutriDesk übermittelt, damit wir Antworten verbessern können. Jederzeit abschaltbar.</div></div>
@@ -4173,6 +4192,46 @@
   </div>
   </sc-if>
 
+  <sc-if value="{{ modPin }}">
+  <div onclick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(5,7,11,.82);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div onclick="{{ eatClick }}" style="width:420px;max-width:100%;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);">
+      <div style="font-size:17px;font-weight:700;margin-bottom:6px;">{{ pinModalTitle }}</div>
+      <div style="font-size:12.5px;color:var(--ink3);line-height:1.55;margin-bottom:18px;">{{ pinModalHint }}</div>
+      <div style="font-size:11.5px;font-weight:700;color:var(--ink3);letter-spacing:.04em;margin-bottom:6px;">DEIN PASSWORT</div>
+      <input type="password" value="{{ pinPw }}" oninput="{{ setPinPw }}" placeholder="Kontopasswort" style="width:100%;background:var(--bg2);border:1px solid var(--line3);color:var(--ink);border-radius:11px;padding:12px 14px;font-size:14px;margin-bottom:14px;">
+      <div style="display:{{ pinNewD }};">
+        <div style="font-size:11.5px;font-weight:700;color:var(--ink3);letter-spacing:.04em;margin-bottom:6px;">NEUER PIN (4 BIS 8 ZIFFERN)</div>
+        <input type="password" inputmode="numeric" value="{{ pinNew }}" oninput="{{ setPinNew }}" placeholder="z.B. 4711" style="width:100%;background:var(--bg2);border:1px solid var(--line3);color:var(--ink);border-radius:11px;padding:12px 14px;font-size:16px;letter-spacing:.3em;font-family:'JetBrains Mono',monospace;margin-bottom:14px;">
+      </div>
+      <div style="display:{{ pinErr2D }};font-size:12.5px;color:#f87171;margin-bottom:12px;">{{ pinErr2 }}</div>
+      <div style="display:flex;gap:10px;">
+        <div onclick="{{ closeModal }}" style="flex:1;display:flex;align-items:center;justify-content:center;padding:12px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:var(--chip);">Abbrechen</div>
+        <div onclick="{{ savePin }}" style="flex:1;display:flex;align-items:center;justify-content:center;padding:12px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;">{{ pinSaveLabel }}</div>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ locked }}">
+  <div style="position:fixed;inset:0;background:#080a10;z-index:2000;display:flex;align-items:center;justify-content:center;padding:24px;">
+    <div style="width:340px;max-width:100%;text-align:center;">
+      <div style="width:64px;height:64px;border-radius:50%;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><i data-lucide="lock" style="width:28px;height:28px;color:var(--acc);"></i></div>
+      <div style="font-size:19px;font-weight:700;margin-bottom:6px;">NutriDesk ist gesperrt</div>
+      <div style="font-size:13px;color:var(--ink3);margin-bottom:22px;">Gib deinen PIN ein, um weiterzumachen.</div>
+      <div style="display:flex;justify-content:center;gap:10px;margin-bottom:16px;">
+        <sc-for list="{{ pinDots }}" as="d"><div style="width:14px;height:14px;border-radius:50%;background:{{ d.bg }};border:1px solid {{ d.bd }};"></div></sc-for>
+      </div>
+      <div style="height:18px;font-size:12.5px;color:#f87171;font-weight:600;margin-bottom:10px;">{{ pinErr }}</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">
+        <sc-for list="{{ pinPad }}" as="k">
+          <div onclick="{{ pinKey }}" data-k="{{ k.k }}" style="display:{{ k.d }};align-items:center;justify-content:center;height:56px;border-radius:14px;background:var(--bg2);border:1px solid var(--line3);font-size:20px;font-weight:600;cursor:pointer;user-select:none;" style-hover="border-color:var(--acc-bd);color:var(--acc);">{{ k.t }}</div>
+        </sc-for>
+      </div>
+      <div onclick="{{ lockLogout }}" style="font-size:12.5px;color:var(--ink3);cursor:pointer;text-decoration:underline;">Passwort vergessen? Abmelden</div>
+    </div>
+  </div>
+  </sc-if>
+
   <sc-if value="{{ modFit }}">
   <div onclick="{{ eatClick }}" style="position:fixed;inset:0;background:rgba(5,7,11,.82);z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;">
     <div onclick="{{ eatClick }}" style="width:560px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:22px;box-shadow:var(--modalsh);">
@@ -5336,6 +5395,9 @@ class Component extends DCLogic {
       else if (e.key === 'Escape' && this.state.modal) { this.closeModal(); }
     };
     window.addEventListener('keydown', this._key);
+    this._lastAct = Date.now();
+    for (const ev of ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart']) window.addEventListener(ev, this._touch, { passive: true });
+    this._lockT = setInterval(() => this._lockTick(), 5000);
     this._loadBreakSeen();
     this._notifTick = setInterval(() => { if (this.state.phase === 'app') { if (!this.state.modal) this.setState({}); this._breakTick(); this._syncBot(); this._mpWarm(); } }, 30000);
     // Insights systembasiert im Hintergrund aktualisieren (alle 12 Min), plus einmal kurz nach dem Start.
@@ -5368,7 +5430,7 @@ class Component extends DCLogic {
       });
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); clearTimeout(this._toastT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); for (const ev of ['mousemove', 'mousedown', 'keydown', 'wheel', 'touchstart']) window.removeEventListener(ev, this._touch); clearInterval(this._lockT); clearTimeout(this._toastT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); }
   _applyAccent() {
     const inApp = this.state.phase === 'app';
@@ -6015,7 +6077,7 @@ class Component extends DCLogic {
     cv.width = 640; cv.height = 480;
     const now = (typeof performance !== 'undefined' ? performance.now() : 0);
     this._fitWarm(true);
-    this._fit = { video:v, canvas:cv, ctx: cv.getContext('2d'), lm: this._poseLandmarker, exId: this.state.fitEx.id, goal: this.state.fitEx.goal || 20, reps:0, phase:'rest', lastRep:0, active:false, cdEnd: now + 3200, maxEnd:0, doneAt:0, paused:false, pausedAt:0, resumeAt:0, kL:false, kR:false, pL:false, pR:false, fb:'Mach dich bereit', prog:0, lastTs:0, raf:0 };
+    this._fit = { video:v, canvas:cv, ctx: cv.getContext('2d'), lm: this._poseLandmarker, exId: this.state.fitEx.id, goal: this.state.fitEx.goal || 20, reps:0, phase:'rest', lastRep:0, active:false, cdEnd: now + 3200, maxEnd:0, doneAt:0, paused:false, pausedAt:0, resumeAt:0, badSince:0, kL:false, kR:false, pL:false, pR:false, fb:'Mach dich bereit', prog:0, lastTs:0, raf:0 };
     this._fitLoop();
   };
   _fitStopCam = () => {
@@ -6030,9 +6092,12 @@ class Component extends DCLogic {
     return Math.acos(Math.max(-1, Math.min(1, dot / m))) * 180 / Math.PI;
   };
   _fitVis = (lm, idxs) => idxs.every(i => lm[i] && (lm[i].visibility === undefined || lm[i].visibility > 0.35));
+  // Nur STABILE Landmarks fuer die Ausrichtung. Beim Schlag nach vorne zeigt der Arm zur Kamera,
+  // dann faellt die geschaetzte Sichtbarkeit des Handgelenks ab und die Pruefung wuerde ausgerechnet
+  // waehrend der Bewegung anschlagen. Die 3D-Position schaetzt MediaPipe trotzdem weiter.
   _FIT_NEED = {
-    squat: [23,24,25,26,27,28], knees: [23,24,25,26,27,28], jack: [11,12,15,16,27,28],
-    arms: [11,12,15,16], punch: [11,12,15,16], side: [11,12,23,24],
+    squat: [23,24,25,26,27,28], knees: [23,24,25,26,27,28], jack: [11,12,23,24,27,28],
+    arms: [11,12,23,24], punch: [11,12,23,24], side: [11,12,23,24],
   };
   _FIT_NEED_TXT = {
     squat: 'Beine und Füße müssen ins Bild', knees: 'Beine und Füße müssen ins Bild',
@@ -6383,7 +6448,11 @@ class Component extends DCLogic {
       let res = null; try { res = st.lm.detectForVideo(v, ts); } catch (e) {}
       const lm = res && res.landmarks && res.landmarks[0];
       const wl = res && res.worldLandmarks && res.worldLandmarks[0];
-      const aligned = this._fitAligned(lm, st.exId);
+      const rawOk = this._fitAligned(lm, st.exId);
+      // Sichtbarkeit flackert von Frame zu Frame. Erst nach 700ms durchgehender Fehlausrichtung
+      // wirklich pausieren, sonst reisst ein einzelnes schlechtes Bild mitten in der Bewegung ab.
+      if (rawOk) st.badSince = 0; else if (!st.badSince) st.badSince = now;
+      const aligned = rawOk || (st.badSince > 0 && now - st.badSince < 700);
       ctx.save(); ctx.clearRect(0, 0, cv.width, cv.height);
       ctx.translate(cv.width, 0); ctx.scale(-1, 1);
       try { ctx.drawImage(v, 0, 0, cv.width, cv.height); } catch (e) {}
@@ -6493,6 +6562,25 @@ class Component extends DCLogic {
       kcalRewardXp: (s.kcalReward && s.kcalReward.xp) || 0, kcalRewardNut: (s.kcalReward && s.kcalReward.nutris) || 0,
       openFitness: this.openFitness, fitPick: this.fitPick, fitMenu: this.fitMenu, fitStart: this.fitStart, fitStop: this.fitStop, fitCamTest: this.fitCamTest,
       modFit: s.modal === 'fitness',
+      modPin: s.modal === 'pin', locked: !!s.locked,
+      lockNow: this.lockNow, lockLogout: this.lockLogout, pinKey: this.pinKey,
+      openPinSet: this.openPinSet, openPinOff: this.openPinOff, savePin: this.savePin,
+      setPinPw: this.setPinPw, setPinNew: this.setPinNew, setLockMin: this.setLockMin,
+      pinPw: s.pinPw || '', pinNew: s.pinNew || '', pinErr: s.pinErr || '', pinErr2: s.pinErr2 || '',
+      pinErr2D: s.pinErr2 ? 'block' : 'none', pinNewD: s.pinMode === 'off' ? 'none' : 'block',
+      pinModalTitle: s.pinMode === 'off' ? 'PIN entfernen' : ((s.settings && s.settings.pin_set) ? 'PIN ändern' : 'PIN einrichten'),
+      pinModalHint: s.pinMode === 'off' ? 'Damit ist die App-Sperre aus. Zur Bestätigung brauche ich dein Kontopasswort.' : 'Zur Sicherheit brauche ich einmal dein Kontopasswort, damit nicht jemand anderes an deinem Rechner einfach einen PIN setzt.',
+      pinSaveLabel: s.pinBusy ? 'Moment …' : (s.pinMode === 'off' ? 'Entfernen' : 'Speichern'),
+      pinBtnLabel: (s.settings && s.settings.pin_set) ? 'PIN ändern' : 'PIN einrichten',
+      pinOffD: (s.settings && s.settings.pin_set) ? 'flex' : 'none',
+      pinBadge: (s.settings && s.settings.pin_set)
+        ? ((s.settings.lock_after_min > 0) ? { t:'AKTIV', c:'var(--acc)', bg:'var(--acc-bg)', bd:'var(--acc-bd)' } : { t:'PIN GESETZT', c:'#fbbf24', bg:'rgba(251,191,36,.12)', bd:'rgba(251,191,36,.4)' })
+        : { t:'AUS', c:'var(--mut)', bg:'transparent', bd:'var(--line3)' },
+      lockOpts: this._LOCK_OPTS.map(o => ({ v:o.v, t:o.t, sel: ((s.settings && s.settings.lock_after_min) || 0) === o.v ? 'selected' : '' })),
+      lockHint: !(s.settings && s.settings.pin_set) ? 'Erst einen PIN einrichten' : (((s.settings && s.settings.lock_after_min) || 0) === 0 ? 'Sperre ist aus' : 'Während des Trainings wird nicht gesperrt'),
+      pinDots: [0,1,2,3,4,5,6,7].slice(0, Math.max(4, (s.pinIn || '').length)).map((i) => ((s.pinIn || '').length > i
+        ? { bg:'var(--acc)', bd:'var(--acc)' } : { bg:'transparent', bd:'var(--line3)' })),
+      pinPad: ['1','2','3','4','5','6','7','8','9','','0','del'].map(k => ({ k, t: k === 'del' ? '⌫' : k, d: k === '' ? 'none' : 'flex' })),
       fitIsMenu: s.fitView === 'menu', fitIsIntro: s.fitView === 'intro', fitIsLoading: s.fitView === 'loading', fitIsPlay: s.fitView === 'play', fitIsError: s.fitView === 'error', fitIsResult: s.fitView === 'result', fitIsCamTest: s.fitView === 'camtest',
       fitList: this._FITX.map(x => ({ id: x.id, icon: x.icon, name: x.name, hint: x.hint, goal: x.goal })),
       fitExName: s.fitEx ? s.fitEx.name : '', fitExHint: s.fitEx ? s.fitEx.hint : '', fitExIcon: s.fitEx ? s.fitEx.icon : 'dumbbell', fitExGoal: s.fitEx ? s.fitEx.goal : 0,
@@ -6918,6 +7006,66 @@ class Component extends DCLogic {
       toolBudget: this.fBud, toolCsv: this.fTx, toolBank: this.fTx, toolSoon: this._toolSoon,
     };
   }
+  _LOCK_OPTS = [{ v:0, t:'Nie' }, { v:1, t:'1 Minute' }, { v:5, t:'5 Minuten' }, { v:15, t:'15 Minuten' }, { v:30, t:'30 Minuten' }, { v:60, t:'1 Stunde' }];
+  _touch = () => { this._lastAct = Date.now(); };
+  _lockTick = () => {
+    const mins = (this.state.settings && this.state.settings.lock_after_min) || 0;
+    if (!mins || this.state.locked || this.state.phase !== 'app') return;
+    if (!(this.state.settings && this.state.settings.pin_set)) return;
+    // Waehrend Training/Kamera NICHT sperren: der Nutzer bewegt sich, fasst aber weder Maus noch
+    // Tastatur an, und ein setState wuerde das <video> ersetzen und die Kamera abreissen.
+    if (this.state.modal === 'fitness') return;
+    if (Date.now() - (this._lastAct || 0) >= mins * 60000) this.lockNow();
+  };
+  lockNow = () => { this._fitStopCam(); this.setState({ locked:true, pinIn:'', pinErr:'', modal:null }); };
+  pinKey = (e) => {
+    const d = e.currentTarget.dataset.k;
+    const cur = this.state.pinIn || '';
+    if (d === 'del') return this.setState({ pinIn: cur.slice(0, -1), pinErr:'' });
+    if (cur.length >= 8) return;
+    const next = cur + d;
+    this.setState({ pinIn: next, pinErr:'' });
+    if (next.length >= 4) setTimeout(() => this.unlockTry(), 120);
+  };
+  unlockTry = async () => {
+    const pin = this.state.pinIn || '';
+    if (pin.length < 4 || this.state.pinBusy) return;
+    this.setState({ pinBusy:true });
+    try {
+      const r = await this.api('/me/pin/verify', { method:'POST', body:{ pin } });
+      if (r.ok) { this._touch(); this.setState({ locked:false, pinIn:'', pinErr:'', pinBusy:false }); }
+      else this.setState({ pinIn:'', pinErr:'Falscher PIN', pinBusy:false });
+    } catch (e) {
+      const msg = (e && e.message) || '';
+      this.setState({ pinIn:'', pinBusy:false, pinErr: /viele/i.test(msg) ? 'Zu viele Versuche. Warte kurz oder melde dich ab.' : 'Das hat nicht geklappt' });
+    }
+  };
+  lockLogout = () => { this.setState({ locked:false }); this.logout(); };
+  setLockMin = async (e) => {
+    const v = parseInt(e.currentTarget.value, 10) || 0;
+    if (v > 0 && !(this.state.settings && this.state.settings.pin_set)) { this.toast('Setz zuerst einen PIN'); return; }
+    this.setState({ settings: { ...this.state.settings, lock_after_min: v } });
+    try { await this.api('/me/settings', { method:'PUT', body:{ lock_after_min: v } }); this._touch(); } catch (err) { this.toast('Konnte nicht gespeichert werden'); }
+  };
+  openPinSet = () => this.setState({ modal:'pin', pinMode:'set', pinPw:'', pinNew:'', pinErr2:'' });
+  openPinOff = () => this.setState({ modal:'pin', pinMode:'off', pinPw:'', pinNew:'', pinErr2:'' });
+  setPinPw = (e) => this.setState({ pinPw: e.currentTarget.value });
+  setPinNew = (e) => this.setState({ pinNew: e.currentTarget.value.replace(/\D/g, '').slice(0, 8) });
+  savePin = async () => {
+    const off = this.state.pinMode === 'off';
+    if (!this.state.pinPw) return this.setState({ pinErr2:'Bitte dein Passwort eingeben' });
+    if (!off && !/^\d{4,8}$/.test(this.state.pinNew || '')) return this.setState({ pinErr2:'Der PIN braucht 4 bis 8 Ziffern' });
+    this.setState({ pinBusy:true, pinErr2:'' });
+    try {
+      const r = await this.api('/me/pin', { method:'POST', body:{ password: this.state.pinPw, pin: off ? null : this.state.pinNew } });
+      const st = { ...this.state.settings, pin_set: r.pin_set };
+      if (off) st.lock_after_min = 0;
+      this.setState({ settings: st, modal:null, pinBusy:false, pinPw:'', pinNew:'' });
+      this.toast(off ? 'PIN entfernt' : 'PIN gespeichert');
+    } catch (e) {
+      this.setState({ pinBusy:false, pinErr2: (e && e.message) || 'Das hat nicht geklappt' });
+    }
+  };
   sProf = () => this.setState({ setTab:'profile' });
   sDes = () => this.setState({ setTab:'design' });
   sPrivacy = () => { this.setState({ setTab:'privacy' }); this.loadBotMemory(); };

@@ -647,6 +647,8 @@ app.get('/me', auth, asyncRoute(async (req, res) => {
   const [[user]] = await pool.execute('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, created_at FROM users WHERE id = ?', [req.uid]);
   const [[settings]] = await pool.execute('SELECT * FROM user_settings WHERE user_id = ?', [req.uid]);
   const settingsSafe = settings ? { ...settings, avatar: cleanAvatar(settings.avatar) } : settings;
+  // Der PIN-Hash darf den Server nie verlassen, nur die Info OB einer gesetzt ist.
+  if (settingsSafe) { settingsSafe.pin_set = settingsSafe.pin_hash ? 1 : 0; delete settingsSafe.pin_hash; }
   res.json({ user, settings: settingsSafe });
 }));
 
@@ -692,6 +694,35 @@ app.put('/me', auth, asyncRoute(async (req, res) => {
     throw e;
   }
   res.json({ ok: true });
+}));
+
+// ---------- App-Sperre (PIN) ----------
+// Der PIN ist ein Privatsphaere-Schirm, kein Datenschutz: die Daten liegen serverseitig und das
+// Token im Geraetespeicher. Er verhindert Blicke ueber die Schulter, nicht einen Angreifer mit
+// Zugriff auf den Rechner. Deshalb bcrypt + harte Drosselung, aber ohne Sicherheitsversprechen.
+app.post('/me/pin', auth, rateLimitUser('me-pin-set', 10, 600000), asyncRoute(async (req, res) => {
+  const pw = vStr(req.body.password, 'Passwort', 200);
+  const pin = req.body.pin === null || req.body.pin === '' ? null : vStr(req.body.pin, 'PIN', 12);
+  const [[u]] = await pool.execute('SELECT pass_hash FROM users WHERE id = ?', [req.uid]);
+  if (!u || !(await bcrypt.compare(pw, u.pass_hash))) throw bad('Das Passwort ist falsch');
+  if (pin !== null && !/^\d{4,8}$/.test(pin)) throw bad('Der PIN muss aus 4 bis 8 Ziffern bestehen');
+  const hash = pin === null ? null : await bcrypt.hash(pin, 11);
+  await pool.execute('UPDATE user_settings SET pin_hash = ? WHERE user_id = ?', [hash, req.uid]);
+  if (pin === null) await pool.execute('UPDATE user_settings SET lock_after_min = 0 WHERE user_id = ?', [req.uid]);
+  logEvent('warning', pin === null ? 'pin_removed' : 'pin_set', pin === null ? 'App-PIN entfernt' : 'App-PIN gesetzt', { uid: req.uid, ip: reqIp(req) });
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok: true, pin_set: pin !== null ? 1 : 0 });
+}));
+
+// Sehr streng gedrosselt: 4 Ziffern sind nur 10.000 Moeglichkeiten.
+app.post('/me/pin/verify', auth, rateLimitUser('me-pin-try', 10, 300000), asyncRoute(async (req, res) => {
+  const pin = vStr(req.body.pin, 'PIN', 12);
+  const [[s]] = await pool.execute('SELECT pin_hash FROM user_settings WHERE user_id = ?', [req.uid]);
+  if (!s || !s.pin_hash) throw bad('Es ist kein PIN gesetzt');
+  const ok = await bcrypt.compare(pin, s.pin_hash);
+  if (!ok) logEvent('warning', 'pin_failed', 'Falscher App-PIN', { uid: req.uid, ip: reqIp(req) });
+  res.set('Cache-Control', 'no-store');
+  res.json({ ok });
 }));
 
 app.put('/me/password', auth, rateLimitUser('me-pw', 8, 600000), asyncRoute(async (req, res) => {
@@ -749,6 +780,7 @@ app.put('/me/settings', auth, rateLimitUser('me-set', 120), asyncRoute(async (re
 
     notif_prefs: b.notif_prefs !== undefined ? (b.notif_prefs === null || b.notif_prefs === '' ? null : vStr(b.notif_prefs, 'Benachrichtigungen', 1000)) : undefined,
     onboarded: b.onboarded !== undefined ? vBool(b.onboarded) : undefined,
+    lock_after_min: b.lock_after_min !== undefined ? vInt(b.lock_after_min, 'Sperre nach Minuten', 0, 240) : undefined,
     ki_answers: b.ki_answers !== undefined ? vStr(b.ki_answers, 'KI-Antworten', 4000, { optional: true }) : undefined,
     target_weight: b.target_weight !== undefined ? vNum(b.target_weight, 'Zielgewicht', 30, 300, { optional: true }) : undefined,
     avatar: b.avatar !== undefined ? (b.avatar === null || b.avatar === '' ? null : vDataImage(b.avatar)) : undefined,
@@ -1924,6 +1956,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
   aiCooldowns.available = true;
   // PIN-Hash bleibt auf dem Server, der Client bekommt nur ob einer gesetzt ist
   const settingsSafe = settings ? { ...settings, avatar: cleanAvatar(settings.avatar) } : settings;
+  if (settingsSafe) { settingsSafe.pin_set = settingsSafe.pin_hash ? 1 : 0; delete settingsSafe.pin_hash; }
   res.json({ user, settings: settingsSafe, weights, water, foodLog, dishes, plan, shopping,
     transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns });
 }));
