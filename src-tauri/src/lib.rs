@@ -34,6 +34,82 @@ fn app_version(app: tauri::AppHandle) -> String {
     app.package_info().version.to_string()
 }
 
+// Touch ID am Mac. Fuer Desktop gibt es kein Tauri-Biometrie-Plugin (das offizielle kann nur
+// Android/iOS), deshalb direkt gegen Apples LocalAuthentication-Framework.
+#[cfg(target_os = "macos")]
+mod macbio {
+    use objc2_foundation::{NSError, NSString};
+    use objc2_local_authentication::{LABiometryType, LAContext, LAPolicy};
+
+    // "touchid" | "faceid" | "none"
+    pub fn kind() -> &'static str {
+        let ctx = unsafe { LAContext::new() };
+        let can = unsafe { ctx.canEvaluatePolicy_error(LAPolicy::DeviceOwnerAuthenticationWithBiometrics) };
+        if can.is_err() {
+            return "none";
+        }
+        match unsafe { ctx.biometryType() } {
+            LABiometryType::TouchID => "touchid",
+            LABiometryType::FaceID => "faceid",
+            _ => "none",
+        }
+    }
+
+    pub fn auth(reason: &str) -> Result<bool, String> {
+        let ctx = unsafe { LAContext::new() };
+        if unsafe { ctx.canEvaluatePolicy_error(LAPolicy::DeviceOwnerAuthenticationWithBiometrics) }.is_err() {
+            return Err("Biometrie ist auf diesem Gerät nicht verfügbar".into());
+        }
+        let ns_reason = NSString::from_str(reason);
+        // evaluatePolicy ist asynchron mit Completion-Block. Wir warten hier, damit der
+        // Tauri-Command ein einfaches Ergebnis zurueckgeben kann.
+        let (tx, rx) = std::sync::mpsc::channel::<bool>();
+        let tx = std::sync::Mutex::new(Some(tx));
+        let block = block2::RcBlock::new(move |ok: objc2::runtime::Bool, _err: *mut NSError| {
+            if let Ok(mut g) = tx.lock() {
+                if let Some(t) = g.take() {
+                    let _ = t.send(ok.as_bool());
+                }
+            }
+        });
+        unsafe {
+            ctx.evaluatePolicy_localizedReason_reply(
+                LAPolicy::DeviceOwnerAuthenticationWithBiometrics,
+                &ns_reason,
+                &block,
+            );
+        }
+        rx.recv_timeout(std::time::Duration::from_secs(60))
+            .map_err(|_| "Zeitüberschreitung bei der Anmeldung".to_string())
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn bio_kind() -> String {
+    macbio::kind().to_string()
+}
+
+#[cfg(target_os = "macos")]
+#[tauri::command]
+async fn bio_auth(reason: String) -> Result<bool, String> {
+    tauri::async_runtime::spawn_blocking(move || macbio::auth(&reason))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn bio_kind() -> String {
+    "none".to_string()
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+async fn bio_auth(_reason: String) -> Result<bool, String> {
+    Err("Biometrie wird auf dieser Plattform nicht unterstützt".into())
+}
+
 #[tauri::command]
 fn notify_items(app: tauri::AppHandle, items: Vec<serde_json::Value>) -> u32 {
     let mut shown = 0u32;
@@ -257,10 +333,14 @@ pub fn run() {
             upd_check,
             upd_install,
             upd_get_channel,
-            upd_set_channel
+            upd_set_channel,
+            bio_kind,
+            bio_auth
         ]);
     #[cfg(mobile)]
-    let builder = builder.invoke_handler(tauri::generate_handler![app_version, notify_items]);
+    let builder = builder
+        .plugin(tauri_plugin_biometric::init())
+        .invoke_handler(tauri::generate_handler![app_version, notify_items, bio_kind, bio_auth]);
 
     let builder = builder.setup(|app| {
         let version = app.package_info().version.to_string();

@@ -9,6 +9,12 @@
 
   window.nutridesk = {
     getVersion: function () { return invoke('app_version'); },
+    bioKind: function () { return invoke('bio_kind').catch(function () { return 'none'; }); },
+    bioAuth: function (reason) {
+      return invoke('bio_auth', { reason: String(reason || 'Entsperren') })
+        .then(function (ok) { return { ok: !!ok }; })
+        .catch(function (e) { return { ok: false, error: String(e) }; });
+    },
     notify: function (items) {
       return invoke('notify_items', { items: Array.isArray(items) ? items : [] })
         .then(function (shown) { return { ok: true, shown: shown }; })

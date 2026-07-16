@@ -137,10 +137,32 @@ module.exports = function registerBot(app, deps) {
   const fkey = (uid, sid) => uid + ':' + sid;
 
   // ---------- Ton ----------
-  function applyTone(text, tone) {
-    if (tone === 'locker') return text;
-    if (tone === 'coach') return text;
-    return text; // neutral
+  // Der Tonfall war frueher eine Attrappe: alle drei Zweige gaben denselben Text zurueck, obwohl
+  // die App "feuert dich an und lobt deine Fortschritte" verspricht.
+  // WICHTIG: nur bei unverfaenglichen Intents anwenden. Ein "Du packst das!" hinter der
+  // Telefonseelsorge-Antwort oder hinter einer Beleidigungsgrenze waere uebergriffig.
+  const TONE_SAFE = new Set(['data', 'domain', 'food_info', 'help', 'wiki', 'smalltalk', 'greet', 'joke', 'memory', 'weather']);
+  const TONE_ADD = {
+    locker: ['', '', '', 'Sag Bescheid, wenn du noch was brauchst.', 'Passt das so?', 'Frag ruhig weiter.'],
+    coach: ['Dranbleiben lohnt sich!', 'Du packst das.', 'Weiter so!', 'Kleine Schritte zählen auch.', 'Bleib dran, das zahlt sich aus.', ''],
+  };
+  const TONE_PRE = {
+    locker: ['', '', '', 'Klar: ', 'Also: '],
+    coach: ['', '', 'Gute Frage: ', 'Stark, dass du fragst: '],
+  };
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  function applyTone(text, tone, intent) {
+    if (!tone || tone === 'neutral') return text;
+    const base = String(intent || '').split(':')[0];
+    if (!TONE_SAFE.has(base)) return text;
+    const pre = TONE_PRE[tone] ? pick(TONE_PRE[tone]) : '';
+    const add = TONE_ADD[tone] ? pick(TONE_ADD[tone]) : '';
+    // Nicht kleinschreiben: im Deutschen werden Substantive gross geschrieben, aus "Nutella"
+    // wurde sonst "nutella".
+    let out = String(text);
+    if (pre) out = pre + out;
+    if (add) out = out + ' ' + add;
+    return out;
   }
 
   // ---------- Nutzer-Einstellungen ----------
@@ -379,6 +401,19 @@ module.exports = function registerBot(app, deps) {
     lastFood.set(k, { name, kcal });
     if (lastFood.size > 500) lastFood.delete(lastFood.keys().next().value);
   };
+  // Merkt sich, dass der Bot gerade selbst etwas gefragt hat. Ohne das antwortete er auf
+  // "Nenn mir eine Stadt" -> "birkenbeul" mit "Das habe ich nicht verstanden".
+  const pendingAsk = new Map();
+  const setAsk = (uid, sid, what) => {
+    pendingAsk.set(uid + ':' + sid, { what, at: Date.now() });
+    if (pendingAsk.size > 500) pendingAsk.delete(pendingAsk.keys().next().value);
+  };
+  const takeAsk = (uid, sid) => {
+    const k = uid + ':' + sid, v = pendingAsk.get(k);
+    pendingAsk.delete(k);
+    // Nur kurz gueltig, sonst wird eine spaetere Nachricht faelschlich als Antwort gedeutet.
+    return v && Date.now() - v.at < 180000 ? v.what : null;
+  };
   const insultCount = new Map();
   const bumpInsult = (uid, sid) => {
     const k = uid + ':' + sid, n = (insultCount.get(k) || 0) + 1;
@@ -513,9 +548,28 @@ module.exports = function registerBot(app, deps) {
       return { intent: 'flow_confirm', reply: await confirmSummary(uid, flow), quicks: [{ label: 'Ja, machen', send: 'ja' }, { label: 'Abbrechen', send: 'abbrechen' }] };
     }
 
+    // Antwort auf eine eigene Rueckfrage. Muss frueh kommen: "birkenbeul" ist fuer jede andere
+    // Regel sinnloser Text, aber als Antwort auf "Nenn mir eine Stadt" voellig richtig.
+    const asked = takeAsk(uid, sid);
+    if (asked === 'city' && t.length >= 2 && t.length <= 60 && !/^(nein|ne|nö|egal|weiss nicht|weiß nicht|abbrechen)$/.test(low)) {
+      const city = t.replace(/^(in|aus|für|fuer)\s+/i, '').replace(/[?.!]/g, '').trim();
+      const g = await geocode(city).catch(() => null);
+      if (!g) {
+        setAsk(uid, sid, 'city');
+        return { intent: 'weather', reply: `"${city}" finde ich leider nicht. Schreib den Ort vielleicht anders oder nimm die nächstgrößere Stadt.` };
+      }
+      const w = await weatherFor(g.lat, g.lon, g.city).catch(() => null);
+      return { intent: 'weather', reply: w ? `In ${w.city || g.city} sind es gerade ${w.temp} Grad, ${w.desc}, Wind ${w.wind} km/h.` : 'Das Wetter konnte ich gerade nicht abrufen.' };
+    }
+
     // Smalltalk ZUERST, damit Plauderei nicht in die Wikipedia-Suche abrutscht.
     if (/wie (geht|gehts|geht's|läuft)|alles (gut|klar) bei dir|wie ist dein tag|was geht\b/.test(low)) {
       return { intent: 'smalltalk', reply: 'Mir geht es gut, danke der Nachfrage. Und dir? Ich bin bereit, wenn du etwas brauchst: App-Hilfe, Nährwerte, deine Zahlen oder etwas eintragen.' };
+    }
+    // Bin ich eine echte KI? Wird oft als Nachfrage gestellt, deshalb tolerant und ehrlich.
+    if (/\b(echte|richtige|wirkliche)?\s*(ki|ai|kuenstliche intelligenz|sprachmodell|chatgpt|gpt|llm)\b/.test(n)
+        || /\b(bist|biste|bist du)\b[^.?!]{0,15}\b(echt|real|ein mensch|mensch|roboter|programm)\b/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Ehrlich: nein. Ich bin kein großes Sprachmodell wie ChatGPT, sondern regelbasiert. Ich erkenne Muster in dem, was du schreibst, und antworte mit dem, was ich zu deiner App, zu Nährwerten und deinen Daten weiß. Dafür läuft alles ohne fremde KI-Dienste, deine Daten bleiben auf deinem Server.' };
     }
     if (/wer bist du|wie hei(ß|ss)t du|was bist du|stell dich vor|erzähl.*über dich/.test(low)) {
       return { intent: 'smalltalk', reply: `Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}, dein Assistent in NutriDesk. Ich helfe dir bei der App, bei Nährwerten und deinen Finanzen, kann dir etwas nachschlagen und Dinge für dich eintragen.` };
@@ -545,6 +599,20 @@ module.exports = function registerBot(app, deps) {
         ? `Ich habe mir das hier von dir gemerkt: ${mem}. Du kannst das jederzeit in den Einstellungen löschen.`
         : 'Bisher habe ich mir nichts von dir gemerkt. Wenn du mir etwas erzählst, zum Beispiel "Ich bin Vegetarier" oder "Ich wohne in Köln", behalte ich das für unsere Gespräche.' };
     }
+    // Hunger/Durst: in einer Ernaehrungs-App das Naheliegendste ueberhaupt, fiel vorher durch.
+    if (/\b(hab|habe|bin)\s*(grad |gerade |so |voll |mega |echt )*(hunger|hungrig|kohldampf)\b|\bhunger\b|\bwas essen\b|\bwas soll ich essen\b|\bhaette lust auf was\b/.test(n)) {
+      const d = await dataAnswer(uid, 'kcal_today').catch(() => '');
+      return { intent: 'domain', reply: `${d} Wenn du magst, schau in deinen Ernährungsplan, da steht schon, was für heute vorgesehen ist. Oder sag mir ein Lebensmittel, dann sage ich dir die Nährwerte.`, quicks: [{ label: 'Was steht im Plan?', send: 'Wie funktioniert der Ernährungsplan?' }, { label: 'Essen eintragen', send: 'Ich möchte Essen eintragen' }] };
+    }
+    if (/\b(hab|habe|bin)\s*(grad |gerade |so )*(durst|durstig)\b/.test(n)) {
+      return { intent: 'domain', reply: 'Trink am besten ein Glas Wasser. Faustregel sind etwa 30 bis 35 ml pro kg Körpergewicht am Tag, bei Hitze oder Sport mehr. Dein Wasserglas-Zähler ist im Ernährungsbereich.' };
+    }
+
+    // Lockere Absagen: "nein danke kb", "keine lust", "passt schon"
+    if (/^(nein|ne|noe|nö|nee)?\s*(danke|dank)?\s*(kb|kein bock|keine lust|passt schon|schon gut|alles gut|lass mal|nichts)\s*$/.test(n) || /^(kb|nix|nichts|passt)$/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Alles klar, kein Ding. Ich bin da, falls dir doch noch was einfällt.' };
+    }
+
     // Gefuehle: erst zuhoeren, nicht mit einem Support-Ticket antworten.
     if (SAD_RE.test(n)) {
       return { intent: 'empathy', reply: SAD_REPLIES[Math.floor(Math.random() * SAD_REPLIES.length)] };
@@ -554,6 +622,27 @@ module.exports = function registerBot(app, deps) {
     }
     if (/\b(mir gehts? gut|geht mir gut|bin gluecklich|bin froh|super drauf|bestens|alles super|alles gut)\b/.test(n)) {
       return { intent: 'smalltalk', reply: 'Das freut mich zu hören. Wenn du etwas brauchst, sag Bescheid.' };
+    }
+
+    // "kannst du mir helfen" ist eine Einladung, keine Wissensfrage.
+    if (/^(kannst|koenntest) du (mir )?(bitte )?(irgendwie )?helfen|^hilf mir|^ich brauche hilfe|^brauche hilfe/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Klar, gern. Sag mir einfach, worum es geht: App-Hilfe, Nährwerte, deine Kalorien oder Finanzen, oder ich trage dir etwas ein.', quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Was kannst du?', send: 'Was kannst du alles?' }] };
+    }
+
+    // Eigenes Kalorienziel ("wie viel darf ich essen") ist eine Datenfrage, keine Lebensmittelsuche.
+    if (/\b(wie viel|wieviel)[^.?!]{0,20}\b(darf|soll|kann|muss) ich\b[^.?!]{0,15}\b(essen|zu mir nehmen)\b|\bmein (kalorien)?(ziel|bedarf)\b|\bwie viele kalorien (darf|soll|brauche) ich\b/.test(n)) {
+      return { intent: 'data', reply: await dataAnswer(uid, 'kcal_today'), quicks: [{ label: 'Essen eintragen', send: 'Ich möchte Essen eintragen' }] };
+    }
+
+    // Rueckfrage auf die letzte Naehrwert-Antwort: "und n apfel", "und banane?"
+    if (lastFood.get(uid + ':' + sid) && /^(und|was ist mit|wie sieht.s aus mit)\s+(ne |n |eine |ein |der |die |das )?([a-zäöüß][a-zäöüß \-]{2,28})\??$/.test(low)) {
+      const m2 = low.match(/^(?:und|was ist mit|wie sieht.s aus mit)\s+(?:ne |n |eine |ein |der |die |das )?([a-zäöüß][a-zäöüß \-]{2,28})\??$/);
+      const cands2 = m2 ? await foodCandidates(m2[1].trim(), 4) : [];
+      if (cands2.length) {
+        const t2 = cands2[0];
+        rememberFood(uid, sid, t2.name, t2.kcal);
+        return { intent: 'food_info', reply: `${t2.name}${t2.brand ? ' (' + t2.brand + ')' : ''}: ${t2.kcal} kcal pro 100 g, ${t2.protein} g Eiweiß, ${t2.carbs} g Kohlenhydrate, ${t2.fat} g Fett.`, sources: [{ kind: 'food', label: 'Lebensmittel-Datenbank' }] };
+      }
     }
 
     // Rueckbezug auf die letzte Naehrwert-Antwort ("und ist das gesund?", "wie viel ist das?")
@@ -606,7 +695,12 @@ module.exports = function registerBot(app, deps) {
       const cm = t.match(/in\s+([A-Za-zÄÖÜäöüß .-]{2,40})/);
       if (cm) { const g = await geocode(cm[1].trim()); if (g) { lat = g.lat; lon = g.lon; city = g.city; } }
       if (lat == null && settings.allow_location && settings.home_lat != null) { lat = settings.home_lat; lon = settings.home_lon; city = settings.home_city; }
-      if (lat == null) return { intent: 'weather', reply: settings.allow_location ? 'Ich habe noch keinen Standort hinterlegt. Nenn mir eine Stadt, z.B. "Wetter in Köln".' : 'Nenn mir eine Stadt (z.B. "Wetter in Berlin"), oder aktivier deinen Standort in den Einstellungen unter Datenschutz.' };
+      if (lat == null) {
+        setAsk(uid, sid, 'city');
+        return { intent: 'weather', reply: settings.allow_location
+          ? 'Ich habe noch keinen Standort hinterlegt. In welcher Stadt bist du?'
+          : 'In welcher Stadt? Schreib mir einfach den Ort, dann schaue ich nach. (Deinen Standort dauerhaft hinterlegen kannst du in den Einstellungen unter Datenschutz.)' };
+      }
       const w = await weatherFor(lat, lon, city).catch(() => null);
       return { intent: 'weather', reply: w ? `In ${w.city || 'deiner Region'} sind es gerade ${w.temp} Grad, ${w.desc}, Wind ${w.wind} km/h.` : 'Das Wetter konnte ich gerade nicht abrufen.' };
     }
@@ -642,10 +736,19 @@ module.exports = function registerBot(app, deps) {
     }
 
     // Allgemeinwissen (wikilite) NUR bei echten Wissensfragen, ohne Quellenangabe.
-    const knowledge = /^(wer |was |wann |wo |warum |wieso |welche|wie viel|wie hoch|wie lang|wie funktioniert|erklär|definiere)/.test(low) || /\b(bedeutet|hauptstadt von|geboren|gestorben|erfinder von|geschichte von)\b/.test(low);
+    // Zwei Bremsen, weil die Suche sonst absurd antwortet: "wie lang muss ich denn machen" lieferte
+    // einen Splatterfilm, "was is mit sport" den Lexus IS.
+    const chatty = /\b(ich|mir|mich|mein|meine|du|dir|dich|dein|wir|uns|denn|mal|eigentlich|bitte|danke|ok|okay)\b/.test(n);
+    const knowledge = !chatty
+      && (/^(wer |was |wann |wo |warum |wieso |welche|wie viel|wie hoch|wie lang|wie funktioniert|erklär|definiere)/.test(low)
+        || /\b(bedeutet|hauptstadt von|geboren|gestorben|erfinder von|geschichte von)\b/.test(low));
     if (knowledge) {
       const wiki = await wikiSearch(t).catch(() => null);
-      if (wiki && wiki.text) return { intent: 'wiki', reply: wiki.text };
+      // Der Treffer muss inhaltlich zur Frage passen (teilt ein Wort), sonst kommt irgendein
+      // Artikel zurueck. Dieselbe Bremse hat die App-Hilfe oben schon.
+      if (wiki && wiki.text && qWords.some((w) => fold(wiki.text.slice(0, 160)).indexOf(w) >= 0)) {
+        return { intent: 'wiki', reply: wiki.text };
+      }
     }
 
     // Aussagen ueber sich selbst bestaetigen. scanMemory hat sie oben schon gespeichert, ohne
@@ -666,7 +769,8 @@ module.exports = function registerBot(app, deps) {
     if (!letters) return { intent: 'unclear', reply: 'Damit kann ich nichts anfangen. Schreib mir ruhig in ganzen Worten, was du brauchst.' };
 
     // Kurze Bestaetigungen und Fuellwoerter: nicht als Frage behandeln
-    if (/^(ok|okay|oke|jo|jap|joa|aha|achso|hm+|mhm|na ja|naja|und|halt|eben|ach|so|alles klar|verstehe|gut|schon gut)$/.test(n)) {
+    // Kurze Bestaetigungen, auch mehrteilig ("ok danke", "ok cool", "alles klar dann")
+    if (/^(ok|okay|oke|jo|jap|joa|aha|achso|hm+|mhm|na ja|naja|und|halt|eben|ach|so|alles klar|verstehe|gut|schon gut|cool|nice|top|super|perfekt|passt|geil|krass|stimmt|klar)([ ,]+(ok|okay|danke|dank dir|cool|nice|top|super|gut|klar|dann|schon|mal|denn))*[.!]*$/.test(n)) {
       return { intent: 'smalltalk', reply: 'Alles klar. Sag einfach, wenn du etwas brauchst.' };
     }
     if (/^(langweilig|mir ist langweilig|und jetzt|was jetzt|weiter)$/.test(n)) {
@@ -703,13 +807,13 @@ module.exports = function registerBot(app, deps) {
       const tmeta = ttsMetaFor('flow');
       const tid = await saveChat(sid, req.uid, 'bot', reply, 'flow', tmeta);
       const tcls = ttsPolicy.classifyTtsContent(tmeta, reply);
-      return res.json({ session_id: sid, reply: applyTone(reply, settings.bot_tone), intent: 'flow', message_id: tid, tts: { classification: tcls.classification, cloudEligible: false, localEligible: ttsPolicy.isLocalTtsAllowed(tcls.classification, tcls.forbidden), policyVersion: tcls.policyVersion } });
+      return res.json({ session_id: sid, reply: applyTone(reply, settings.bot_tone, 'flow'), intent: 'flow', message_id: tid, tts: { classification: tcls.classification, cloudEligible: false, localEligible: ttsPolicy.isLocalTtsAllowed(tcls.classification, tcls.forbidden), policyVersion: tcls.policyVersion } });
     }
     const out = await route(req.uid, sid, text, settings);
     const meta = ttsMetaFor(out.intent);
     const cls = ttsPolicy.classifyTtsContent(meta, out.reply);
     const botMsgId = await saveChat(sid, req.uid, 'bot', out.reply, out.intent, meta);
-    res.json({ session_id: sid, reply: applyTone(out.reply, settings.bot_tone), intent: out.intent, quicks: out.quicks || [], sources: out.sources || [], voice: NAMES[settings.assistant === 'man' ? 'man' : 'woman'], message_id: botMsgId, tts: { classification: cls.classification, cloudEligible: (cls.classification === 'PUBLIC' || cls.classification === 'PRIVATE'), localEligible: ttsPolicy.isLocalTtsAllowed(cls.classification, cls.forbidden), policyVersion: cls.policyVersion } });
+    res.json({ session_id: sid, reply: applyTone(out.reply, settings.bot_tone, out.intent), intent: out.intent, quicks: out.quicks || [], sources: out.sources || [], voice: NAMES[settings.assistant === 'man' ? 'man' : 'woman'], message_id: botMsgId, tts: { classification: cls.classification, cloudEligible: (cls.classification === 'PUBLIC' || cls.classification === 'PRIVATE'), localEligible: ttsPolicy.isLocalTtsAllowed(cls.classification, cls.forbidden), policyVersion: cls.policyVersion } });
   }));
 
   // Verlauf einer Session

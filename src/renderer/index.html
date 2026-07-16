@@ -4227,6 +4227,7 @@
           <div onclick="{{ pinKey }}" data-k="{{ k.k }}" style="display:{{ k.d }};align-items:center;justify-content:center;height:56px;border-radius:14px;background:var(--bg2);border:1px solid var(--line3);font-size:20px;font-weight:600;cursor:pointer;user-select:none;" style-hover="border-color:var(--acc-bd);color:var(--acc);">{{ k.t }}</div>
         </sc-for>
       </div>
+      <div onclick="{{ bioUnlock }}" style="display:{{ bioD }};align-items:center;justify-content:center;gap:9px;padding:12px;border-radius:12px;border:1px solid var(--acc-bd);background:var(--acc-bg);color:var(--acc);font-weight:600;font-size:13.5px;cursor:pointer;margin-bottom:14px;" style-hover="opacity:.85;"><i data-lucide="{{ bioIcon }}" style="width:17px;height:17px;"></i>{{ bioLabel }}</div>
       <div onclick="{{ lockLogout }}" style="font-size:12.5px;color:var(--ink3);cursor:pointer;text-decoration:underline;">Passwort vergessen? Abmelden</div>
     </div>
   </div>
@@ -5413,6 +5414,7 @@ class Component extends DCLogic {
     if (this._token) { this.loadData(); this.loadBank(); }
     if (window.nutridesk) {
       window.nutridesk.getVersion().then(v => this.setState({ appVersion: v })).catch(() => {});
+      if (window.nutridesk.bioKind) window.nutridesk.bioKind().then(k => this.setState({ bioKind: k })).catch(() => {});
       if (window.nutridesk.getAutostart) window.nutridesk.getAutostart().then(on => this.setState({ autostart: !!on })).catch(() => {});
       if (window.nutridesk.getChannel) window.nutridesk.getChannel().then(ch => this.setState({ updChannel: ch === 'ptb' ? 'ptb' : 'stable' })).catch(() => {});
       window.nutridesk.onUpdate((d) => {
@@ -6568,7 +6570,10 @@ class Component extends DCLogic {
       openFitness: this.openFitness, fitPick: this.fitPick, fitMenu: this.fitMenu, fitStart: this.fitStart, fitStop: this.fitStop, fitCamTest: this.fitCamTest,
       modFit: s.modal === 'fitness',
       modPin: s.modal === 'pin', locked: !!s.locked,
-      lockNow: this.lockNow, lockLogout: this.lockLogout, pinKey: this.pinKey,
+      lockNow: this.lockNow, lockLogout: this.lockLogout, pinKey: this.pinKey, bioUnlock: this.bioUnlock,
+      bioD: (s.bioKind && s.bioKind !== 'none') ? 'flex' : 'none',
+      bioIcon: s.bioKind === 'faceid' ? 'scan-face' : 'fingerprint',
+      bioLabel: s.bioBusy ? 'Warte auf Bestätigung …' : (s.bioKind === 'faceid' ? 'Mit Face ID entsperren' : 'Mit Touch ID entsperren'),
       openPinSet: this.openPinSet, openPinOff: this.openPinOff, savePin: this.savePin,
       setPinPw: this.setPinPw, setPinNew: this.setPinNew, setLockMin: this.setLockMin,
       pinPw: s.pinPw || '', pinNew: s.pinNew || '', pinErr: s.pinErr || '', pinErr2: s.pinErr2 || '',
@@ -6731,7 +6736,8 @@ class Component extends DCLogic {
         const t0 = Date.now();
         const chk = setInterval(() => { if ((window.NDVtuber && window.NDVtuber.isReady()) || Date.now() - t0 > 15000) { clearInterval(chk); ov.style.transition = 'opacity .4s'; ov.style.opacity = '0'; setTimeout(() => { try { ov.remove(); } catch (e) {} }, 420); } }, 200);
       } catch (e) {}
-      setTimeout(() => { if (window.NDVtuber) window.NDVtuber.fakeTalk(2500); }, 1400);
+      // Kein fakeTalk beim Mounten: das sah aus, als haette sie etwas gesagt und man haette es
+      // verpasst. Der Mund bewegt sich nur noch, wenn wirklich eine Antwort kommt (_botTalk).
     }
   };
   _botTalk = () => {
@@ -7022,7 +7028,18 @@ class Component extends DCLogic {
     if (this.state.modal === 'fitness') return;
     if (Date.now() - (this._lastAct || 0) >= mins * 60000) this.lockNow();
   };
-  lockNow = () => { this._fitStopCam(); this.setState({ locked:true, pinIn:'', pinErr:'', modal:null }); };
+  lockNow = () => {
+    this._fitStopCam();
+    this.setState({ locked:true, pinIn:'', pinErr:'', modal:null });
+    if (this.state.bioKind && this.state.bioKind !== 'none') setTimeout(() => this.bioUnlock(), 260);
+  };
+  bioUnlock = async () => {
+    if (!window.nutridesk || !window.nutridesk.bioAuth || this.state.bioBusy) return;
+    this.setState({ bioBusy:true, pinErr:'' });
+    const r = await window.nutridesk.bioAuth('NutriDesk entsperren');
+    this.setState({ bioBusy:false });
+    if (r && r.ok) { this._touch(); this.setState({ locked:false, pinIn:'', pinErr:'' }); }
+  };
   pinKey = (e) => {
     const d = e.currentTarget.dataset.k;
     const cur = this.state.pinIn || '';
