@@ -2795,6 +2795,8 @@ async function runBotChecks(uid) {
 
 app.get('/bot/messages', auth, asyncRoute(async (req, res) => {
   await runBotChecks(req.uid);
+  // Tagesbezogene Meldungen von gestern sind wertlos (Wasser-Tracking ist tagesbasiert): aufraeumen.
+  await pool.execute("DELETE FROM bot_messages WHERE user_id=? AND kind='water' AND DATE(created_at) < CURDATE()", [req.uid]);
   const [rows] = await pool.execute(
     'SELECT id, kind, icon, color, title, text, is_read, created_at FROM bot_messages WHERE user_id = ? AND is_read = 0 ORDER BY id DESC LIMIT 40', [req.uid]);
   const [[c]] = await pool.execute('SELECT COUNT(*) AS unread FROM bot_messages WHERE user_id = ? AND is_read = 0', [req.uid]);
@@ -2806,6 +2808,9 @@ app.post('/bot/read', auth, asyncRoute(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// Tagesaktuelle, fluechtige Meldungen: es soll immer nur die neueste geben, nicht eine pro Tag.
+const EPHEMERAL_KINDS = new Set(['water']);
+
 // Client-Benachrichtigung als NutriBot-Nachricht ablegen (dedupe ueber kind+ref via botPost).
 app.post('/bot/push', auth, asyncRoute(async (req, res) => {
   const kind = vStr(req.body.kind, 'kind', 40);
@@ -2814,6 +2819,8 @@ app.post('/bot/push', auth, asyncRoute(async (req, res) => {
   const text = vStr(req.body.text, 'Text', 500, { optional: true }) || '';
   const icon = vStr(req.body.icon, 'icon', 40, { optional: true }) || 'bell';
   const color = vStr(req.body.color, 'color', 30, { optional: true }) || '#a78bfa';
+  // Wasser & Co. sind tagesbezogen: alte Fassung ersetzen, damit sie sich nicht ueber Tage stapeln.
+  if (EPHEMERAL_KINDS.has(kind)) await pool.execute('DELETE FROM bot_messages WHERE user_id=? AND kind=?', [req.uid, kind]);
   await botPost(req.uid, kind, ref, icon, color, title, text);
   res.json({ ok: true });
 }));
