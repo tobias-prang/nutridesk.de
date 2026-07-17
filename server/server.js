@@ -2014,7 +2014,11 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
   // PIN-Hash bleibt auf dem Server, der Client bekommt nur ob einer gesetzt ist
   const settingsSafe = settings ? { ...settings, avatar: cleanAvatar(settings.avatar) } : settings;
   if (settingsSafe) { settingsSafe.pin_set = settingsSafe.pin_hash ? 1 : 0; delete settingsSafe.pin_hash; }
-  res.json({ user, settings: settingsSafe, weights, water, foodLog, dishes, plan, shopping,
+  // week_no=0 ist das Gesamt-Aggregat (fuer "Ganze Liste"); die echten Wochen bleiben in shopping,
+  // damit alle bestehenden Summen unveraendert nur die Wochen zaehlen und nichts doppelt wird.
+  const shoppingWhole = shopping.filter(it => Number(it.week_no) === 0);
+  const shoppingWeeks = shopping.filter(it => Number(it.week_no) !== 0);
+  res.json({ user, settings: settingsSafe, weights, water, foodLog, dishes, plan, shopping: shoppingWeeks, shoppingWhole,
     transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns });
 }));
 
@@ -2121,7 +2125,7 @@ async function buildShoppingRange(conn, uid, from, to, persons, weekNo) {
     const b = packs.buyFor(cat, row.iname, g, PRICE_PER_KG[cat] || 5);
     await conn.execute(
       'INSERT INTO shopping_items (user_id, category, name, qty, unit, grams, pantry, price, week_no) VALUES (?,?,?,?,?,?,?,?,?)',
-      [uid, cat.slice(0, 60), String(row.iname).slice(0, 120), b.qty, b.unit, b.grams, b.pantry ? 1 : 0, b.price, weekNo || 1]);
+      [uid, cat.slice(0, 60), String(row.iname).slice(0, 120), b.qty, b.unit, b.grams, b.pantry ? 1 : 0, b.price, weekNo == null ? 1 : weekNo]);
     n++;
   }
   return n;
@@ -2137,6 +2141,9 @@ async function buildShopping(conn, uid, dates, persons) {
     const to = dates[Math.min(dates.length - 1, w * 7 + 6)];
     n += await buildShoppingRange(conn, uid, from, to, persons, w + 1);
   }
+  // Gesamt-Aggregat ueber den ganzen Zeitraum als week_no=0. Sonst zeigt die "Ganze Liste"
+  // dieselbe Zutat pro Woche erneut (4x Olivenoel statt 1 Flasche fuer den ganzen Plan).
+  if (weeks > 1) await buildShoppingRange(conn, uid, dates[0], dates[dates.length - 1], persons, 0);
   return n;
 }
 

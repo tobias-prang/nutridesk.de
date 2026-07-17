@@ -7767,10 +7767,12 @@ class Component extends DCLogic {
   toggleItem = async (e) => {
     const id = parseInt(e.currentTarget.dataset.id);
     const d = this.state.data;
-    const item = d.shopping.find(x => x.id === id);
+    const item = d.shopping.find(x => x.id === id) || (d.shoppingWhole || []).find(x => x.id === id);
     if (!item) return;
     const checked = item.checked ? 0 : 1;
-    this.setState({ data: { ...d, shopping: d.shopping.map(x => x.id === id ? { ...x, checked } : x) } });
+    this.setState({ data: { ...d,
+      shopping: d.shopping.map(x => x.id === id ? { ...x, checked } : x),
+      shoppingWhole: (d.shoppingWhole || []).map(x => x.id === id ? { ...x, checked } : x) } });
     try { await this.api('/shopping/' + id, { method:'PUT', body:{ checked } }); } catch (e2) { this._toast(e2.message); }
   };
 
@@ -10251,6 +10253,9 @@ class Component extends DCLogic {
       ...(() => {
         const view = s.shopModalView || 'staggered';
         const items = d.shopping || [];
+        // "Ganze Liste" nutzt das serverseitige Gesamt-Aggregat (ueber alle Wochen zusammengefasst,
+        // Packungen einmal gerechnet). Fehlt es (nur eine Woche), sind die Wochen-Items schon die Gesamtliste.
+        const wholeItems = (d.shoppingWhole && d.shoppingWhole.length) ? d.shoppingWhole : items;
         const groupCats = (list) => {
           const m = {};
           for (const it of list) (m[it.category || 'Sonstiges'] = m[it.category || 'Sonstiges'] || []).push(it);
@@ -10269,7 +10274,7 @@ class Component extends DCLogic {
         const weekNos = (() => { const wk = {}; for (const it of items) wk[it.week_no || 1] = 1; return Object.keys(wk).map(Number).sort((a, b) => a - b); })();
         const wkIdx = Math.min(s.shopModalWeek || 0, Math.max(0, weekNos.length - 1));
         const curWk = weekNos[wkIdx];
-        const modalItems = view === 'whole' ? items : items.filter(it => (it.week_no || 1) === curWk);
+        const modalItems = view === 'whole' ? wholeItems : items.filter(it => (it.week_no || 1) === curWk);
         let tot = 0, done = 0, cnt = 0;
         for (const it of modalItems) { tot += parseFloat(it.price) * mult; cnt++; if (it.checked) done++; }
         return {
