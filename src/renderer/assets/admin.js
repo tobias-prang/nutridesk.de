@@ -373,22 +373,49 @@
     var api = props.api, toast = props.toast;
     var s0 = useState({ lists: [], cards: [] }), data = s0[0], setData = s0[1];
     var sL = useState(true), loading = sL[0], setLoading = sL[1];
+    var sP = useState(null), prompt = sP[0], setPrompt = sP[1];
+    var sB = useState(false), busy = sB[0], setBusy = sB[1];
     function load() { setLoading(true); return api('/board').then(function (b) { setData({ lists: (b && b.lists) || [], cards: (b && b.cards) || [] }); }).catch(function (e) { toast(e.message); }).then(function () { setLoading(false); }); }
     useEffect(function () { load(); }, []);
-    function addList() { var name = window.prompt ? window.prompt('Name der Liste?') : ''; if (!name) return; api('/board/lists', { method: 'POST', body: { name: name } }).then(load).catch(function (e) { toast(e.message); }); }
-    function addCard(listId) { var title = window.prompt ? window.prompt('Kartentitel?') : ''; if (!title) return; api('/board/cards', { method: 'POST', body: { list_id: listId, title: title } }).then(load).catch(function (e) { toast(e.message); }); }
+    // Tauri-WebView kennt window.prompt nicht -> eigenes Eingabe-Modal statt prompt().
+    function submitPrompt() {
+      if (!prompt || busy) return;
+      var val = (prompt.value || '').trim();
+      if (!val) { toast(prompt.kind === 'list' ? 'Bitte einen Listennamen eingeben' : 'Bitte einen Kartentitel eingeben'); return; }
+      setBusy(true);
+      var req = prompt.kind === 'list'
+        ? api('/board/lists', { method: 'POST', body: { name: val } })
+        : api('/board/cards', { method: 'POST', body: { list_id: prompt.listId, title: val } });
+      req.then(function () { setPrompt(null); return load(); }).catch(function (e) { toast(e.message); }).then(function () { setBusy(false); });
+    }
+    function delList(id) { api('/board/lists/' + id, { method: 'DELETE' }).then(load).catch(function (e) { toast(e.message); }); }
     var cols = data.lists.map(function (l) {
       var cards = data.cards.filter(function (c) { return c.list_id === l.id; });
       return h('div', { key: l.id, style: { flex: '0 0 260px', background: 'var(--bg2)', border: '1px solid var(--line3)', borderRadius: '14px', padding: '12px' } },
-        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' } }, h('div', { style: { fontSize: '13px', fontWeight: 700 } }, l.name), h('div', { style: { fontSize: '11px', color: 'var(--ink3)' } }, cards.length)),
+        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' } },
+          h('div', { style: { fontSize: '13px', fontWeight: 700 } }, l.name),
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
+            h('div', { style: { fontSize: '11px', color: 'var(--ink3)' } }, cards.length),
+            h('div', { onClick: function () { delList(l.id); }, title: 'Liste löschen', style: { fontSize: '13px', color: 'var(--ink3)', cursor: 'pointer', lineHeight: 1 } }, '✕'))),
         cards.map(function (c) { return h('div', { key: c.id, style: Object.assign({}, box, { padding: '10px 12px', marginBottom: '8px', fontSize: '13px' }) }, c.title); }),
-        h('div', { onClick: function () { addCard(l.id); }, style: { fontSize: '12.5px', color: 'var(--ink3)', cursor: 'pointer', padding: '6px 4px' } }, '+ Karte'));
+        h('div', { onClick: function () { setPrompt({ kind: 'card', listId: l.id, value: '' }); }, style: { fontSize: '12.5px', color: 'var(--ink3)', cursor: 'pointer', padding: '6px 4px' } }, '+ Karte'));
     });
+    var modalEl = prompt ? h(Modal, { title: prompt.kind === 'list' ? 'Neue Liste' : 'Neue Karte', onClose: function () { setPrompt(null); } },
+      h('input', {
+        autoFocus: true, value: prompt.value,
+        onChange: function (e) { var v = e.target.value; setPrompt(function (p) { return Object.assign({}, p, { value: v }); }); },
+        onKeyDown: function (e) { if (e.key === 'Enter') submitPrompt(); else if (e.key === 'Escape') setPrompt(null); },
+        placeholder: prompt.kind === 'list' ? 'Name der Liste …' : 'Kartentitel …', style: inputStyle
+      }),
+      h('div', { style: { display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '18px' } },
+        h('div', { onClick: function () { setPrompt(null); }, style: btnGhost }, 'Abbrechen'),
+        h('div', { onClick: submitPrompt, style: Object.assign({}, btnPrimary, busy ? { opacity: .6 } : {}) }, busy ? 'Legt an …' : 'Anlegen'))) : null;
     return h('div', null,
-      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' } }, head('Board', loading ? 'Lädt …' : data.lists.length + ' Listen · ' + data.cards.length + ' Karten'), h('div', { onClick: addList, style: btnPrimary }, '+ Liste')),
+      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' } }, head('Board', loading ? 'Lädt …' : data.lists.length + ' Listen · ' + data.cards.length + ' Karten'), h('div', { onClick: function () { setPrompt({ kind: 'list', value: '' }); }, style: btnPrimary }, '+ Liste')),
       h('div', { style: { display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '8px', alignItems: 'flex-start' } },
         loading ? [0, 1, 2].map(function (i) { return h('div', { key: i, style: { flex: '0 0 260px', background: 'var(--bg2)', border: '1px solid var(--line3)', borderRadius: '14px', padding: '12px' } }, skBar('50%', 13), h('div', { style: { height: '12px' } }), skBar('100%', 42), h('div', { style: { height: '8px' } }), skBar('100%', 42)); })
-          : (cols.length ? cols : empty('Kein Board'))));
+          : (cols.length ? cols : empty('Kein Board'))),
+      modalEl);
   }
 
   // ---------------- Haupt-Komponente ----------------
