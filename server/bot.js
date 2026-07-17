@@ -239,13 +239,25 @@ module.exports = function registerBot(app, deps) {
     }));
   }
 
+  // Text an einer Satz- oder Wortgrenze kappen, nie mitten im Wort ("...Pipp").
+  function trimNice(s, max) {
+    if (s.length <= max) return s;
+    const cut = s.slice(0, max);
+    const sentence = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+    if (sentence > max * 0.5) return cut.slice(0, sentence + 1);
+    const space = cut.lastIndexOf(' ');
+    return (space > 0 ? cut.slice(0, space) : cut) + ' …';
+  }
+
   // ---------- Wikilite (Allgemeinwissen) ----------
   async function wikiSearch(q) {
     // Echter wikilite-Contract: Param heißt "query". Reihenfolge: Titel (präzise) -> lexical (schnell) -> semantic (~4s).
     // Frage-Wörter entfernen, damit "Wer war Angela Merkel" auf den Artikel "Angela Merkel" zielt.
     const clean = String(q)
-      .replace(/^(wer|was|wie|wann|wo|warum|wieso|welche[rns]?)\s+(ist|war|sind|waren|viele?|heißt|bedeutet|macht|kann)\s+/i, '')
-      .replace(/\b(eigentlich|genau|denn|mir|mal|bitte|erkläre?|erklär|sag)\b/gi, '')
+      .replace(/^(erz(ä|ae)hl\w*|erklaer\w*|erklär\w*|sag)\s+(mir\s+|uns\s+)?(was\s+|etwas\s+|mehr\s+|mal\s+)*(ueber|über|von|zu)\s+/i, '')
+      .replace(/^(wer|was|wie|wann|wo|warum|wieso|welche[rns]?)\s+(ist|war|sind|waren|viele?|heißt|bedeutet|macht|kann|weißt|weisst)\s+/i, '')
+      .replace(/\b(eigentlich|genau|denn|mir|mal|bitte|erkläre?|erklär|sag|du)\b/gi, '')
+      .replace(/^\s*(der|die|das|den|dem|ein|eine|einen)\s+/i, '')
       .replace(/[?.!]/g, '').trim();
     const term = clean.length >= 2 ? clean : String(q);
     const enc = encodeURIComponent(term);
@@ -262,7 +274,7 @@ module.exports = function registerBot(app, deps) {
             const secs = a && a.article && a.article.sections;
             if (secs && secs.length && secs[0].content) text = String(secs[0].content);
           } catch (e) { /* Snippet reicht */ }
-          return { title: top.title || 'Wikipedia', text: text.replace(/\s+/g, ' ').trim().slice(0, 700) };
+          return { title: top.title || 'Wikipedia', text: trimNice(text.replace(/\s+/g, ' ').trim(), 700) };
         }
       } catch (e) { /* nächste Suchart */ }
     }
@@ -289,6 +301,11 @@ module.exports = function registerBot(app, deps) {
     if (kind === 'kcal_week') {
       const [[r]] = await pool.execute('SELECT ROUND(AVG(dk)) a FROM (SELECT SUM(kcal) dk FROM food_log WHERE user_id=? AND date>=DATE_SUB(CURDATE(),INTERVAL 7 DAY) GROUP BY date) t', [uid]);
       return r.a ? `Dein Schnitt der letzten 7 Tage liegt bei rund ${r.a} kcal pro Tag.` : 'Für die letzten 7 Tage habe ich noch keine Einträge.';
+    }
+    if (kind === 'macros_today') {
+      const [[r]] = await pool.execute('SELECT COALESCE(SUM(kcal),0) k, COALESCE(SUM(protein),0) p, COALESCE(SUM(carbs),0) c, COALESCE(SUM(fat),0) f FROM food_log WHERE user_id=? AND date=CURDATE()', [uid]);
+      if (!Math.round(r.k)) return 'Für heute hast du noch nichts eingetragen. Sobald du etwas ins Tagebuch schreibst, kann ich dir Eiweiß, Kohlenhydrate und Fett zusammenrechnen.';
+      return `Heute hast du bisher ${Math.round(r.k)} kcal eingetragen: ${Math.round(r.p)} g Eiweiß, ${Math.round(r.c)} g Kohlenhydrate und ${Math.round(r.f)} g Fett.`;
     }
     if (kind === 'weight') {
       const [rows] = await pool.execute('SELECT date, kg FROM weights WHERE user_id=? ORDER BY date DESC LIMIT 2', [uid]);
@@ -485,10 +502,10 @@ module.exports = function registerBot(app, deps) {
   const SAD_RE = new RegExp([
     'mir (geht|gehts|geht es)[^.?!]{0,25}(schlecht|mies|dreckig|beschissen|nicht so gut|nicht gut|nicht besonders)',
     'geht mir[^.?!]{0,25}(schlecht|mies|dreckig|nicht so gut|nicht gut)',
-    '\\bbin (grad |gerade |heute |echt |total |ziemlich |so )*(traurig|fertig|erschoepft|ausgebrannt|kaputt|down|deprimiert|einsam|allein|ungluecklich|verzweifelt)',
-    'fuehle mich[^.?!]{0,20}(schlecht|mies|leer|allein|einsam|ueberfordert|wertlos)',
+    '\\bbin (grad |gerade |heute |echt |total |ziemlich |so )*(traurig|fertig|erschoepft|ausgebrannt|kaputt|down|deprimiert|einsam|allein|ungluecklich|verzweifelt|frustriert|gestresst|niedergeschlagen|mutlos|kraftlos|hilflos|ueberfordert)',
+    'fuehle mich[^.?!]{0,20}(schlecht|mies|leer|allein|einsam|ueberfordert|wertlos|frustriert|hilflos|nutzlos)',
     '\\bschaffe (das|es)[^.?!]{0,15}nicht', '\\bkann nicht mehr\\b', '\\balles zu viel\\b', '\\bueberfordert\\b',
-    '\\bhabe angst\\b', '\\bmache mir sorgen\\b',
+    '\\bhab(e)? angst\\b', '\\bmache mir sorgen\\b', '\\b(niemand|keiner) (mag|liebt|braucht|versteht) mich\\b', '\\bbin frustriert\\b',
     '\\bjob verloren\\b', '\\bgekuendigt\\b', '\\barbeit verloren\\b', '\\btrennung\\b', '\\bhat mich verlassen\\b',
     '\\bgestorben\\b', '\\bbeerdigung\\b', '\\bliebeskummer\\b',
   ].join('|'));
@@ -551,6 +568,7 @@ module.exports = function registerBot(app, deps) {
     { re: /\b(befoerderung|befördert|neuen job|job bekommen|zugesagt|eingestellt)\b/, a: 'Glückwunsch, das ist stark! Das hast du dir verdient.' },
     { re: /\b(bestanden|pruefung geschafft|abschluss)\b/, a: 'Glückwunsch, das ist eine echte Leistung!' },
     { re: /\b(verliebt|zusammen mit)\b/, a: 'Schön für dich! Das klingt nach guter Laune.' },
+    { re: /\b(stolz auf mich|bin stolz|hab (es|das) geschafft|hab ich geschafft|so stolz)\b/, a: 'Das darfst du auch sein, stark! Solche Momente sollte man sich merken.' },
     { re: /\b(urlaub|ferien|frei heute)\b/, a: 'Das klingt gut. Erhol dich richtig.' },
     { re: /\b(gewonnen|gewinn)\b/, a: 'Glückwunsch! Das ist ein guter Tag.' },
     { re: /\b(bin so gluecklich|bin gluecklich|freue mich|bin happy|bester tag|laeuft bei mir|super drauf)\b/, a: 'Das freut mich zu hören. Solche Tage sollte man festhalten.' },
@@ -757,9 +775,16 @@ module.exports = function registerBot(app, deps) {
     if (/wie (geht|gehts|geht's|läuft)|alles (gut|klar) bei dir|wie ist dein tag|was geht\b/.test(low)) {
       return { intent: 'smalltalk', reply: 'Mir geht es gut, danke der Nachfrage. Und dir? Ich bin bereit, wenn du etwas brauchst: App-Hilfe, Nährwerte, deine Zahlen oder etwas eintragen.' };
     }
+    // Lob und Dank ernst nehmen, nicht mit dem KI-Disclaimer oder "nicht verstanden" abbuegeln.
+    if (/\b(du bist|bist echt|bist wirklich|du bisch)\b[^.?!]{0,12}\b(nett|lieb|toll|super|schlau|klug|cool|hilfreich|klasse|freundlich|der beste|die beste)\b/.test(n)
+        || /\b(das|es|dein tipp|die antwort) (war|ist|hat)[^.?!]{0,12}\b(hilfreich|super|klasse|toll|nett|perfekt|geholfen)\b/.test(n)
+        || /\b(hat|das hat) (mir )?(sehr |echt |wirklich )?geholfen\b/.test(n) || /\b(gut|super|toll|prima) gemacht\b/.test(n) || /\bdanke dir\b/.test(n)) {
+      return { intent: 'smalltalk', reply: 'Das freut mich, gern geschehen! Wenn du noch etwas brauchst, sag einfach Bescheid.' };
+    }
     // Bin ich eine echte KI? Wird oft als Nachfrage gestellt, deshalb tolerant und ehrlich.
+    // "echt/real" nur zusammen mit Mensch/Programm, sonst kaperte es "du bist echt nett".
     if (/\b(echte|richtige|wirkliche)?\s*(ki|ai|kuenstliche intelligenz|sprachmodell|chatgpt|gpt|llm)\b/.test(n)
-        || /\b(bist|biste|bist du)\b[^.?!]{0,15}\b(echt|real|ein mensch|mensch|roboter|programm)\b/.test(n)) {
+        || /\b(bist|biste|bist du)\b[^.?!]{0,15}\b(ein mensch|mensch|roboter|programm|echt ein|wirklich ein)\b/.test(n)) {
       return { intent: 'smalltalk', reply: 'Ehrlich: nein. Ich bin kein großes Sprachmodell wie ChatGPT, sondern regelbasiert. Ich erkenne Muster in dem, was du schreibst, und antworte mit dem, was ich zu deiner App, zu Nährwerten und deinen Daten weiß. Dafür läuft alles ohne fremde KI-Dienste, deine Daten bleiben auf deinem Server.' };
     }
     if (/wer bist du|wie hei(ß|ss)t du|was bist du|stell dich vor|erzähl.*über dich/.test(low)) {
@@ -813,7 +838,9 @@ module.exports = function registerBot(app, deps) {
     }
 
     // Schoene Nachrichten. Vorher waren nur negative Gefuehle abgedeckt.
-    for (const h of HAPPY) { if (h.re.test(n)) return { intent: 'empathy', reply: h.a }; }
+    // Aber nicht, wenn eine Buchung gemeint ist: "1000 euro fuer urlaub ausgegeben" ist keine Urlaubs-Freude.
+    const buchungsAbsicht = /€/.test(t) || (parseAmount(low) != null && /\b(ausgegeben|ausgeben|bezahlt|gekauft|gekostet|euro|eur|ausgabe|einnahme|verdient)\b/.test(n));
+    if (!buchungsAbsicht) for (const h of HAPPY) { if (h.re.test(n)) return { intent: 'empathy', reply: h.a }; }
 
     // Fragen ueber den Bot selbst, statt Support-Ticket anzubieten.
     for (const u of UEBER_MICH) { if (u.re.test(n)) return { intent: 'smalltalk', reply: u.a }; }
@@ -833,7 +860,8 @@ module.exports = function registerBot(app, deps) {
       return { intent: 'smalltalk', reply: 'Freut mich, wenn du was zu lachen hast. Noch einen Witz?', quicks: [{ label: 'Noch einen Witz', send: 'erzähl mir einen witz' }] };
     }
     // Fuehrende Begruessung erlauben: "hey wie war dein tag" ist eine Frage, keine Begruessung.
-    if (/^((hi+|hallo|hey+|moin|na|servus|yo)[ ,!]+)?(erzaehl (mir )?(mal )?was|und sonst so|was gibts neues|wie war dein tag|wie wars? bei dir|was machst du gerade|erzaehl)\b/.test(n)) {
+    if (!/\b(ueber|von|zu)\s+(?!dich|dir|dein|mich|mir|uns)[a-z]{3,}/.test(n)
+        && /^((hi+|hallo|hey+|moin|na|servus|yo)[ ,!]+)?(erzaehl (mir )?(mal )?was|und sonst so|was gibts neues|wie war dein tag|wie wars? bei dir|was machst du gerade|erzaehl)\b/.test(n)) {
       return { intent: 'smalltalk', reply: 'Bei mir passiert wenig, ich warte einfach, bis du was brauchst. Bei dir? Wenn du magst, zeige ich dir deine Zahlen für heute oder erzähle einen Witz.', quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Witz', send: 'erzähl mir einen witz' }] };
     }
     if (/^(ja|jo|jup|nein|ne|noe|nö|k|kk)[.!]*$/.test(n)) {
@@ -943,8 +971,10 @@ module.exports = function registerBot(app, deps) {
     // allein, oder einen Betrag mit Ausgabe-Verb ("ich hab 30 euro fuer kaffee bezahlt").
     const aktionVerb = /(trag|eintragen|buch|erfass|notier|leg an|anlegen|hinzufüg)/.test(low);
     const nurNomen = /^(eine? )?(ausgabe|einnahme)$/.test(n);
-    const geldVerb = /\b(ausgegeben|bezahlt|gekauft|gekostet|bekommen|erhalten|verdient|ueberwiesen)\b/.test(n);
-    if (aktionVerb || nurNomen || (parseAmount(low) != null && geldVerb)) {
+    // Nomen-gefuehrt mit Betrag: "ausgabe 100 euro miete" soll buchen, nicht im Hilfetext landen.
+    const nomenBetrag = /^(eine? )?(ausgabe|einnahme)\b/.test(n) && parseAmount(low) != null;
+    const geldVerb = /\b(ausgegeben|ausgeben|bezahlt|gekauft|gekostet|bekommen|erhalten|verdient|ueberwiesen)\b/.test(n);
+    if (aktionVerb || nurNomen || nomenBetrag || (parseAmount(low) != null && geldVerb)) {
       if (/gewicht|wiege|gewogen|kg\b/.test(low)) { startFlow(uid, sid, 'weight'); const n = parseAmount(low); if (n && n >= 20 && n <= 400) { const f = flows.get(key); f.data.kg = n; f.step = 1; f.awaitConfirm = true; return { intent: 'flow', reply: await confirmSummary(uid, f), quicks: [{ label: 'Ja', send: 'ja' }, { label: 'Abbrechen', send: 'abbrechen' }] }; } return { intent: 'flow', reply: FLOW_DEFS.weight.slots[0].ask }; }
       if (/aufgabe|todo|to-do|erledig/.test(low)) { startFlow(uid, sid, 'todo'); return { intent: 'flow', reply: FLOW_DEFS.todo.slots[0].ask }; }
       if (/termin|appointment|kalender/.test(low)) { startFlow(uid, sid, 'appointment'); return { intent: 'flow', reply: FLOW_DEFS.appointment.slots[0].ask }; }
@@ -957,7 +987,7 @@ module.exports = function registerBot(app, deps) {
       }
       // Finanz-Buchung NUR mit Finanz-Hinweis. Sonst landete der eigene Knopf des Bots
       // ("Ich möchte Nutella eintragen") in der Buchung und hielt den Nutzer dort fest.
-      const finHint = /(ausgabe|einnahme|buchung|euro|eur|geld|gekauft|bezahlt|gekostet|gehalt|lohn|ueberweis|rechnung|konto|finanz)/.test(n) || /€/.test(t);
+      const finHint = /(ausgabe|einnahme|ausgegeben|ausgeben|buchung|euro|eur|geld|gekauft|bezahlt|gekostet|gehalt|lohn|verdient|ueberwiesen|ueberweis|rechnung|konto|finanz)/.test(n) || /€/.test(t);
       if (!finHint) {
         return { intent: 'ask', reply: 'Klar. Was möchtest du eintragen?', quicks: [
           { label: 'Essen', send: 'Essen eintragen' },
@@ -969,8 +999,8 @@ module.exports = function registerBot(app, deps) {
       }
       // Standard: Finanz-Buchung
       const f = startFlow(uid, sid, 'transaction');
-      if (/einnahme|gehalt|lohn|erhalten|bekommen/.test(low)) f.data.direction = 'einnahme';
-      else if (/ausgabe|bezahlt|gekauft|gekostet/.test(low)) f.data.direction = 'ausgabe';
+      if (/einnahme|gehalt|lohn|erhalten|bekommen|verdient/.test(low)) f.data.direction = 'einnahme';
+      else if (/ausgabe|ausgegeben|ausgeben|bezahlt|gekauft|gekostet/.test(low)) f.data.direction = 'ausgabe';
       const amt = parseAmount(low.replace(/\b(19|20)\d{2}\b/g, ''));
       if (amt && amt > 0) f.data.amount = amt;
       // ersten offenen Slot finden
@@ -984,12 +1014,20 @@ module.exports = function registerBot(app, deps) {
     if (/(wie viele?|wieviel).*(kalorien|kcal).*(heute|bisher)|kalorien heute|kcal heute/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'kcal_today') };
     if (/(kalorien|kcal).*(woche|schnitt|durchschnitt)/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'kcal_week') };
     if (/(mein|aktuelles?)\s*gewicht|wie schwer|wie viel wiege/.test(low)) return { intent: 'data', reply: await dataAnswer(uid, 'weight') };
+    // Makros von HEUTE (eigene Daten), vor der Finanzfrage: "wie viel protein hab ich noch uebrig"
+    // landete sonst im Finanzbuch, weil "uebrig" die Saldo-Frage traf.
+    if (/\b(eiwei(ss|ß)|protein|fett|kohlenhydrate|makros?)\b[^.?!]{0,25}\b(heute|bisher|gegessen|schon|uebrig|noch|drin)\b/.test(n)
+        || /\b(wie viele?|wieviel)\b[^.?!]{0,20}\b(eiwei(ss|ß)|protein|fett|kohlenhydrate)\b[^.?!]{0,20}\b(hab|habe) ich\b/.test(n)) {
+      return { intent: 'data', reply: await dataAnswer(uid, 'macros_today') };
+    }
     // Bewusst weit: der Bot kannte die Zahl und bot trotzdem ein Support-Ticket an, sobald ein
     // Wort fehlte ("wie viel geld hab ich noch" ging, "wie viel hab ich noch" nicht).
-    if (/kontostand|kontostnad|saldo|wie viel geld|finanzen|budget uebrig/.test(n)
+    // Ernaehrungswoerter schliessen die Finanzfrage aus (sonst "protein uebrig" -> Saldo).
+    if (!/\b(kalorien|kcal|eiwei(ss|ß)|protein|fett|kohlenhydrate|naehrwerte?|gegessen|getrunken|wasser|kg\b|gewicht|schritte)\b/.test(n) && (
+        /kontostand|kontostnad|saldo|wie viel geld|finanzen|budget uebrig/.test(n)
         || /\b(wie viel|wieviel)\b[^.?!]{0,25}\b(ausgegeben|ausgeben|verbraten|raus|weg)\b/.test(n)
         || /\b(wie viel|wieviel)\b[^.?!]{0,15}\b(hab|habe) ich\b[^.?!]{0,12}(noch|uebrig|insgesamt|drauf)?\s*[.?!]*$/.test(n)
-        || /\bbin ich im (minus|plus)\b|\bsteh ich im (minus|plus)\b|\bwie steht (es|es denn) um meine finanzen\b/.test(n)) {
+        || /\bbin ich im (minus|plus)\b|\bsteh ich im (minus|plus)\b|\bwie steht (es|es denn) um meine finanzen\b/.test(n))) {
       const txt = await dataAnswer(uid, 'balance');
       const minusFrage = /\bim (minus|plus)\b/.test(n);
       if (minusFrage) {
@@ -1019,7 +1057,8 @@ module.exports = function registerBot(app, deps) {
     }
 
     // Nährwert-Frage ("wie viel kcal hat nutella")
-    if (/(wie viele?|wieviel).*(kalorien|kcal|eiweiss|protein|fett|kohlenhydrate|naehrwerte?)/.test(n) || /(kalorien|kcal|naehrwerte?)\s+(von|fuer|hat|in)/.test(n) || /(how many|how much).*(calories|protein|carbs|fat)/.test(n)) {
+    if (/(wie viele?|wieviel).*(kalorien|kcal|eiweiss|protein|fett|kohlenhydrate|naehrwerte?)/.test(n) || /(kalorien|kcal|naehrwerte?)\s+(von|fuer|hat|in)/.test(n) || /(how many|how much).*(calories|protein|carbs|fat)/.test(n)
+      || /^(kalorien|kcal|naehrwerte?|eiwei(ss)?|protein|fett|kohlenhydrate)\s+(?!heute|gestern|morgen|uebermorgen|woche|monat|jahr|diese|dieser|letzte|bisher|uebrig|noch|gegessen|verbrannt|verbraucht|getrunken|ziel|pro |am tag|im schnitt|durchschnitt)[a-z]{2,}/.test(n)) {
       let m = low.replace(/[?.!,]/g, ' ').replace(/^.*\b(hat|von|für|fuer|in|does|of)\s+/, '').replace(/\b(have|has|got|hat)\b/g, ' ').replace(/\s+/g, ' ').trim();
       if (!m || m.length < 2) m = low.replace(/(wie viele?|wieviel|kalorien|kcal|nährwerte?|naehrwerte?|hat|eine[nr]?|ein|der|die|das|how many|how much|calories|protein|carbs|fat|does|have)/g, ' ').replace(/[?.!,]/g, ' ').replace(/\s+/g, ' ').trim();
       // Mengen und Einheiten raus: "100g reis" -> "reis", "2 scheiben brot" -> "brot".
@@ -1027,6 +1066,8 @@ module.exports = function registerBot(app, deps) {
       m = m.replace(/\b(wie viele?|wieviel|kalorien|kcal|naehrwerte?|nährwerte?|eiwei(ss|ß)|protein|fett|kohlenhydrate|haben|hat|habe)\b/g, ' ')
         .replace(/\b\d+([.,]\d+)?\s*(g|gramm|kg|ml|l|liter|stk|stueck|stück|scheiben?|glas|glaeser|gläser|tasse[n]?|portion(en)?|handvoll|el|tl|essloeffel|esslöffel|teeloeffel|teelöffel)\b/g, ' ')
         .replace(/\b(ein|eine|einen|eine[rs]|ne|n|zwei|drei|vier|fuenf|fünf)\s+(scheiben?|glas|tasse|portion|handvoll|stueck|stück)\b/g, ' ')
+        // Artikel sind keine Lebensmittel: "eine banane" fand sonst "Prot-eine banane" (Proteinpulver).
+        .replace(/\b(ein|eine|einen|einer|eines|der|die|das|den|dem)\b/g, ' ')
         .replace(/\b\d+\b/g, ' ').replace(/\s+/g, ' ').trim();
       // Pronomen sind keine Lebensmittel: "wie viel eiweiss hat das" fand die japanische
       // Dashi-Bruehe per Substring-Treffer.
@@ -1106,9 +1147,11 @@ module.exports = function registerBot(app, deps) {
     // Zwei Bremsen, weil die Suche sonst absurd antwortet: "wie lang muss ich denn machen" lieferte
     // einen Splatterfilm, "was is mit sport" den Lexus IS.
     const chatty = /\b(ich|mir|mich|mein|meine|du|dir|dich|dein|wir|uns|denn|mal|eigentlich|bitte|danke|ok|okay)\b/.test(n);
-    const knowledge = !chatty
+    // "erzaehl mir was ueber X" / "was weisst du ueber X" sind Wissensfragen, auch wenn "mir/du" drin ist.
+    const aboutTopic = /\b(erz(ä|ae)hl\w*|erklaer\w*|erklär\w*|weisst du|was weisst du)\b[^.?!]{0,18}\b(ueber|über|von|zu)\s+(?!dich|dir|dein|mich|mir)[a-zäöü]{3,}/.test(n);
+    const knowledge = aboutTopic || (!chatty
       && (/^(wer |was |wann |wo |warum |wieso |welche|wie viel|wie hoch|wie lang|wie funktioniert|erklär|definiere)/.test(low)
-        || /\b(bedeutet|hauptstadt von|geboren|gestorben|erfinder von|geschichte von)\b/.test(low));
+        || /\b(bedeutet|hauptstadt von|geboren|gestorben|erfinder von|geschichte von)\b/.test(low)));
     if (knowledge) {
       const wiki = await wikiSearch(t).catch(() => null);
       // Zwei Filter. Der Wort-Treffer allein reichte nicht: "Zucker, Zucker! ist eine Filmsatire"
@@ -1116,7 +1159,7 @@ module.exports = function registerBot(app, deps) {
       // Film/Lied/Roman ist auf eine Sachfrage praktisch immer der falsche Treffer.
       const passt = wiki && wiki.text && qWords.some((w) => fold(wiki.text.slice(0, 160)).indexOf(w) >= 0);
       const kopf = wiki && wiki.text ? wiki.text.slice(0, 200) : '';
-      const mist = /begriffskl|steht f(ü|ue)r:|bezeichnet:|ist der name|kann sich beziehen|\b(film|spielfilm|filmsatire|kom(ö|oe)die|fernsehserie|lied|song|album|roman|musical|band|einheit\)|zeitschrift|magazin|sendung)\b/i.test(kopf);
+      const mist = /begriffskl|steht f(ü|ue)r:|bezeichnet:|ist der name|kann sich beziehen|redewendung|redensart|sprichwort|\w*film\b|\b(spielfilm|filmsatire|kom(ö|oe)die|fernsehserie|lied|song|album|roman|musical|band|einheit\)|zeitschrift|magazin|sendung|videospiel|computerspiel)\b/i.test(kopf);
       if (passt && !mist) return { intent: 'wiki', reply: wiki.text };
     }
 
