@@ -2933,7 +2933,7 @@ app.get('/food/search', auth, rateLimitUser('food-search', 40), asyncRoute(async
   let rows;
   try {
     [rows] = await pool.execute(
-      'SELECT id, name, brand, kcal, carbs, protein, fat FROM foods WHERE MATCH(name, brand) AGAINST (? IN BOOLEAN MODE) LIMIT 40',
+      'SELECT id, name, brand, kcal, carbs, protein, fat, image_small_url FROM foods WHERE MATCH(name, brand) AGAINST (? IN BOOLEAN MODE) LIMIT 40',
       [bool]);
   } catch (e) { rows = []; }
   const items = [];
@@ -2948,7 +2948,7 @@ app.get('/food/search', auth, rateLimitUser('food-search', 40), asyncRoute(async
     items.push({
       id: r.id, name: name.slice(0, 120), brand: brand.slice(0, 60),
       kcal: Math.min(1000, r.kcal || 0), carbs: Math.round(r.carbs || 0), protein: Math.round(r.protein || 0), fat: Math.round(r.fat || 0),
-      serving: null,
+      serving: null, img: r.image_small_url || null,
     });
     if (items.length >= 12) break;
   }

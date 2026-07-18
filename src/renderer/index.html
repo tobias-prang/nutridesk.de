@@ -3050,7 +3050,7 @@
       <div style="display:flex;flex-direction:column;">
         <sc-for list="{{ foods }}" as="f" hint-placeholder-count="6">
           <div onclick="{{ pickFood }}" data-i="{{ f.i }}" style="display:flex;align-items:center;gap:13px;padding:11px 6px;border-bottom:1px solid var(--chip);cursor:pointer;border-radius:8px;" style-hover="background:var(--chip);">
-            <div style="width:34px;height:34px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><i data-lucide="utensils" style="width:16px;height:16px;color:var(--ink3);"></i></div>
+            <div style="width:34px;height:34px;border-radius:10px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 auto;overflow:hidden;position:relative;"><i data-lucide="utensils" style="width:16px;height:16px;color:var(--ink3);"></i><img src="{{ f.img }}" loading="lazy" style="display:{{ f.imgD }};position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" onerror="this.remove()"></div>
             <div style="flex:1 1 auto;min-width:0;"><div style="font-size:13.5px;font-weight:600;">{{ f.name }}</div><div style="font-size:11.5px;color:var(--ink3);margin-top:1px;">{{ f.sub }}</div></div>
             <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--ink3);flex:0 0 auto;">{{ f.kcalL }} <span style="color:var(--mut);">{{ f.per }}</span></span>
             <sc-if value="{{ f.manual }}"><div onclick="{{ delDish }}" data-id="{{ f.delId }}" title="Rezept löschen" style="width:30px;height:30px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></sc-if>
@@ -9723,12 +9723,12 @@ class Component extends DCLogic {
     const dbRows = (fq.length >= 3 ? s.foodDb : []).map(p => ({
       name: p.name, sub: (p.brand ? p.brand + ' · ' : '') + 'Produktdatenbank' + (p.serving ? ' · ' + p.serving : ''),
       kcalL: p.kcal + ' kcal', per:'/100 g', kcal: p.kcal, carbs: p.carbs, protein: p.protein, fat: p.fat,
-      dishId: null, basis:'100g',
+      dishId: null, basis:'100g', img: p.img || '',
     }));
     let foods = [...foodRows.slice(0, dbRows.length ? 4 : 8), ...dbRows, ...recent];
     if (s.foodAi) foods = [{ name: s.foodAi.name, sub:'Nährwert-Schätzung · ' + s.foodAi.portion, kcalL: s.foodAi.kcal + ' kcal', per:'/Portion', kcal: s.foodAi.kcal, carbs: s.foodAi.carbs, protein: s.foodAi.protein, fat: s.foodAi.fat, dishId: null, basis:'portion' }, ...foods];
     this._foodRows = foods;
-    const foodsView = foods.map((f, i) => ({ ...f, i }));
+    const foodsView = foods.map((f, i) => ({ ...f, i, imgD: f.img ? 'block' : 'none' }));
 
     const fSel = s.foodSel;
     let foodSelName = '', foodPerLabel = '', foodAmtUnit = 'g', foodCalcKcal = '0 kcal', foodCalcMacros = '';
