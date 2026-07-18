@@ -21,7 +21,7 @@ jobs:
       matrix:
         include:
           - platform: 'macos-latest'
-            args: '--config src-tauri/tauri.dev.conf.json --target aarch64-apple-darwin'
+            args: '--config src-tauri/tauri.dev.conf.json --target aarch64-apple-darwin --bundles app dmg'
           - platform: 'windows-latest'
             args: '--config src-tauri/tauri.dev.conf.json'
     runs-on: ${{ matrix.platform }}
