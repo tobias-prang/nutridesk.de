@@ -157,7 +157,7 @@ module.exports = function registerBot(app, deps) {
   // Telefonseelsorge-Antwort oder hinter einer Beleidigungsgrenze waere uebergriffig.
   // Nur echte Sachfragen. Bei Reaktionen wirkt der Ton albern: "Du heißt Tobias. Du packst das."
   // oder "Stark, dass du fragst: Freut mich, wenn du was zu lachen hast." nach einem "lol".
-  const TONE_SAFE = new Set(['data', 'domain', 'food_info', 'help', 'wiki']);
+  const TONE_SAFE = new Set(['data', 'domain', 'food_info', 'help', 'wiki', 'math']);
   const TONE_ADD = {
     locker: ['', '', '', 'Sag Bescheid, wenn du noch was brauchst.', 'Passt das so?', 'Frag ruhig weiter.'],
     coach: ['Dranbleiben lohnt sich!', 'Du packst das.', 'Weiter so!', 'Kleine Schritte zählen auch.', 'Bleib dran, das zahlt sich aus.', ''],
@@ -260,23 +260,43 @@ module.exports = function registerBot(app, deps) {
       .replace(/^\s*(der|die|das|den|dem|ein|eine|einen)\s+/i, '')
       .replace(/[?.!]/g, '').trim();
     const term = clean.length >= 2 ? clean : String(q);
-    const enc = encodeURIComponent(term);
-    for (const ep of ['title', 'lexical', 'semantic']) {
+    // Kernwoerter (Substantive tragen die Bedeutung), laengste zuerst, damit
+    // "deutsche bundeskanzler" ueber das Kernwort "bundeskanzler" den richtigen Artikel trifft.
+    const STOP = new Set(['deutsche', 'deutschen', 'deutscher', 'deutsches', 'eigentlich', 'wirklich', 'ungefaehr', 'vielleicht', 'aktuelle', 'aktuellen', 'aktueller', 'heutige', 'jetzige']);
+    const keyw = foldTxt(term).split(' ').filter((w) => w.length >= 4 && !STOP.has(w)).sort((a, b) => b.length - a.length);
+    const ftrm = foldTxt(term);
+    const relevant = (title) => {
+      const bare = foldTxt(title).replace(/\s*\(.*$/, '').trim();
+      if (bare && ftrm.indexOf(bare) >= 0) return true;
+      const full = foldTxt(title);
+      return keyw.some((w) => full.indexOf(w) >= 0);
+    };
+    // Titel-Score: wie viele Frage-Woerter stecken im Titel? So gewinnt "Bundeskanzler (Deutschland)"
+    // gegen die reine Begriffsklaerungs-Seite "Bundeskanzler" (Flexionsendungen grob abschneiden).
+    const qterms = foldTxt(term).split(' ').map((w) => w.replace(/(en|er|es|em|e)$/, '')).filter((w) => w.length >= 3 && !STOP.has(w));
+    const score = (title) => { const ft = foldTxt(title); return qterms.reduce((s, w) => s + (ft.indexOf(w) >= 0 ? 1 : 0), 0); };
+    // Suchvarianten: voller Term und laengstes Kernwort per Titel (praezise), dann lexical/semantic.
+    const tries = [['title', term]];
+    if (keyw.length) tries.push(['title', keyw[0]]);
+    tries.push(['lexical', term], ['semantic', term]);
+    for (const [ep, query] of tries) {
       try {
-        const j = await httpGetJson(`${WIKI_URL}/api/search/${ep}?query=${enc}&limit=3`, ep === 'semantic' ? 12000 : 4000);
-        const arr = j && j.results;
-        if (arr && arr.length) {
-          const top = arr[0];
-          let text = String(top.text || '').replace(/<[^>]+>/g, '');
-          // Vollen Intro-Absatz aus dem Artikel holen (schöner als der kurze Snippet)
-          try {
-            const a = await httpGetJson(`${WIKI_URL}/api/article?id=${top.article_id}`, 4000);
-            const secs = a && a.article && a.article.sections;
-            if (secs && secs.length && secs[0].content) text = String(secs[0].content);
-          } catch (e) { /* Snippet reicht */ }
-          return { title: top.title || 'Wikipedia', text: trimNice(text.replace(/\s+/g, ' ').trim(), 700) };
-        }
-      } catch (e) { /* nächste Suchart */ }
+        const j = await httpGetJson(`${WIKI_URL}/api/search/${ep}?query=${encodeURIComponent(query)}&limit=5`, ep === 'semantic' ? 12000 : 4000);
+        const arr = (j && j.results) || [];
+        // Titel muss zur Frage passen. Bei lexical/semantic strikt, sonst kommt zu "bundeskanzler"
+        // ein zufaelliger Politiker zurueck; bei title notfalls der erste Treffer.
+        // Unter den passenden den mit der besten Frage-Ueberdeckung (stabil bei Gleichstand).
+        const rel = arr.filter((r) => relevant(r.title)).sort((a, b) => score(b.title) - score(a.title));
+        let top = rel[0] || (ep === 'title' ? arr[0] : null);
+        if (!top) continue;
+        let text = String(top.text || '').replace(/<[^>]+>/g, '');
+        try {
+          const a = await httpGetJson(`${WIKI_URL}/api/article?id=${top.article_id}`, 4000);
+          const secs = a && a.article && a.article.sections;
+          if (secs && secs.length && secs[0].content) text = String(secs[0].content);
+        } catch (e) { /* Snippet reicht */ }
+        return { title: top.title || 'Wikipedia', text: trimNice(text.replace(/\s+/g, ' ').trim(), 700) };
+      } catch (e) { /* naechste Variante */ }
     }
     return null;
   }
@@ -289,8 +309,121 @@ module.exports = function registerBot(app, deps) {
     return { city: city || '', temp: Math.round(j.current.temperature_2m), desc: WC[j.current.weather_code] || 'wechselhaft', wind: Math.round(j.current.wind_speed_10m) };
   }
   async function geocode(city) {
-    try { const j = await httpGetJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=de`, 5000); const r = j && j.results && j.results[0]; return r ? { lat: r.latitude, lon: r.longitude, city: r.name } : null; } catch (e) { return null; }
+    const raw = String(city || '').trim();
+    const plz = (raw.match(/\b(\d{5})\b/) || [])[1];
+    const nameOnly = raw.replace(/\b\d{5}\b/g, ' ').replace(/\s+/g, ' ').trim();
+    const byName = async (q) => {
+      if (!q || q.length < 2) return null;
+      try { const j = await httpGetJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=de`, 5000); const r = j && j.results && j.results[0]; return r ? { lat: r.latitude, lon: r.longitude, city: r.name } : null; } catch (e) { return null; }
+    };
+    let g = await byName(nameOnly || raw);
+    if (!g && plz) {
+      try { const z = await httpGetJson(`https://api.zippopotam.us/de/${plz}`, 5000); const p = z && z.places && z.places[0]; if (p) g = { lat: parseFloat(p.latitude), lon: parseFloat(p.longitude), city: p['place name'] || ('PLZ ' + plz) }; } catch (e) {}
+    }
+    return g;
   }
+  // Mehrere Ortstreffer holen (fuer die Rueckfrage bei mehrdeutigen Namen).
+  async function geocodeMany(city) {
+    const q = String(city || '').replace(/\b\d{5}\b/g, ' ').replace(/\s+/g, ' ').trim();
+    if (q.length < 2) return [];
+    try {
+      const j = await httpGetJson(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=10&language=de`, 5000);
+      return ((j && j.results) || []).map((r) => ({ name: r.name, admin1: r.admin1 || '', country: r.country || '', lat: r.latitude, lon: r.longitude }));
+    } catch (e) { return []; }
+  }
+  // Echte Mehrdeutigkeit: mehrere Orte mit dem gesuchten Namen im selben Land, aber anderer Region.
+  // "Neustadt" (viele) fragt nach, "Berlin" (dominanter Treffer, Namensgleiche nur im Ausland) nicht.
+  function ambiguousCities(cands, query) {
+    const esc = foldTxt(String(query || '')).replace(/[^a-z0-9]/g, '');
+    if (esc.length < 4) return null;
+    const wordRe = new RegExp('\\b' + esc + '\\b');
+    const match = cands.filter((c) => wordRe.test(foldTxt(c.name)));
+    if (match.length < 2) return null;
+    // Deutschland bevorzugen (deutsche App, deutsche Nutzer). "Berlin" darf nicht die US-Berlins
+    // vorschlagen, nur weil es davon mehr gibt.
+    const byLand = {};
+    match.forEach((c) => { byLand[c.country] = (byLand[c.country] || 0) + 1; });
+    const land = byLand['Deutschland'] ? 'Deutschland' : Object.keys(byLand).sort((a, b) => byLand[b] - byLand[a])[0];
+    const sameLand = match.filter((c) => c.country === land && c.admin1);
+    const regions = new Set(sameLand.map((c) => foldTxt(c.admin1)));
+    return regions.size > 1 ? sameLand.slice(0, 4) : null;
+  }
+  // Besten Einzeltreffer waehlen: exakter Name in Deutschland vor allem anderen (sonst nimmt
+  // Open-Meteo fuer "muenchen" schon mal "Muenchendorf" oder einen US-Ort als ersten Treffer).
+  function pickBestCity(cands, query) {
+    if (!cands.length) return null;
+    const qf = foldTxt(String(query || '').replace(/\d/g, '')).trim();
+    const de = cands.filter((c) => c.country === 'Deutschland');
+    const exactDE = de.find((c) => foldTxt(c.name) === qf);
+    if (exactDE) return exactDE;
+    const exact = cands.find((c) => foldTxt(c.name) === qf);
+    if (exact) return exact;
+    const esc = qf.replace(/[^a-z0-9]/g, '');
+    if (esc.length >= 4) { const wr = new RegExp('\\b' + esc + '\\b'); const wDE = de.find((c) => wr.test(foldTxt(c.name))); if (wDE) return wDE; }
+    return cands[0];
+  }
+
+  // ---------- Kopfrechnen (sicherer Parser, KEIN eval) ----------
+  function solveMath(raw) {
+    let s = ' ' + String(raw || '').toLowerCase().replace(/[?!]/g, ' ') + ' ';
+    if (!/\d/.test(s)) return null;
+    s = s.replace(/\bwie ?viele?\b|\bwieviel\b|\bwas\b|\bberechne\b|\brechne\b|\bergibt\b|\bergebnis( von)?\b|\bist\b|\bsind\b|\bgleich\b|\bdenn\b|\bmir\b|\bbitte\b|\bgenau\b/g, ' ');
+    s = s.replace(/×/g, '*').replace(/÷/g, '/')
+      .replace(/\bmal\b|\bmultipliziert mit\b/g, '*')
+      .replace(/\bgeteilt durch\b|\bdividiert durch\b|\bdurch\b/g, '/')
+      .replace(/\bplus\b|\bund\b/g, '+')
+      .replace(/\bminus\b|\bweniger\b/g, '-')
+      .replace(/\bhoch\b|\*\*/g, '^')
+      .replace(/\bmodulo\b|\bmod\b/g, '#')
+      .replace(/\bkomma\b/g, '.');
+    s = s.replace(/(\d)[.,](\d)/g, '$1.$2');
+    s = s.replace(/(\d(?:\.\d+)?)\s*(?:%|prozent)\s+von\s+(\d)/g, '$1 P $2');
+    s = s.replace(/\b(?:quadrat)?wurzel\s*(?:aus|von)?\s*(\d+(?:\.\d+)?)/g, 'sqrt($1)');
+    const toks = []; const re = /(sqrt|\d+(?:\.\d+)?|[+\-*/^#P()])/y; let i = 0;
+    while (i < s.length) {
+      if (/\s/.test(s[i])) { i++; continue; }
+      re.lastIndex = i; const m = re.exec(s);
+      if (!m || m.index !== i) return null;
+      toks.push(m[1]); i = re.lastIndex;
+    }
+    if (!toks.length || !toks.some(x => /^[+\-*/^#P]$/.test(x) || x === 'sqrt')) return null;
+    const prec = { '+': 1, '-': 1, '*': 2, '/': 2, '#': 2, P: 2, '^': 3 };
+    const rightA = { '^': 1 }; const out = [], ops = []; let prev = null;
+    for (const tk of toks) {
+      if (/^\d/.test(tk)) { out.push(parseFloat(tk)); prev = 'n'; }
+      else if (tk === 'sqrt') { ops.push(tk); prev = 'f'; }
+      else if (tk === '(') { ops.push(tk); prev = '('; }
+      else if (tk === ')') {
+        while (ops.length && ops[ops.length - 1] !== '(') out.push(ops.pop());
+        if (!ops.length) return null; ops.pop();
+        if (ops.length && ops[ops.length - 1] === 'sqrt') out.push(ops.pop());
+        prev = 'n';
+      } else {
+        if (tk === '-' && (prev === null || prev === 'op' || prev === '(')) out.push(0);
+        while (ops.length && ops[ops.length - 1] !== '(' && ops[ops.length - 1] !== 'sqrt' &&
+          (prec[ops[ops.length - 1]] > prec[tk] || (prec[ops[ops.length - 1]] === prec[tk] && !rightA[tk]))) out.push(ops.pop());
+        ops.push(tk); prev = 'op';
+      }
+    }
+    while (ops.length) { const o = ops.pop(); if (o === '(') return null; out.push(o); }
+    const st = [];
+    for (const t of out) {
+      if (typeof t === 'number') { st.push(t); continue; }
+      if (t === 'sqrt') { if (!st.length) return null; const a = st.pop(); if (a < 0) return null; st.push(Math.sqrt(a)); continue; }
+      if (st.length < 2) return null;
+      const b = st.pop(), a = st.pop(); let r;
+      if (t === '+') r = a + b; else if (t === '-') r = a - b; else if (t === '*') r = a * b;
+      else if (t === '/') { if (b === 0) return null; r = a / b; }
+      else if (t === '#') { if (b === 0) return null; r = a % b; }
+      else if (t === 'P') r = a / 100 * b;
+      else if (t === '^') { r = Math.pow(a, b); if (Math.abs(a) > 1e6 || Math.abs(b) > 100) return null; }
+      else return null;
+      st.push(r);
+    }
+    if (st.length !== 1 || !isFinite(st[0])) return null;
+    return st[0];
+  }
+  const fmtNum = (x) => String(Math.round(x * 1e6) / 1e6).replace('.', ',');
 
   // ---------- eigene Daten (lesen) ----------
   async function dataAnswer(uid, kind) {
@@ -759,16 +892,42 @@ module.exports = function registerBot(app, deps) {
       }
     }
 
+    // Antwort auf eine mehrdeutige Ortsauswahl (Wetter): "der zweite", "2", "Holstein" oder der Knopftext.
+    if (asked && asked.kind === 'citypick' && Array.isArray(asked.opts) && asked.opts.length) {
+      const O = asked.opts;
+      if (/^(egal|abbrechen|vergiss es|keins|keine|nein|ne)\b/.test(n)) {
+        return { intent: 'weather', reply: 'Alles klar, dann lassen wir das Wetter.' };
+      }
+      let hit = null;
+      const ORD = { erste: 0, ersten: 0, erster: 0, zweite: 1, zweiten: 1, zweiter: 1, dritte: 2, dritten: 2, dritter: 2, vierte: 3, vierten: 3, letzte: O.length - 1, letzten: O.length - 1 };
+      const mo = n.match(/\b(erste[rn]?|zweite[rn]?|dritte[rn]?|vierte[rn]?|letzte[rn]?)\b/);
+      if (mo) hit = O[ORD[mo[1]]];
+      const mz = n.match(/^(?:nummer |nr\.? |die |der |das )?([1-9])\b/);
+      if (!hit && mz) hit = O[parseInt(mz[1], 10) - 1];
+      if (!hit) hit = O.find((c) => foldTxt(t) === foldTxt(c.name + (c.admin1 ? ', ' + c.admin1 : '')));
+      if (!hit) hit = O.find((c) => c.admin1 && foldTxt(t).indexOf(foldTxt(c.admin1)) >= 0);
+      if (hit) {
+        const w = await weatherFor(hit.lat, hit.lon, hit.name).catch(() => null);
+        return { intent: 'weather', reply: w ? `In ${w.city || hit.name}${hit.admin1 ? ' (' + hit.admin1 + ')' : ''} sind es gerade ${w.temp} Grad, ${w.desc}, Wind ${w.wind} km/h.` : 'Das Wetter konnte ich gerade nicht abrufen.' };
+      }
+    }
+
     if (asked === 'city' && t.length >= 2 && t.length <= 60 && !/^(nein|ne|nö|egal|weiss nicht|weiß nicht|abbrechen)$/.test(low)) {
       const city = t.replace(/^(in|aus|für|fuer)\s+/i, '').replace(/[?.!]/g, '').trim();
-      const g = await geocode(city).catch(() => null);
+      const many = await geocodeMany(city).catch(() => []);
+      const amb = ambiguousCities(many, city);
+      if (amb) {
+        setAsk(uid, sid, { kind: 'citypick', opts: amb });
+        return { intent: 'weather', reply: `Es gibt mehrere Orte namens ${city.replace(/^\w/, (c) => c.toUpperCase())}. Welchen meinst du?`, quicks: amb.map((c) => ({ label: `${c.name}${c.admin1 ? ' (' + c.admin1 + ')' : ''}`, send: c.name + (c.admin1 ? ', ' + c.admin1 : '') })) };
+      }
+      const g = pickBestCity(many, city) || await geocode(city).catch(() => null);
       if (!g) {
         // NICHT erneut fragen: sonst wird jede Folgenachricht als Ortsname gedeutet und man
         // kommt nie wieder raus ("mein chef nervt" -> "finde ich nicht").
         return { intent: 'weather', reply: `"${city}" finde ich als Ort leider nicht. Frag mich gern nochmal mit "Wetter in <Stadt>", oder sag mir, was du sonst brauchst.` };
       }
-      const w = await weatherFor(g.lat, g.lon, g.city).catch(() => null);
-      return { intent: 'weather', reply: w ? `In ${w.city || g.city} sind es gerade ${w.temp} Grad, ${w.desc}, Wind ${w.wind} km/h.` : 'Das Wetter konnte ich gerade nicht abrufen.' };
+      const w = await weatherFor(g.lat, g.lon, g.city || g.name).catch(() => null);
+      return { intent: 'weather', reply: w ? `In ${w.city || g.city || g.name} sind es gerade ${w.temp} Grad, ${w.desc}, Wind ${w.wind} km/h.` : 'Das Wetter konnte ich gerade nicht abrufen.' };
     }
 
     // Smalltalk ZUERST, damit Plauderei nicht in die Wikipedia-Suche abrutscht.
@@ -1043,8 +1202,18 @@ module.exports = function registerBot(app, deps) {
     // Wetter (Open-Meteo). Explizit genannte Stadt geht immer; eigener Standort nur mit Datenschutz-Schalter.
     if (/wetter|temperatur|regnet|wie warm|grad draußen/.test(low)) {
       let lat = null, lon = null, city = null;
-      const cm = t.match(/in\s+([A-Za-zÄÖÜäöüß .-]{2,40})/);
-      if (cm) { const g = await geocode(cm[1].trim()); if (g) { lat = g.lat; lon = g.lon; city = g.city; } }
+      const cm = t.match(/in\s+([A-Za-zÄÖÜäöüß0-9 .-]{2,40})/);
+      if (cm) {
+        const ort = cm[1].trim();
+        const many = await geocodeMany(ort).catch(() => []);
+        const amb = ambiguousCities(many, ort);
+        if (amb) {
+          setAsk(uid, sid, { kind: 'citypick', opts: amb });
+          return { intent: 'weather', reply: `Es gibt mehrere Orte namens ${ort.replace(/^\w/, (c) => c.toUpperCase())}. Welchen meinst du?`, quicks: amb.map((c) => ({ label: `${c.name}${c.admin1 ? ' (' + c.admin1 + ')' : ''}`, send: c.name + (c.admin1 ? ', ' + c.admin1 : '') })) };
+        }
+        const g = pickBestCity(many, ort) || await geocode(ort);
+        if (g) { lat = g.lat; lon = g.lon; city = g.city || g.name; }
+      }
       if (lat == null && settings.allow_location && settings.home_lat != null) { lat = settings.home_lat; lon = settings.home_lon; city = settings.home_city; }
       if (lat == null) {
         setAsk(uid, sid, 'city');
@@ -1056,8 +1225,11 @@ module.exports = function registerBot(app, deps) {
       return { intent: 'weather', reply: w ? `In ${w.city || 'deiner Region'} sind es gerade ${w.temp} Grad, ${w.desc}, Wind ${w.wind} km/h.` : 'Das Wetter konnte ich gerade nicht abrufen.' };
     }
 
+    // Kopfrechnen: eindeutige Rechenaufgaben selbst loesen (deterministisch, ohne KI).
+    { const mr = solveMath(t); if (mr != null) return { intent: 'math', reply: `Das macht ${fmtNum(mr)}.` }; }
+
     // Nährwert-Frage ("wie viel kcal hat nutella")
-    if (/(wie viele?|wieviel).*(kalorien|kcal|eiweiss|protein|fett|kohlenhydrate|naehrwerte?)/.test(n) || /(kalorien|kcal|naehrwerte?)\s+(von|fuer|hat|in)/.test(n) || /(how many|how much).*(calories|protein|carbs|fat)/.test(n)
+    if (/(wie viele?|wieviel).*(kalorien|kcal|eiweiss|protein|fett|kohlenhydrate|naehrwerte?)/.test(n) || /(kalorien|kcal|naehrwerte?)\s+(von|fuer|hat|in)/.test(n) || /\b(kalorien|kcal|naehrwerte?|eiwei(ss|ß)|protein|fett|kohlenhydrate)\b[^?.!]{0,20}\b(von|vom|fuer)\s+(?!heute|gestern|morgen|mir\b|dir\b)(einer?|einen|einem|der|die|das|den|dem|nem|ner)?\s*[a-zäöüß]{3,}/.test(n) || /(how many|how much).*(calories|protein|carbs|fat)/.test(n)
       || /^(kalorien|kcal|naehrwerte?|eiwei(ss)?|protein|fett|kohlenhydrate)\s+(?!heute|gestern|morgen|uebermorgen|woche|monat|jahr|diese|dieser|letzte|bisher|uebrig|noch|gegessen|verbrannt|verbraucht|getrunken|ziel|pro |am tag|im schnitt|durchschnitt)[a-z]{2,}/.test(n)) {
       let m = low.replace(/[?.!,]/g, ' ').replace(/^.*\b(hat|von|für|fuer|in|does|of)\s+/, '').replace(/\b(have|has|got|hat)\b/g, ' ').replace(/\s+/g, ' ').trim();
       if (!m || m.length < 2) m = low.replace(/(wie viele?|wieviel|kalorien|kcal|nährwerte?|naehrwerte?|hat|eine[nr]?|ein|der|die|das|how many|how much|calories|protein|carbs|fat|does|have)/g, ' ').replace(/[?.!,]/g, ' ').replace(/\s+/g, ' ').trim();

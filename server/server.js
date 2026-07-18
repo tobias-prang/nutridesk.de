@@ -2109,7 +2109,8 @@ async function insertScaledDish(conn, uid, r, target) {
 }
 
 // Eine Woche/Bereich des Plans aggregieren und als shopping_items schreiben (kein Loeschen).
-async function buildShoppingRange(conn, uid, from, to, persons, weekNo) {
+// kind filtert nach Warenart: 'fresh' nur Frischware, 'pantry' nur Vorrat, sonst alles.
+async function buildShoppingRange(conn, uid, from, to, persons, weekNo, kind) {
   const [rows] = await conn.execute(
     'SELECT ri.category AS cat, ri.name AS iname, SUM(ri.amount_g * d.scale) AS g' +
     ' FROM meal_plan mp JOIN dishes d ON d.id = mp.dish_id' +
@@ -2123,6 +2124,8 @@ async function buildShoppingRange(conn, uid, from, to, persons, weekNo) {
     if (g <= 0) continue;
     const cat = row.cat || 'Sonstiges';
     const b = packs.buyFor(cat, row.iname, g, PRICE_PER_KG[cat] || 5);
+    if (kind === 'fresh' && b.pantry) continue;
+    if (kind === 'pantry' && !b.pantry) continue;
     await conn.execute(
       'INSERT INTO shopping_items (user_id, category, name, qty, unit, grams, pantry, price, week_no) VALUES (?,?,?,?,?,?,?,?,?)',
       [uid, cat.slice(0, 60), String(row.iname).slice(0, 120), b.qty, b.unit, b.grams, b.pantry ? 1 : 0, b.price, weekNo == null ? 1 : weekNo]);
@@ -2136,14 +2139,19 @@ async function buildShopping(conn, uid, dates, persons) {
   await conn.execute('DELETE FROM shopping_items WHERE user_id = ?', [uid]);
   let n = 0;
   const weeks = Math.ceil(dates.length / 7);
+  const first = dates[0], last = dates[dates.length - 1];
+  if (weeks <= 1) return await buildShoppingRange(conn, uid, first, last, persons, 1, 'all');
+  // Frischware pro Woche. Vorrat (Olivenoel, Gewuerze) NICHT pro Woche wiederholen: eine Flasche
+  // aus Woche 1 reicht fuer den ganzen Plan, sonst stehen 4 Flaschen auf 4 Wochenlisten.
   for (let w = 0; w < weeks; w++) {
     const from = dates[w * 7];
     const to = dates[Math.min(dates.length - 1, w * 7 + 6)];
-    n += await buildShoppingRange(conn, uid, from, to, persons, w + 1);
+    n += await buildShoppingRange(conn, uid, from, to, persons, w + 1, 'fresh');
   }
-  // Gesamt-Aggregat ueber den ganzen Zeitraum als week_no=0. Sonst zeigt die "Ganze Liste"
-  // dieselbe Zutat pro Woche erneut (4x Olivenoel statt 1 Flasche fuer den ganzen Plan).
-  if (weeks > 1) await buildShoppingRange(conn, uid, dates[0], dates[dates.length - 1], persons, 0);
+  // Vorrat einmalig ueber den ganzen Zeitraum, der ersten Woche zugeordnet (korrekte Packungszahl).
+  n += await buildShoppingRange(conn, uid, first, last, persons, 1, 'pantry');
+  // Gesamt-Aggregat als week_no=0 fuer die "Ganze Liste".
+  await buildShoppingRange(conn, uid, first, last, persons, 0, 'all');
   return n;
 }
 

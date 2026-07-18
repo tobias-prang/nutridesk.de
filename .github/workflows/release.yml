@@ -22,7 +22,7 @@ jobs:
       matrix:
         include:
           - platform: 'macos-latest'
-            args: '--target universal-apple-darwin'
+            args: '--target universal-apple-darwin --bundles app dmg'
           - platform: 'windows-latest'
             args: ''
     runs-on: ${{ matrix.platform }}
@@ -43,6 +43,10 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+
+      - name: env.js leeren (Prod nutzt die fest verdrahtete API)
+        shell: bash
+        run: printf '' > src/renderer/assets/env.js
 
       - name: NPM-Abhaengigkeiten
         run: npm ci

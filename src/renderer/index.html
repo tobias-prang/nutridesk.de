@@ -7487,8 +7487,10 @@ class Component extends DCLogic {
   };
   markBotRead = async () => {
     try { await this.api('/bot/read', { method:'POST' }); } catch (e) {}
-    // Sichtbar lassen, nur als gelesen markieren (Punkt aus), nicht wegräumen.
-    this.setState(st => ({ botMsgs: (st.botMsgs || []).map(m => ({ ...m, is_read: 1 })), botUnread: 0 }));
+    // Wegräumen statt nur ausgrauen: der Server liefert beim nächsten Sync ohnehin nur noch
+    // ungelesene (is_read=0), also ist die geleerte Liste der korrekte Zustand. Danach zeigt
+    // die Karte den Leerzustand ("Alles im Griff") und der Gelesen-Button verschwindet.
+    this.setState({ botMsgs: [], botUnread: 0 });
   };
   goInsightsFromBot = () => { this.setState({ modal:'' }); this.goInsights(); };
   openSearch = () => this.setState({ modal:'search', searchQ:'' });
