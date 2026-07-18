@@ -1,0 +1,65 @@
+name: release-dev
+
+# Baut die DEV-App (gegen die Dev-API, eigener Updater-Feed) fuer Windows + macOS,
+# sobald ein Tag dev-v* gepusht wird. Signiert mit dem minisign-Key (Update-Signatur, KEINE
+# Windows-Code-Signatur). Aufruf: git tag dev-v1.0.3 && git push origin dev-v1.0.3
+# Danach: die Artefakte + tauri.json in den Dev-Feed (/updates/dev/) laden, dann greift der
+# In-App-Updater ("Nach Updates suchen").
+
+on:
+  push:
+    tags:
+      - 'dev-v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest'
+            args: '--config src-tauri/tauri.dev.conf.json --target aarch64-apple-darwin'
+          - platform: 'windows-latest'
+            args: '--config src-tauri/tauri.dev.conf.json'
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Node einrichten
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Rust einrichten
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin' || '' }}
+
+      - name: Rust-Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: env.js auf Dev-API setzen
+        shell: bash
+        run: printf 'window.__API_BASE="http://localhost:3180";window.__DEV__=true;\n' > src/renderer/assets/env.js
+
+      - name: NPM-Abhaengigkeiten
+        run: npm ci
+
+      - name: Bauen + Pre-Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'NutriDesk Dev ${{ github.ref_name }}'
+          releaseBody: 'Dev-Build fuer den Auto-Update-Kanal (Windows + macOS).'
+          releaseDraft: false
+          prerelease: true
+          args: ${{ matrix.args }}
