@@ -1,10 +1,13 @@
 node_modules/
+.env
+.env.*
+!.env.example
+server/.env
+server/.env.*
+!server/.env.example
 dist/
-src-tauri/target/
-
-# Tauri-Updater: PRIVATER Signaturschluessel niemals committen!
-src-tauri/*.key
-!src-tauri/*.key.pub
+tmp/
+artifacts/
 
 .DS_Store
 Thumbs.db

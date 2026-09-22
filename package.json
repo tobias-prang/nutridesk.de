@@ -1,22 +1,12 @@
 {
   "name": "nutridesk",
   "productName": "NutriDesk",
-  "version": "1.0.4",
-  "description": "NutriDesk | Ernährung & Finanzen für den Desktop",
+  "version": "1.0.5",
+  "description": "NutriDesk Web-App | Ernährung, Fitness, Finanzen, Notizen und Assistenz",
   "author": "Tobias",
   "private": true,
   "scripts": {
-    "dev": "tauri dev",
-    "build": "tauri build",
-    "build:mac": "printf '// prod build\\n' > src/renderer/assets/env.js && TAURI_SIGNING_PRIVATE_KEY=$(cat src-tauri/nutridesk.key) TAURI_SIGNING_PRIVATE_KEY_PASSWORD='' tauri build --bundles app dmg",
-    "build:mac:dev": "printf 'window.__API_BASE=\"http://localhost:3180\";window.__DEV__=true;\\n' > src/renderer/assets/env.js && TAURI_SIGNING_PRIVATE_KEY=$(cat src-tauri/nutridesk.key) TAURI_SIGNING_PRIVATE_KEY_PASSWORD='' tauri build --config src-tauri/tauri.dev.conf.json --bundles app dmg",
-    "release": "node release.js",
-    "tauri": "tauri"
-  },
-  "devDependencies": {
-    "@tauri-apps/cli": "^2.11.4"
-  },
-  "dependencies": {
-    "@tauri-apps/api": "^2.11.1"
+    "start": "npm --prefix server start",
+    "test": "node --test server/tests/*.test.js"
   }
 }

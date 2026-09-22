@@ -1,6 +1,6 @@
 // NutriDesk REST-API
 // Express + MariaDB (mysql2) + JWT-Auth. Analyse und Ernährungsplanung systembasiert (keine KI).
-// Läuft als systemd-Service auf dem VPS; die Tauri-App spricht ausschließlich mit dieser API.
+// Läuft als PM2-Prozess auf dem VPS; Browser- und Tauri-App sprechen mit dieser API.
 require('dotenv').config();
 const express = require('express');
 const bcrypt = require('bcryptjs');
@@ -11,26 +11,37 @@ const fsp = require('fs/promises');
 const path = require('path');
 const crypto = require('crypto');
 const multer = require('multer');
+const PDFDocument = require('pdfkit');
+const sharp = require('sharp');
+const QRCode = require('qrcode');
+const nodemailer = require('nodemailer');
+const { authenticator } = require('otplib');
 const { serveCloudFile } = require('./lib/cloud-download'); // SEC-004A: sichere Datei-Auslieferung
 const { validateUpload } = require('./lib/upload-guard'); // SEC-004B: Upload-Validierung (Allowlist + Magic-Bytes)
 const badwords = require('./badwords');
 const packs = require('./packs');
 const { scanFile } = require('./lib/malware-scan'); // SEC-004B: Malware-Scan (fail-closed)
+const { applyRegularInstallment, getMonthlyFinancialObligations, getCurrentMonthExpenses } = require('./lib/financial-obligations');
 
 const PORT = parseInt(process.env.PORT || '8420', 10);
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) { console.error('JWT_SECRET fehlt in .env'); process.exit(1); }
+if (!process.env.DB_PASS) { console.error('DB_PASS fehlt in .env'); process.exit(1); }
 
 // ---------- FinTS (Bankanbindung) ----------
 // Produkt-Registrierungsnummer liegt als Datei auf dem Server (nicht im Repo).
-let FINTS_PRODUCT_ID = '';
-try { FINTS_PRODUCT_ID = fs.readFileSync(process.env.FINTS_PRODUCT_FILE || '/home/.produkt-register-fints', 'utf8').trim(); }
-catch (e) { console.warn('FinTS-Produkt-Key nicht gefunden:', e.message); }
-let PinTanClient = null;
-try { PinTanClient = require('fints').PinTanClient; }
-catch (e) { console.warn('fints-Bibliothek nicht geladen:', e.message); }
+let FINTS_PRODUCT_ID = String(process.env.FINTS_PRODUCT_ID || '').trim();
+if (!FINTS_PRODUCT_ID) {
+  try { FINTS_PRODUCT_ID = fs.readFileSync(process.env.FINTS_PRODUCT_FILE || '/home/.produkt-register-fints', 'utf8').trim(); }
+  catch (e) { console.warn('FinTS-Produkt-Key nicht konfiguriert (FINTS_PRODUCT_ID oder FINTS_PRODUCT_FILE).'); }
+}
+let fintsModulePromise = null;
+async function loadFints() {
+  if (!fintsModulePromise) fintsModulePromise = import('lib-fints');
+  return fintsModulePromise;
+}
 // SEC-001: FinTS-URL nur serverseitig aus der banks-Tabelle + SSRF-Schutz (siehe lib/).
-const { buildConnectClient, buildSyncClient } = require('./lib/bank-connect');
+const { resolveFintsUrl, validateFintsUrl } = require('./lib/fints-url');
 // Bank-PIN verschlüsselt ablegen (AES-256-GCM, Schlüssel aus JWT_SECRET abgeleitet).
 const BANK_KEY = crypto.createHash('sha256').update(String(JWT_SECRET) + ':bank').digest();
 function encPin(plain) {
@@ -48,6 +59,7 @@ function decPin(stored) {
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST || '127.0.0.1',
+  port: parseInt(process.env.DB_PORT || '3306', 10),
   user: process.env.DB_USER || 'nutridesk',
   password: process.env.DB_PASS,
   database: process.env.DB_NAME || 'nutridesk',
@@ -58,13 +70,53 @@ const pool = mysql.createPool({
 
 const app = express();
 app.disable('x-powered-by');
+const rendererRoot = path.resolve(__dirname, '..', 'src', 'renderer');
 // Hinter Apache/Cloudflare: echte Client-IP aus X-Forwarded-For (sonst ist req.ip immer 127.0.0.1)
 app.set('trust proxy', 1);
 const reqIp = (req) => String(req.headers['cf-connecting-ip'] || req.ip || '').slice(0, 45);
 app.use(express.json({ limit: '3mb' }));
 app.use((req, res, next) => { if (req.body === undefined) req.body = {}; next(); });
+const asyncRoute = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
-// CORS: Tauri-App (Origin http://tauri.localhost) und Dev-Browser; Auth per Bearer-Token, keine Cookies
+// Öffentlicher Changelog aus GitHub-Releases. Der kurze Cache schützt die GitHub-API
+// vor unnötigen Aufrufen; bei einem temporären GitHub-Ausfall wird der letzte Stand geliefert.
+const CHANGELOG_REPO = process.env.GITHUB_REPOSITORY || 'tobias-prang/NutriDesk';
+const CHANGELOG_FALLBACK = [{v:'1.0.4',title:'NutriDesk Web-App',date:'2026-07-18',changes:[
+  {t:'new',text:'Bot-Fähigkeiten, Einkaufsliste und Neuigkeiten erweitert'},
+  {t:'fix',text:'Lebensmittelbilder und Finanz-Routing verbessert'},
+]}];
+let changelogCache = { at: 0, entries: CHANGELOG_FALLBACK };
+app.get('/api/changelog', asyncRoute(async (_req, res) => {
+  if (Date.now() - changelogCache.at < 15 * 60 * 1000 && changelogCache.entries.length) {
+    return res.json({ entries: changelogCache.entries, source: 'github', cached: true });
+  }
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const headers = { Accept: 'application/vnd.github+json', 'User-Agent': 'NutriDesk/1.0' };
+    if (process.env.GITHUB_TOKEN) headers.Authorization = 'Bearer ' + process.env.GITHUB_TOKEN;
+    const rr = await fetch(`https://api.github.com/repos/${CHANGELOG_REPO}/releases?per_page=20`, { headers, signal: ctrl.signal });
+    if (!rr.ok) throw new Error('GitHub HTTP ' + rr.status);
+    const releases = await rr.json();
+    const entries = (Array.isArray(releases) ? releases : []).filter(r => !r.draft).map(r => {
+      const lines = String(r.body || '').split(/\r?\n/).map(x => x.replace(/^\s*[-*+]\s*/, '').trim()).filter(Boolean).slice(0, 20);
+      return {
+        v: String(r.tag_name || r.name || '').replace(/^v/i, '') || 'Release',
+        title: String(r.name || r.tag_name || 'Update').slice(0, 120),
+        date: String(r.published_at || r.created_at || '').slice(0, 10),
+        url: r.html_url,
+        changes: (lines.length ? lines : ['Neue Version veröffentlicht']).map(text => ({ t: /fix|fehler|bug|behob/i.test(text) ? 'fix' : (/neu|add|feature/i.test(text) ? 'new' : 'change'), text: text.slice(0, 300) })),
+      };
+    });
+    changelogCache = { at: Date.now(), entries };
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ entries, source: 'github', cached: false });
+  } catch (e) {
+    return res.json({ entries: changelogCache.entries.length ? changelogCache.entries : CHANGELOG_FALLBACK, source: 'bundled', stale: true });
+  } finally { clearTimeout(timer); }
+}));
+
+// Browser-Web-App und lokale Entwicklung; Auth per Bearer-Token, keine Cookies.
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -78,8 +130,6 @@ class HttpError extends Error {
   constructor(status, msg) { super(msg); this.status = status; }
 }
 const bad = (msg) => new HttpError(400, msg);
-
-const asyncRoute = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 // Validierungshelfer: geben den normalisierten Wert zurück oder werfen 400
 const vStr = (v, name, max, { optional = false } = {}) => {
@@ -216,9 +266,14 @@ app.use(rateLimitGlobal);
 
 // ---------- Cloud-Speicher (Dateien pro Nutzer, streng isoliert) ----------
 const CLOUD_ROOT = process.env.CLOUD_ROOT || '/home/nutridesk.de/cloud';
+const STORAGE_ROOT = process.env.STORAGE_ROOT || '/home/nutridesk.de/storage';
+const NOTE_IMAGE_ROOT = path.join(STORAGE_ROOT, 'note-images');
 const CLOUD_CATS = ['garantie', 'vertrag', 'rechnung', 'versicherung', 'sonstiges'];
 const userCloudDir = (uid) => path.join(CLOUD_ROOT, String(parseInt(uid, 10)));
 async function ensureUserCloud(uid) { const dir = userCloudDir(uid); await fsp.mkdir(dir, { recursive: true }); return dir; }
+const userNoteImageDir = (uid) => path.join(NOTE_IMAGE_ROOT, String(parseInt(uid,10)));
+async function ensureUserNoteImages(uid){const dir=userNoteImageDir(uid);await fsp.mkdir(dir,{recursive:true});return dir;}
+function safeNoteImagePath(uid,storedName){const dir=userNoteImageDir(uid),p=path.join(dir,path.basename(String(storedName)));if(path.dirname(p)!==dir)throw bad('Ungültiger Pfad');return p;}
 async function cloudUsage(uid) {
   const [[r]] = await pool.execute('SELECT COALESCE(SUM(size),0) AS used FROM cloud_files WHERE user_id = ?', [uid]);
   return Number(r.used) || 0;
@@ -372,7 +427,7 @@ app.post('/auth/login', rateLimitAuth, asyncRoute(async (req, res) => {
   res.set('Cache-Control', 'no-store'); // SEC-TOKEN-10: Auth-Antworten nie cachen
   const fa = loginFailState(login);
   if (fa.count >= 10) return res.status(429).json({ error: 'Zu viele Fehlversuche für dieses Konto, bitte kurz warten.' });
-  const [rows] = await pool.execute('SELECT id, email, username, name, admin, developer, pass_hash, auth_version FROM users WHERE email = ? OR username = ? LIMIT 1', [login, login]);
+  const [rows] = await pool.execute('SELECT id, email, username, name, admin, developer, pass_hash, auth_version, totp_enabled, totp_secret_enc FROM users WHERE email = ? OR username = ? LIMIT 1', [login, login]);
   const u = rows[0];
   // Auch bei unbekannter Kennung einen Hash vergleichen, damit die Antwortzeit nichts verrät
   const hashToCheck = u ? u.pass_hash : '$2a$11$C6UzMDM.H6dfI/f/IKcEeO7ZDLGzz2u1WVWXWuxHkDe0/8mCVLIQu';
@@ -382,9 +437,36 @@ app.post('/auth/login', rateLimitAuth, asyncRoute(async (req, res) => {
     logEvent('warning', 'login_failed', 'Fehlgeschlagene Anmeldung für ' + login, { uid: u ? u.id : null, email: login, ip: reqIp(req) });
     return res.status(401).json({ error: 'E-Mail/Benutzername oder Passwort ist falsch' });
   }
+  if (u.totp_enabled && u.totp_secret_enc) {
+    const challenge = jwt.sign({ uid:u.id, av:Number(u.auth_version), purpose:'totp-login', jti:crypto.randomUUID() }, JWT_SECRET,
+      { expiresIn:'5m', algorithm:'HS256', issuer:'nutridesk-auth', audience:'nutridesk-2fa', header:{typ:'2fa+jwt'} });
+    return res.json({ two_factor_required:true, challenge });
+  }
   loginFails.delete(login);
   logEvent('info', 'login', 'Anmeldung erfolgreich', { uid: u.id, email: u.email, ip: reqIp(req) });
   res.json({ token: signToken(u), user: { id: u.id, email: u.email, username: u.username, name: u.name, admin: u.admin, developer: u.developer } });
+}));
+
+app.post('/auth/2fa', rateLimitAuth, asyncRoute(async (req, res) => {
+  const challenge = vStr(req.body.challenge, 'Anmelde-Challenge', 2000);
+  const code = vStr(req.body.code, 'Authenticator-Code', 12).replace(/\s/g, '');
+  if (!/^\d{6}$/.test(code)) throw bad('Der Authenticator-Code muss 6-stellig sein');
+  let p;
+  try { p = jwt.verify(challenge, JWT_SECRET, { algorithms:['HS256'], issuer:'nutridesk-auth', audience:'nutridesk-2fa' }); }
+  catch (_) { return res.status(401).json({ error:'Die 2FA-Anmeldung ist abgelaufen. Bitte erneut anmelden.' }); }
+  if (p.purpose !== 'totp-login') return res.status(401).json({ error:'Ungültige 2FA-Anmeldung' });
+  const [[u]] = await pool.execute('SELECT id,email,username,name,admin,developer,auth_version,totp_enabled,totp_secret_enc FROM users WHERE id=?', [p.uid]);
+  if (!u || !u.totp_enabled || !u.totp_secret_enc || Number(u.auth_version) !== Number(p.av)) return res.status(401).json({ error:'Ungültige 2FA-Anmeldung' });
+  let valid = false;
+  try { valid = authenticator.verify({ token:code, secret:decTotp(u.totp_secret_enc) }); } catch (_) {}
+  if (!valid) {
+    logEvent('warning','totp_failed','Falscher Authenticator-Code',{uid:u.id,email:u.email,ip:reqIp(req)});
+    return res.status(401).json({ error:'Der Authenticator-Code ist falsch' });
+  }
+  loginFails.delete(String(u.username || u.email).toLowerCase());
+  logEvent('info','login_2fa','Anmeldung mit Zwei-Faktor-Authentifizierung erfolgreich',{uid:u.id,email:u.email,ip:reqIp(req)});
+  res.set('Cache-Control','no-store');
+  res.json({ token:signToken(u), user:{id:u.id,email:u.email,username:u.username,name:u.name,admin:u.admin,developer:u.developer} });
 }));
 
 // SEC-TOKEN-2: Von allen Geraeten abmelden = auth_version erhoehen -> alle bestehenden Tokens (auch dieses) werden ungueltig.
@@ -407,11 +489,18 @@ async function requireAdmin(req, res, next) {
 // ---------- Admin: Nutzerverwaltung ----------
 app.get('/admin/users', auth, requireAdmin, asyncRoute(async (req, res) => {
   const [rows] = await pool.execute(
-    `SELECT u.id, u.email, u.name, u.admin, u.developer, u.created_at, u.cloud_quota,
+    `SELECT u.id, u.email, u.username, u.name, u.first_name, u.last_name, u.admin, u.developer, u.created_at, u.cloud_quota,
             (SELECT COALESCE(SUM(size),0) FROM cloud_files WHERE user_id = u.id) AS cloud_used,
+            (SELECT COALESCE(SUM(size),0) FROM assistant_note_images WHERE user_id = u.id) AS note_image_used,
             (SELECT COUNT(*) FROM ai_cooldown WHERE user_id = u.id AND used_at > DATE_SUB(NOW(), INTERVAL ${AI_COOLDOWN_DAYS} DAY)) AS ai_cooldowns
      FROM users u ORDER BY u.id ASC`);
-  res.json(rows.map(r => ({ ...r, cloud_quota: Number(r.cloud_quota), cloud_used: Number(r.cloud_used), ai_cooldowns: Number(r.ai_cooldowns) })));
+  res.json(rows.map(r => ({ ...r, cloud_quota: Number(r.cloud_quota), cloud_used: Number(r.cloud_used), note_image_used:Number(r.note_image_used), storage_used:Number(r.cloud_used)+Number(r.note_image_used), ai_cooldowns: Number(r.ai_cooldowns) })));
+}));
+
+app.get('/admin/storage', auth, requireAdmin, asyncRoute(async (req,res) => {
+  const st = await fsp.statfs(process.env.STORAGE_ROOT || '/home/nutridesk.de/storage');
+  const total = Number(st.blocks) * Number(st.bsize), free = Number(st.bavail) * Number(st.bsize);
+  res.json({ total, free, used:Math.max(0,total-free), mail_ready:SMTP_READY });
 }));
 
 app.delete('/admin/users/:id/cooldown', auth, requireAdmin, asyncRoute(async (req, res) => {
@@ -432,18 +521,22 @@ app.put('/admin/users/:id/quota', auth, requireAdmin, asyncRoute(async (req, res
 }));
 
 app.post('/admin/users', auth, requireAdmin, asyncRoute(async (req, res) => {
+  if (!SMTP_READY) return res.status(503).json({ error:'E-Mail-Versand ist noch nicht konfiguriert. SMTP_HOST, SMTP_USER und SMTP_PASS fehlen.' });
   const email = vStr(req.body.email, 'E-Mail', 190).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw bad('E-Mail-Adresse ist ungültig');
-  const name = vStr(req.body.name, 'Name', 80);
-  const password = vStr(req.body.password, 'Passwort', 200);
-  if (password.length < 8) throw bad('Passwort braucht mindestens 8 Zeichen');
+  const firstName = vStr(req.body.first_name, 'Vorname', 60);
+  const lastName = vStr(req.body.last_name, 'Nachname', 60);
+  const username = vStr(req.body.username, 'Benutzername', 32).toLowerCase().replace(/^@/,'');
+  if (!/^[a-z0-9_.]{3,32}$/.test(username)) throw bad('Benutzername: 3-32 Zeichen, nur a-z, 0-9, _ und .');
+  const name = (firstName + ' ' + lastName).trim();
+  const password = securePassword();
   const isAdmin = vBool(req.body.admin);
   const hash = await bcrypt.hash(password, 11);
   const conn = await pool.getConnection();
   let id;
   try {
     await conn.beginTransaction();
-    const [r] = await conn.execute('INSERT INTO users (email, pass_hash, name, admin) VALUES (?,?,?,?)', [email, hash, name, isAdmin]);
+    const [r] = await conn.execute('INSERT INTO users (email, username, name, first_name, last_name, pass_hash, admin) VALUES (?,?,?,?,?,?,?)', [email, username, name, firstName, lastName, hash, isAdmin]);
     id = r.insertId;
     await conn.execute('INSERT INTO user_settings (user_id) VALUES (?)', [id]);
     await conn.commit();
@@ -452,9 +545,11 @@ app.post('/admin/users', auth, requireAdmin, asyncRoute(async (req, res) => {
     if (e.code === 'ER_DUP_ENTRY') throw bad('Diese E-Mail ist schon vergeben');
     throw e;
   } finally { conn.release(); }
+  try { await sendAccessMail({to:email,firstName,username,password}); }
+  catch (e) { await pool.execute('DELETE FROM users WHERE id=?',[id]).catch(()=>{}); throw new HttpError(502,'Konto konnte nicht angelegt werden, weil die Willkommensmail nicht gesendet werden konnte.'); }
   await ensureUserCloud(id).catch(() => {});
   logEvent('info', 'admin_user_create', 'Nutzer angelegt: ' + email + (isAdmin ? ' (Admin)' : ''), { uid: req.uid, email, ip: reqIp(req) });
-  res.json({ id, email, name, admin: isAdmin });
+  res.json({ id, email, username, name, admin: isAdmin, mail_sent:true });
 }));
 
 app.put('/admin/users/:id', auth, requireAdmin, asyncRoute(async (req, res) => {
@@ -463,7 +558,8 @@ app.put('/admin/users/:id', auth, requireAdmin, asyncRoute(async (req, res) => {
   const email = vStr(req.body.email, 'E-Mail', 190).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw bad('E-Mail-Adresse ist ungültig');
   const isAdmin = vBool(req.body.admin);
-  const isDev = vBool(req.body.developer);
+  const [[beforeAdminEdit]] = await pool.execute('SELECT developer FROM users WHERE id=?',[id]);
+  const isDev = req.body.developer === undefined ? !!(beforeAdminEdit && beforeAdminEdit.developer) : !!vBool(req.body.developer);
   if (id === req.uid && !isAdmin) throw bad('Du kannst dir den Admin-Status nicht selbst entziehen');
   try {
     const [r] = await pool.execute('UPDATE users SET name = ?, email = ?, admin = ?, developer = ? WHERE id = ?', [name, email, isAdmin, isDev, id]);
@@ -701,11 +797,11 @@ app.post('/admin/user-recipes/checkup', auth, requireAdmin, asyncRoute(async (re
 
 // ---------- Profil & Einstellungen ----------
 app.get('/me', auth, asyncRoute(async (req, res) => {
-  const [[user]] = await pool.execute('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, created_at FROM users WHERE id = ?', [req.uid]);
+  const [[user]] = await pool.execute('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, totp_enabled, created_at FROM users WHERE id = ?', [req.uid]);
   const [[settings]] = await pool.execute('SELECT * FROM user_settings WHERE user_id = ?', [req.uid]);
   const settingsSafe = settings ? { ...settings, avatar: cleanAvatar(settings.avatar) } : settings;
   // Der PIN-Hash darf den Server nie verlassen, nur die Info OB einer gesetzt ist.
-  if (settingsSafe) { settingsSafe.pin_set = settingsSafe.pin_hash ? 1 : 0; delete settingsSafe.pin_hash; }
+  if (settingsSafe) delete settingsSafe.pin_hash;
   res.json({ user, settings: settingsSafe });
 }));
 
@@ -753,35 +849,6 @@ app.put('/me', auth, asyncRoute(async (req, res) => {
   res.json({ ok: true });
 }));
 
-// ---------- App-Sperre (PIN) ----------
-// Der PIN ist ein Privatsphaere-Schirm, kein Datenschutz: die Daten liegen serverseitig und das
-// Token im Geraetespeicher. Er verhindert Blicke ueber die Schulter, nicht einen Angreifer mit
-// Zugriff auf den Rechner. Deshalb bcrypt + harte Drosselung, aber ohne Sicherheitsversprechen.
-app.post('/me/pin', auth, rateLimitUser('me-pin-set', 10, 600000), asyncRoute(async (req, res) => {
-  const pw = vStr(req.body.password, 'Passwort', 200);
-  const pin = req.body.pin === null || req.body.pin === '' ? null : vStr(req.body.pin, 'PIN', 12);
-  const [[u]] = await pool.execute('SELECT pass_hash FROM users WHERE id = ?', [req.uid]);
-  if (!u || !(await bcrypt.compare(pw, u.pass_hash))) throw bad('Das Passwort ist falsch');
-  if (pin !== null && !/^\d{4,8}$/.test(pin)) throw bad('Der PIN muss aus 4 bis 8 Ziffern bestehen');
-  const hash = pin === null ? null : await bcrypt.hash(pin, 11);
-  await pool.execute('UPDATE user_settings SET pin_hash = ? WHERE user_id = ?', [hash, req.uid]);
-  if (pin === null) await pool.execute('UPDATE user_settings SET lock_after_min = 0 WHERE user_id = ?', [req.uid]);
-  logEvent('warning', pin === null ? 'pin_removed' : 'pin_set', pin === null ? 'App-PIN entfernt' : 'App-PIN gesetzt', { uid: req.uid, ip: reqIp(req) });
-  res.set('Cache-Control', 'no-store');
-  res.json({ ok: true, pin_set: pin !== null ? 1 : 0 });
-}));
-
-// Sehr streng gedrosselt: 4 Ziffern sind nur 10.000 Moeglichkeiten.
-app.post('/me/pin/verify', auth, rateLimitUser('me-pin-try', 10, 300000), asyncRoute(async (req, res) => {
-  const pin = vStr(req.body.pin, 'PIN', 12);
-  const [[s]] = await pool.execute('SELECT pin_hash FROM user_settings WHERE user_id = ?', [req.uid]);
-  if (!s || !s.pin_hash) throw bad('Es ist kein PIN gesetzt');
-  const ok = await bcrypt.compare(pin, s.pin_hash);
-  if (!ok) logEvent('warning', 'pin_failed', 'Falscher App-PIN', { uid: req.uid, ip: reqIp(req) });
-  res.set('Cache-Control', 'no-store');
-  res.json({ ok });
-}));
-
 app.put('/me/password', auth, rateLimitUser('me-pw', 8, 600000), asyncRoute(async (req, res) => {
   const oldPw = vStr(req.body.old_password, 'Aktuelles Passwort', 200);
   const newPw = vStr(req.body.new_password, 'Neues Passwort', 200);
@@ -820,6 +887,48 @@ app.put('/me/email', auth, rateLimitUser('me-email', 8, 600000), asyncRoute(asyn
   res.json({ ok: true, email });
 }));
 
+// Standortsuche wird serverseitig an Nominatim weitergereicht. So bleibt die
+// Browser-App frei von Fremd-CORS-Abhängigkeiten und wir können die Abfragen begrenzen.
+app.get('/location/search', auth, rateLimitUser('location-search', 30, 60000), asyncRoute(async (req, res) => {
+  const q = vStr(req.query.q, 'Adresse', 160);
+  if (q.length < 3) throw bad('Bitte mindestens 3 Zeichen eingeben');
+  const params = new URLSearchParams({ q, format:'jsonv2', addressdetails:'1', limit:'6', countrycodes:'de' });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  let rr;
+  try {
+    rr = await fetch('https://nominatim.openstreetmap.org/search?' + params.toString(), {
+      signal: ctrl.signal,
+      headers: { 'User-Agent':'NutriDesk/1.0 (https://nutridesk.de)', 'Accept-Language':'de', Accept:'application/json' },
+    });
+  } finally { clearTimeout(timer); }
+  if (!rr || !rr.ok) throw new HttpError(502, 'Standortsuche ist gerade nicht erreichbar');
+  const rows = await rr.json();
+  res.json((Array.isArray(rows) ? rows : []).map(x => ({
+    label: String(x.display_name || '').slice(0, 240),
+    city: String((x.address && (x.address.city || x.address.town || x.address.village || x.address.municipality)) || x.name || '').slice(0, 80),
+    lat: Number(x.lat), lon: Number(x.lon),
+  })).filter(x => x.label && Number.isFinite(x.lat) && Number.isFinite(x.lon)));
+}));
+
+app.get('/location/reverse', auth, rateLimitUser('location-reverse', 20, 60000), asyncRoute(async (req, res) => {
+  const lat = vNum(req.query.lat, 'Breitengrad', -90, 90);
+  const lon = vNum(req.query.lon, 'Längengrad', -180, 180);
+  const params = new URLSearchParams({ lat:String(lat), lon:String(lon), format:'jsonv2', addressdetails:'1' });
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 6000);
+  let rr;
+  try {
+    rr = await fetch('https://nominatim.openstreetmap.org/reverse?' + params.toString(), {
+      signal: ctrl.signal,
+      headers: { 'User-Agent':'NutriDesk/1.0 (https://nutridesk.de)', 'Accept-Language':'de', Accept:'application/json' },
+    });
+  } finally { clearTimeout(timer); }
+  if (!rr || !rr.ok) throw new HttpError(502, 'Standort konnte nicht bestimmt werden');
+  const x = await rr.json(); const a = x.address || {};
+  res.json({ label:String(x.display_name || '').slice(0, 240), city:String(a.city || a.town || a.village || a.municipality || '').slice(0, 80), lat, lon });
+}));
+
 app.put('/me/settings', auth, rateLimitUser('me-set', 120), asyncRoute(async (req, res) => {
   const b = req.body;
   const fields = {
@@ -837,7 +946,6 @@ app.put('/me/settings', auth, rateLimitUser('me-set', 120), asyncRoute(async (re
 
     notif_prefs: b.notif_prefs !== undefined ? (b.notif_prefs === null || b.notif_prefs === '' ? null : vStr(b.notif_prefs, 'Benachrichtigungen', 1000)) : undefined,
     onboarded: b.onboarded !== undefined ? vBool(b.onboarded) : undefined,
-    lock_after_min: b.lock_after_min !== undefined ? vInt(b.lock_after_min, 'Sperre nach Minuten', 0, 240) : undefined,
     ki_answers: b.ki_answers !== undefined ? vStr(b.ki_answers, 'KI-Antworten', 4000, { optional: true }) : undefined,
     target_weight: b.target_weight !== undefined ? vNum(b.target_weight, 'Zielgewicht', 30, 300, { optional: true }) : undefined,
     avatar: b.avatar !== undefined ? (b.avatar === null || b.avatar === '' ? null : vDataImage(b.avatar)) : undefined,
@@ -967,6 +1075,7 @@ const RESOURCES = {
       rate: b.rate !== undefined || !partial ? vNum(b.rate, 'Monatsrate', 0.01, 999999) : undefined,
       interest: b.interest !== undefined || !partial ? vNum(b.interest, 'Zinssatz', 0, 1) : undefined,
       paid_months: b.paid_months !== undefined ? vInt(b.paid_months, 'Gezahlte Monate', 0, 1200, { optional: true }) ?? 0 : (partial ? undefined : 0),
+      total_installments: b.total_installments !== undefined ? vInt(b.total_installments, 'Ratenanzahl', 1, 1200, { optional: true }) : (partial ? undefined : null),
     }),
   },
   goals: {
@@ -977,6 +1086,9 @@ const RESOURCES = {
       saved: b.saved !== undefined ? vNum(b.saved, 'Gespart', 0, 99999999) : (partial ? undefined : 0),
       target: b.target !== undefined || !partial ? vNum(b.target, 'Zielbetrag', 1, 99999999) : undefined,
       rate: b.rate !== undefined || !partial ? vNum(b.rate, 'Monatsrate', 1, 999999) : undefined,
+      auto_save: b.auto_save !== undefined ? vBool(b.auto_save) : (partial ? undefined : 0),
+      start_date: b.start_date !== undefined ? vDate(b.start_date, 'Startdatum', { optional: true }) : (partial ? undefined : null),
+      target_date: b.target_date !== undefined ? vDate(b.target_date, 'Zieldatum', { optional: true }) : (partial ? undefined : null),
     }),
   },
   budgets: {
@@ -1328,42 +1440,74 @@ app.post('/staging/clear', auth, rateLimitUser('staging-del', 200), asyncRoute(a
   res.json({ ok: true, deleted: r.affectedRows });
 }));
 
-// ---------- FinTS-Bankanbindung (Umsätze abrufen -> Staging) ----------
-// Wandelt FinTS-Statements defensiv in einheitliche Zeilen {date, amount, name, info} um.
-async function fetchBankRows(client, days) {
-  const accounts = await client.accounts();
-  const to = new Date();
-  const from = new Date(); from.setDate(from.getDate() - Math.max(1, Math.min(days || 90, 3650)));
-  const rows = [];
-  for (const acc of (accounts || [])) {
-    let statements = [];
-    try { statements = await client.statements(acc, from, to); } catch (e) { continue; }
-    for (const st of (statements || [])) {
-      for (const t of (st.transactions || [])) {
-        const amtRaw = Number(t.amount);
-        if (!isFinite(amtRaw)) continue;
-        const isCredit = (t.isCredit !== undefined) ? !!t.isCredit : ((t.isExpense !== undefined) ? !t.isExpense : (amtRaw >= 0));
-        const amount = isCredit ? Math.abs(amtRaw) : -Math.abs(amtRaw);
-        const dt = t.valueDate || t.entryDate || t.date || st.date;
-        let date = '';
-        if (dt instanceof Date) date = dt.toISOString().slice(0, 10);
-        else if (typeof dt === 'string') date = dt.slice(0, 10);
-        if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-        const ds = t.descriptionStructured || {};
-        let name = ds.name || t.name || t.description || 'Umsatz';
-        let info = ds.reference || t.reference || (ds.name ? t.description : '') || '';
-        name = String(name).replace(/\s+/g, ' ').trim().slice(0, 200) || 'Umsatz';
-        info = String(info).replace(/\s+/g, ' ').trim().slice(0, 400);
-        rows.push({ date, amount, name, info });
-      }
-    }
+// ---------- FinTS-Bankanbindung (FinTS 3.0 / PSD2 / TAN) ----------
+// Dialoge mit TAN oder Banking-App-Freigabe müssen im selben Prozess fortgesetzt werden.
+// Der zufällige Einmal-Token ist an den Nutzer gebunden und läuft nach zehn Minuten ab.
+const pendingFints = new Map();
+setInterval(() => { const now=Date.now(); for (const [k,v] of pendingFints) if (v.expires < now) pendingFints.delete(k); }, 60000).unref();
+function bankAnswerText(response) {
+  return (response && Array.isArray(response.bankAnswers) ? response.bankAnswers : [])
+    .map(a => `${a.code || ''} ${a.text || ''}`.trim()).filter(Boolean).join(', ');
+}
+function requireFintsSuccess(response, action) {
+  if (response && response.success) return;
+  const detail = bankAnswerText(response);
+  const err = new Error(detail || `${action} wurde von der Bank abgelehnt`);
+  err.bankAnswers = response && response.bankAnswers;
+  throw err;
+}
+function tanPayload(token, response, method) {
+  return {
+    ok:false, requiresTan:true, tanToken:token,
+    challenge:String(response.tanChallenge || 'Bitte bestätige den Auftrag mit deiner Bank.').slice(0,1000),
+    decoupled:!!(method && method.isDecoupled),
+    media:response.tanMediaName || (method && method.activeTanMedia && method.activeTanMedia[0]) || null,
+  };
+}
+function putPendingFints(uid, value) {
+  const token=crypto.randomBytes(24).toString('base64url');
+  pendingFints.set(token,{...value,uid:Number(uid),expires:Date.now()+10*60*1000});
+  return token;
+}
+function normalizeModernStatements(statements) {
+  const rows=[];
+  for(const st of(statements||[]))for(const t of(st.transactions||[])){
+    const amount=Number(t.amount);if(!Number.isFinite(amount))continue;
+    const dt=t.valueDate||t.entryDate;const date=dt instanceof Date?dt.toISOString().slice(0,10):String(dt||'').slice(0,10);
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))continue;
+    const name=String(t.remoteName||t.bookingText||t.transactionType||'Umsatz').replace(/\s+/g,' ').trim().slice(0,200)||'Umsatz';
+    const info=String(t.purpose||t.additionalInformation||t.customerReference||t.e2eReference||'').replace(/\s+/g,' ').trim().slice(0,400);
+    rows.push({date,amount,name,info});
   }
   return rows;
+}
+async function continueStatementFetch(client, accounts, from, to, index=0, rows=[]) {
+  for(let i=index;i<accounts.length;i++){
+    const account=accounts[i];
+    if(!client.canGetAccountStatements(account))continue;
+    const response=await client.getAccountStatements(account,from,to,true);
+    requireFintsSuccess(response,'Der Bank-Abruf');
+    if(response.requiresTan)return {rows,pending:{accountIndex:i,accounts,from,to,response}};
+    rows.push(...normalizeModernStatements(response.statements));
+  }
+  return {rows};
+}
+async function saveModernConnection(uid, meta, client) {
+  const info=client.config.bankingInformation;
+  const accounts=(info && info.upd && info.upd.bankAccounts)||[];
+  if(!accounts.length)throw new Error('Die Bank hat keine abrufbaren Konten übermittelt');
+  const first=accounts[0]||{},method=client.config.selectedTanMethod;
+  await pool.execute(
+    'INSERT INTO bank_connections (user_id,blz,fints_url,login,pin_enc,bank_name,account_iban,banking_info,tan_method,tan_media,client_version) VALUES (?,?,?,?,?,?,?,?,?,?,?) '+
+    'ON DUPLICATE KEY UPDATE blz=VALUES(blz),fints_url=VALUES(fints_url),login=VALUES(login),pin_enc=VALUES(pin_enc),bank_name=VALUES(bank_name),account_iban=VALUES(account_iban),banking_info=VALUES(banking_info),tan_method=VALUES(tan_method),tan_media=VALUES(tan_media),client_version=VALUES(client_version)',
+    [uid,meta.blz,meta.url,meta.login,encPin(meta.pin),info.bpd&&info.bpd.bankName||null,first.iban||first.accountNumber||null,JSON.stringify(info),method&&method.id||null,client.config.tanMediaName||null,'lib-fints/1.5.2']);
+  return accounts;
 }
 
 app.get('/bank', auth, asyncRoute(async (req, res) => {
   const [[c]] = await pool.execute('SELECT blz, login, bank_name, account_iban, last_sync FROM bank_connections WHERE user_id = ?', [req.uid]);
-  res.json({ connected: !!c, available: !!PinTanClient, bank: c ? { blz: c.blz, login: c.login, bank_name: c.bank_name, account_iban: c.account_iban, last_sync: c.last_sync } : null });
+  let available=true;try{await loadFints();}catch(_){available=false;}
+  res.json({ connected: !!c, available, protocol:'FinTS 3.0', bank: c ? { blz: c.blz, login: c.login, bank_name: c.bank_name, account_iban: c.account_iban, last_sync: c.last_sync } : null });
 }));
 
 // Bank-Suche: Nutzer findet seine Bank per Name oder BLZ, ohne die FinTS-URL zu kennen.
@@ -1387,57 +1531,95 @@ app.get('/bank/search', auth, rateLimitUser('bank-search', 60), asyncRoute(async
   res.json(rows);
 }));
 
+function friendlyFintsError(err, action) {
+  const raw = String(err && err.message ? err.message : err || '');
+  const codes = [...raw.matchAll(/\b(9\d{3})\b/g)].map(m => m[1]);
+  if (codes.includes('9050') || codes.includes('9800') || codes.includes('9010')) {
+    return 'Die Bank hat den FinTS-Dialog abgelehnt (Code ' + [...new Set(codes)].join('/') + '). Prüfe, ob du den bankeigenen Online-Banking-Anmeldenamen (z. B. VR-NetKey oder Legitimations-ID – nicht die IBAN) verwendest, FinTS/HBCI im Banking freigeschaltet ist und keine Erstanmeldung oder PIN-Änderung offen ist.';
+  }
+  if (/pin|login|zugang|credential|authentication|anmeld/i.test(raw)) return 'Die Bank hat die Zugangsdaten abgelehnt. Verwende den Online-Banking-Anmeldenamen deiner Bank und die zugehörige PIN.';
+  if (/tan|decoupled|freigabe|sca/i.test(raw)) return 'Die Bank verlangt eine TAN- oder App-Freigabe. Bestätige den Auftrag in deiner Banking-App und starte ' + action + ' anschließend erneut.';
+  if (/timeout|timed out|econn|network|socket|fetch/i.test(raw)) return 'Die Bank ist gerade nicht erreichbar. Bitte versuche es in einigen Minuten erneut.';
+  return action + ' fehlgeschlagen. Prüfe Online-Banking-Anmeldename, FinTS-Freischaltung und PIN.';
+}
+
 app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncRoute(async (req, res) => {
-  if (!PinTanClient) throw bad('Bankanbindung ist auf dem Server nicht verfügbar.');
+  if (!FINTS_PRODUCT_ID) throw new HttpError(503,'Die FinTS-Produkt-ID ist nicht konfiguriert.');
   const blz = vStr(req.body.blz, 'Bankleitzahl', 20).replace(/\s/g, '');
   const login = vStr(req.body.login, 'Anmeldename', 120);
   const pin = vStr(req.body.pin, 'PIN', 100);
-  // SEC-001: FinTS-URL AUSSCHLIESSLICH aus der banks-Tabelle (kein Client-Override), voll validiert
-  // (https, kein userinfo, Portsperre, kein internes/nicht-global-routbares Ziel, DNS-geprüft).
-  // Bei ungültiger/fehlender Adresse wird der FinTS-Client nie gebaut.
-  const makeClient = (o) => new PinTanClient(Object.assign({}, o, { productId: FINTS_PRODUCT_ID || undefined }));
-  let built;
-  try { built = await buildConnectClient({ pool, makeClient, blz, login, pin }); }
+  let url;
+  try { url = await resolveFintsUrl(pool, blz); }
   catch (e) {
     if (e && e.code === 'no_bank_url') throw bad('Zu dieser Bank ist keine FinTS-Adresse hinterlegt, bitte Support kontaktieren.');
     throw bad('Die FinTS-Adresse dieser Bank ist ungültig, bitte Support kontaktieren.');
   }
-  const url = built.url;
-  const client = built.client;
-  let accounts;
-  try { accounts = await client.accounts(); }
-  catch (e) { throw bad('Verbindung fehlgeschlagen: ' + (e && e.message ? String(e.message).slice(0, 200) : 'unbekannter Fehler') + '. Prüfe BLZ, URL, Anmeldename und PIN.'); }
-  const first = (accounts && accounts[0]) || {};
-  const iban = first.iban || first.accountNumber || null;
-  const bankName = first.bankName || first.name || null;
-  await pool.execute(
-    'INSERT INTO bank_connections (user_id, blz, fints_url, login, pin_enc, bank_name, account_iban) VALUES (?,?,?,?,?,?,?) ' +
-    'ON DUPLICATE KEY UPDATE blz=VALUES(blz), fints_url=VALUES(fints_url), login=VALUES(login), pin_enc=VALUES(pin_enc), bank_name=VALUES(bank_name), account_iban=VALUES(account_iban)',
-    [req.uid, blz, url, login, encPin(pin), bankName, iban ? String(iban).slice(0, 40) : null]);
-  logEvent('info', 'bank_connect', 'Bankkonto verknüpft (' + blz + ')', { uid: req.uid, ip: reqIp(req) });
-  res.json({ ok: true, accountCount: (accounts || []).length });
+  try {
+    const {FinTSConfig,FinTSClient}=await loadFints();
+    const config=FinTSConfig.forFirstTimeUse(FINTS_PRODUCT_ID,process.env.FINTS_PRODUCT_VERSION||'1.0.4',url,blz,login,pin);
+    const client=new FinTSClient(config);let response=await client.synchronize();
+    requireFintsSuccess(response,'Die Verbindung');
+    if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,config.selectedTanMethod));}
+    const methods=config.availableTanMethods||[];
+    if(methods.length&&!config.selectedTanMethod){
+      const requested=Number(req.body.tan_method)||methods[0].id;const method=client.selectTanMethod(requested);
+      if(method.activeTanMedia&&method.activeTanMedia.length)client.selectTanMedia(String(req.body.tan_media||method.activeTanMedia[0]));
+      response=await client.synchronize();requireFintsSuccess(response,'Die Verbindung');
+      if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,method));}
+    }
+    const accounts=await saveModernConnection(req.uid,{blz,url,login,pin},client);
+    logEvent('info','bank_connect','Bankkonto per FinTS 3.0 verknüpft ('+blz+')',{uid:req.uid,ip:reqIp(req)});
+    res.json({ok:true,accountCount:accounts.length});
+  } catch(e) {
+    logEvent('warning','bank_connect_failed','FinTS-Verbindung abgelehnt ('+blz+'): '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});
+    throw bad(friendlyFintsError(e,'Die Verbindung'));
+  }
+}));
+
+app.post('/bank/connect/tan', auth, rateLimitUser('bank-connect-tan', 12, 600000), asyncRoute(async(req,res)=>{
+  const token=vStr(req.body.token,'Freigabe-Token',200),pending=pendingFints.get(token);
+  if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='connect'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte neu verbinden.');
+  const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
+  try{const response=await pending.client.synchronizeWithTan(pending.tanReference,tan);requireFintsSuccess(response,'Die Freigabe');
+    if(response.requiresTan){pending.tanReference=response.tanReference;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod));}
+    pendingFints.delete(token);const accounts=await saveModernConnection(req.uid,pending.meta,pending.client);
+    logEvent('info','bank_connect','Bankkonto nach TAN/App-Freigabe verknüpft ('+pending.meta.blz+')',{uid:req.uid,ip:reqIp(req)});res.json({ok:true,accountCount:accounts.length});
+  }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
 
 app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(async (req, res) => {
-  if (!PinTanClient) throw bad('Bankanbindung ist auf dem Server nicht verfügbar.');
   const days = vInt(req.body.days, 'Zeitraum', 1, 3650, { optional: true }) || 90;
   const [[c]] = await pool.execute('SELECT * FROM bank_connections WHERE user_id = ?', [req.uid]);
   if (!c) throw bad('Keine Bankverbindung. Bitte zuerst in den Kontoeinstellungen verknüpfen.');
   let pin;
   try { pin = decPin(c.pin_enc); } catch (e) { throw bad('Gespeicherte Zugangsdaten sind unlesbar, bitte neu verknüpfen.'); }
-  // SEC-001: gespeicherte Adresse vor JEDER Nutzung voll neu validieren (Host kann inzwischen
-  // privat/intern auflösen). Gleiche Validierung wie beim Connect; sonst wird der Client nie gebaut.
-  const makeClient = (o) => new PinTanClient(Object.assign({}, o, { productId: FINTS_PRODUCT_ID || undefined }));
-  let built;
-  try { built = await buildSyncClient({ makeClient, storedUrl: c.fints_url, blz: c.blz, login: c.login, pin }); }
+  let url;
+  try { url=await validateFintsUrl(c.fints_url); }
   catch (e) { throw bad('Die gespeicherte Bank-Adresse ist ungültig, bitte neu verknüpfen.'); }
-  const client = built.client;
-  let rows;
-  try { rows = await fetchBankRows(client, days); }
-  catch (e) { throw bad('Bank-Abruf fehlgeschlagen: ' + (e && e.message ? String(e.message).slice(0, 200) : 'evtl. wird eine TAN benötigt.')); }
-  const result = await stageRows(req.uid, rows, 'bank');
-  await pool.execute('UPDATE bank_connections SET last_sync = NOW() WHERE user_id = ?', [req.uid]);
-  res.json({ ok: true, fetched: rows.length, added: result.added, skipped: result.skipped });
+  try{
+    const {FinTSConfig,FinTSClient}=await loadFints();let info;try{info=JSON.parse(c.banking_info||'');}catch(_){throw new Error('Veraltete Bankverbindung. Bitte einmal neu verknüpfen.');}
+    const config=FinTSConfig.fromBankingInformation(FINTS_PRODUCT_ID,process.env.FINTS_PRODUCT_VERSION||'1.0.4',info,c.login,pin,c.tan_method||undefined,c.tan_media||undefined);
+    const client=new FinTSClient(config),accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
+    const to=new Date(),from=new Date();from.setDate(from.getDate()-days);
+    const out=await continueStatementFetch(client,accounts,from,to);
+    if(out.pending){const token=putPendingFints(req.uid,{kind:'sync',client,connectionId:c.user_id,rows:out.rows,...out.pending});return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod));}
+    const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE user_id=?',[JSON.stringify(config.bankingInformation),req.uid]);
+    res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
+  }catch(e){logEvent('warning','bank_sync_failed','FinTS-Abruf fehlgeschlagen: '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Der Bank-Abruf'));}
+}));
+
+app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 20, 600000), asyncRoute(async(req,res)=>{
+  const token=vStr(req.body.token,'Freigabe-Token',200),pending=pendingFints.get(token);
+  if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='sync'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte den Abruf neu starten.');
+  const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
+  try{const response=await pending.client.getAccountStatementsWithTan(pending.response.tanReference,tan);requireFintsSuccess(response,'Die Freigabe');
+    if(response.requiresTan){pending.response=response;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod));}
+    pending.rows.push(...normalizeModernStatements(response.statements));
+    const out=await continueStatementFetch(pending.client,pending.accounts,pending.from,pending.to,pending.accountIndex+1,pending.rows);
+    if(out.pending){Object.assign(pending,out.pending,{rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod));}
+    pendingFints.delete(token);const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE user_id=?',[JSON.stringify(pending.client.config.bankingInformation),req.uid]);
+    res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
+  }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
 
 app.delete('/bank', auth, asyncRoute(async (req, res) => {
@@ -1630,11 +1812,67 @@ app.get('/community/members', auth, asyncRoute(async (req, res) => {
 
 // Profil eines Mitglieds (für das Discord-artige Popout)
 app.get('/community/member/:id', auth, asyncRoute(async (req, res) => {
-  const [[c]] = await pool.execute(MEMBER_COUNTS_SQL + ' WHERE u.id = ?', [req.params.id]);
+  const memberId = vInt(req.params.id, 'Mitglied', 1, 4294967295);
+  const [[c]] = await pool.execute(MEMBER_COUNTS_SQL + ' WHERE u.id = ?', [memberId]);
   if (!c) return res.status(404).json({ error: 'Nicht gefunden' });
   const li = levelInfo(xpFromCounts(c));
   const badges = BADGES.filter(b => b.test(c)).map(b => ({ key: b.key, name: b.name, icon: b.icon }));
-  res.json({ id: c.id, name: c.name, avatar: cleanAvatar(c.avatar), admin: !!c.admin, created_at: c.created_at, last_seen: c.last_seen, ...li, badges });
+  const ownProfile = Number(memberId) === Number(req.uid);
+  const [recipes] = ownProfile
+    ? await pool.execute('SELECT id,name,meal,time_min,kcal,protein,carbs,fat,is_public,status FROM user_recipes WHERE user_id=? ORDER BY id DESC LIMIT 24', [memberId])
+    : await pool.execute("SELECT id,name,meal,time_min,kcal,protein,carbs,fat,is_public,status FROM user_recipes WHERE user_id=? AND is_public=1 AND status='approved' ORDER BY id DESC LIMIT 24", [memberId]);
+  res.json({ id: c.id, name: c.name, avatar: cleanAvatar(c.avatar), admin: !!c.admin, created_at: c.created_at, last_seen: c.last_seen, ...li, badges, ownProfile, recipes });
+}));
+
+// ---------- Zwei-Faktor-Authentifizierung (TOTP / RFC 6238) ----------
+app.post('/me/2fa/setup', auth, rateLimitUser('totp-setup', 8, 600000), asyncRoute(async (req,res) => {
+  const password=vStr(req.body.password,'Passwort',200);
+  const [[u]]=await pool.execute('SELECT email,username,pass_hash FROM users WHERE id=?',[req.uid]);
+  if(!u||!(await bcrypt.compare(password,u.pass_hash)))throw bad('Das Passwort ist falsch');
+  const secret=authenticator.generateSecret();
+  const label=u.username||u.email;
+  const uri=authenticator.keyuri(label,'NutriDesk',secret);
+  await pool.execute('UPDATE users SET totp_pending_enc=? WHERE id=?',[encTotp(secret),req.uid]);
+  const qr=await QRCode.toDataURL(uri,{width:320,margin:2,color:{dark:'#0f1117',light:'#ffffff'}});
+  res.set('Cache-Control','no-store');
+  res.json({secret,qr});
+}));
+
+app.post('/me/2fa/enable', auth, rateLimitUser('totp-enable', 12, 600000), asyncRoute(async (req,res) => {
+  const code=vStr(req.body.code,'Authenticator-Code',12).replace(/\s/g,'');
+  if(!/^\d{6}$/.test(code))throw bad('Der Authenticator-Code muss 6-stellig sein');
+  const [[u]]=await pool.execute('SELECT totp_pending_enc FROM users WHERE id=?',[req.uid]);
+  if(!u||!u.totp_pending_enc)throw bad('Bitte starte die Einrichtung erneut');
+  let secret,valid=false;try{secret=decTotp(u.totp_pending_enc);valid=authenticator.verify({token:code,secret});}catch(_){}
+  if(!valid)throw bad('Der Authenticator-Code ist falsch oder abgelaufen');
+  await pool.execute('UPDATE users SET totp_secret_enc=?,totp_pending_enc=NULL,totp_enabled=1,auth_version=auth_version+1 WHERE id=?',[encTotp(secret),req.uid]);
+  logEvent('warning','totp_enabled','Zwei-Faktor-Authentifizierung aktiviert',{uid:req.uid,ip:reqIp(req)});
+  const [[fresh]]=await pool.execute('SELECT id,email,auth_version FROM users WHERE id=?',[req.uid]);
+  res.set('Cache-Control','no-store');res.json({ok:true,token:signToken(fresh)});
+}));
+
+app.post('/me/2fa/disable', auth, rateLimitUser('totp-disable', 8, 600000), asyncRoute(async (req,res) => {
+  const password=vStr(req.body.password,'Passwort',200),code=vStr(req.body.code,'Authenticator-Code',12).replace(/\s/g,'');
+  const [[u]]=await pool.execute('SELECT email,pass_hash,auth_version,totp_enabled,totp_secret_enc FROM users WHERE id=?',[req.uid]);
+  if(!u||!(await bcrypt.compare(password,u.pass_hash)))throw bad('Das Passwort ist falsch');
+  let valid=false;try{valid=!!u.totp_enabled&&authenticator.verify({token:code,secret:decTotp(u.totp_secret_enc)});}catch(_){}
+  if(!valid)throw bad('Der Authenticator-Code ist falsch oder abgelaufen');
+  const newAv=Number(u.auth_version)+1;
+  await pool.execute('UPDATE users SET totp_enabled=0,totp_secret_enc=NULL,totp_pending_enc=NULL,auth_version=? WHERE id=?',[newAv,req.uid]);
+  logEvent('warning','totp_disabled','Zwei-Faktor-Authentifizierung deaktiviert',{uid:req.uid,ip:reqIp(req)});
+  res.set('Cache-Control','no-store');res.json({ok:true,token:signToken({id:req.uid,email:u.email,auth_version:newAv})});
+}));
+
+app.post('/admin/users/:id/send-password', auth, requireAdmin, rateLimitUser('admin-mail-password', 10, 3600000), asyncRoute(async (req,res) => {
+  if (!SMTP_READY) return res.status(503).json({ error:'E-Mail-Versand ist noch nicht konfiguriert' });
+  const id=vInt(req.params.id,'Nutzer',1,4294967295);
+  const [[u]]=await pool.execute('SELECT id,email,username,first_name,name FROM users WHERE id=?',[id]);
+  if(!u)return res.status(404).json({error:'Nutzer nicht gefunden'});
+  const password=securePassword(),hash=await bcrypt.hash(password,11);
+  await sendAccessMail({to:u.email,firstName:u.first_name||u.name,username:u.username||u.email,password,reset:true});
+  await pool.execute('UPDATE users SET pass_hash=?,auth_version=auth_version+1 WHERE id=?',[hash,id]);
+  logEvent('warning','admin_password_mail','Neues Passwort an Nutzer #'+id+' gesendet (Sitzungen beendet)',{uid:req.uid,ip:reqIp(req)});
+  res.json({ok:true,mail_sent:true});
 }));
 
 app.get('/community/stats', auth, asyncRoute(async (req, res) => {
@@ -1732,6 +1970,120 @@ app.post('/community/chat', auth, rateLimitUser('chat', 15), asyncRoute(async (r
   const [r] = await pool.execute('INSERT INTO chat_messages (user_id, channel_id, content) VALUES (?,?,?)', [req.uid, ch.id, content]);
   const [[row]] = await pool.execute(CHAT_SELECT + ' WHERE c.id = ?', [r.insertId]);
   res.json(mapChat(row));
+}));
+
+// ---------- Community: privater Couple Space (maximal zwei Personen) ----------
+const COUPLE_STATUSES = ['happy','tired','stressed','love','cuddly','busy','sad','okay'];
+const coupleHash = token => crypto.createHash('sha256').update(String(token)).digest('hex');
+const COUPLE_KEY = crypto.createHash('sha256').update(JWT_SECRET + ':couple-invite').digest();
+function coupleEncrypt(token) { const iv=crypto.randomBytes(12), c=crypto.createCipheriv('aes-256-gcm',COUPLE_KEY,iv), body=Buffer.concat([c.update(String(token),'utf8'),c.final()]); return Buffer.concat([iv,c.getAuthTag(),body]).toString('base64url'); }
+function coupleDecrypt(value) { try { const b=Buffer.from(String(value||''),'base64url'), iv=b.subarray(0,12), tag=b.subarray(12,28), body=b.subarray(28), d=crypto.createDecipheriv('aes-256-gcm',COUPLE_KEY,iv); d.setAuthTag(tag); return Buffer.concat([d.update(body),d.final()]).toString('utf8'); } catch(_){return '';} }
+async function coupleFor(uid) {
+  const [[r]] = await pool.execute(`SELECT c.*, u1.name owner_name, u2.name partner_name
+    FROM couple_spaces c JOIN users u1 ON u1.id=c.owner_id LEFT JOIN users u2 ON u2.id=c.partner_id
+    WHERE c.owner_id=? OR c.partner_id=? LIMIT 1`, [uid, uid]);
+  return r;
+}
+
+// TOTP-Secrets werden mit einem getrennt abgeleiteten Schluessel verschluesselt.
+// So liegen weder aktive noch noch nicht bestaetigte Authenticator-Secrets im Klartext in MariaDB.
+const TOTP_KEY = crypto.createHash('sha256').update(String(JWT_SECRET) + ':totp').digest();
+function encTotp(plain) {
+  const iv = crypto.randomBytes(12);
+  const c = crypto.createCipheriv('aes-256-gcm', TOTP_KEY, iv);
+  const enc = Buffer.concat([c.update(String(plain), 'utf8'), c.final()]);
+  return Buffer.concat([iv, c.getAuthTag(), enc]).toString('base64');
+}
+function decTotp(stored) {
+  const buf = Buffer.from(String(stored), 'base64');
+  const d = crypto.createDecipheriv('aes-256-gcm', TOTP_KEY, buf.subarray(0, 12));
+  d.setAuthTag(buf.subarray(12, 28));
+  return Buffer.concat([d.update(buf.subarray(28)), d.final()]).toString('utf8');
+}
+authenticator.options = { step: 30, window: 1 };
+
+const SMTP_READY = process.env.SMTP_DELIVERY_ENABLED === '1' && !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+const mailer = SMTP_READY ? nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
+  secure: process.env.SMTP_SECURE === '1',
+  auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+  tls: { minVersion: 'TLSv1.2' },
+}) : null;
+const MAIL_FROM = process.env.MAIL_FROM || 'NutriDesk <noreply@nutridesk.de>';
+function securePassword() {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@$%_-';
+  return Array.from(crypto.randomBytes(22), b => alphabet[b % alphabet.length]).join('');
+}
+async function sendAccessMail({ to, firstName, username, password, reset = false }) {
+  if (!mailer) throw new HttpError(503, 'E-Mail-Versand ist noch nicht vollständig konfiguriert');
+  const safeName = String(firstName || username || 'Hallo').replace(/[<>&"]/g, '');
+  const safeUser = String(username || '').replace(/[<>&"]/g, '');
+  const safePass = String(password).replace(/[<>&"]/g, '');
+  const title = reset ? 'Dein neues NutriDesk-Passwort' : 'Willkommen bei NutriDesk';
+  const intro = reset ? 'Für dein Konto wurde ein neues sicheres Passwort erstellt.' : 'Dein NutriDesk-Konto wurde für dich eingerichtet.';
+  await mailer.sendMail({
+    from: MAIL_FROM, to, subject: title,
+    text: `${title}\n\n${intro}\nBenutzername: ${username}\nPasswort: ${password}\nAnmeldung: https://nutridesk.de/\n\nBitte ändere das Passwort nach der ersten Anmeldung in deinem Profil.`,
+    html: `<!doctype html><html><body style="margin:0;background:#0f1117;color:#e8ecf2;font-family:Arial,sans-serif"><div style="max-width:620px;margin:0 auto;padding:34px 22px"><div style="background:#171c28;border:1px solid #2a3242;border-radius:20px;overflow:hidden"><div style="padding:26px 30px;background:linear-gradient(135deg,#17231b,#10151d)"><div style="color:#a3e635;font-size:13px;font-weight:800;letter-spacing:2px">NUTRIDESK</div><h1 style="margin:12px 0 0;font-size:28px;color:#fff">${title}</h1></div><div style="padding:30px"><p style="color:#c7cedb;line-height:1.6">Hallo ${safeName},<br>${intro}</p><div style="background:#0b0d13;border:1px solid #2a3242;border-radius:14px;padding:20px;margin:22px 0"><div style="font-size:11px;color:#8b93a3;letter-spacing:1px">BENUTZERNAME</div><div style="font-size:18px;margin:6px 0 18px;color:#fff">${safeUser}</div><div style="font-size:11px;color:#8b93a3;letter-spacing:1px">PASSWORT</div><div style="font:700 18px monospace;margin-top:6px;color:#a3e635">${safePass}</div></div><a href="https://nutridesk.de/" style="display:inline-block;background:#a3e635;color:#0f1117;text-decoration:none;font-weight:800;padding:13px 20px;border-radius:11px">Jetzt anmelden</a><p style="margin-top:24px;color:#8b93a3;font-size:12px;line-height:1.5">Bitte ändere das automatisch erzeugte Passwort nach der ersten Anmeldung in deinem Profil.</p></div></div></div></body></html>`,
+  });
+}
+function mapCouple(c, uid) {
+  if (!c) return { exists:false };
+  let board=[]; try { board=JSON.parse(c.board_json || '[]'); } catch (_) {}
+  const isOwner=Number(c.owner_id)===Number(uid), token=isOwner?coupleDecrypt(c.invite_token_enc):'';
+  return { exists:true, id:c.id, isOwner, waiting:!c.partner_id, started:!!c.started_at,
+    me:{ id:uid, name:Number(c.owner_id)===Number(uid)?c.owner_name:c.partner_name, status:Number(c.owner_id)===Number(uid)?c.owner_status:c.partner_status },
+    partner:c.partner_id?{ id:Number(c.owner_id)===Number(uid)?c.partner_id:c.owner_id, name:Number(c.owner_id)===Number(uid)?c.partner_name:c.owner_name, status:Number(c.owner_id)===Number(uid)?c.partner_status:c.owner_status }:null,
+    inviteUrl:token?(process.env.APP_URL || 'https://nutridesk.de').replace(/\/$/,'')+'/?couple='+encodeURIComponent(token):'',
+    board, version:c.board_version, updated_at:c.updated_at };
+}
+app.get('/community/couple', auth, asyncRoute(async (req,res)=>res.json(mapCouple(await coupleFor(req.uid),req.uid))));
+app.post('/community/couple/invite', auth, rateLimitUser('couple-invite', 10), asyncRoute(async (req,res)=>{
+  let c=await coupleFor(req.uid);
+  if (c && Number(c.owner_id)!==Number(req.uid)) throw bad('Du bist bereits in einem Couple Space');
+  if (c && c.partner_id) throw bad('In deinem Couple Space sind bereits zwei Personen');
+  const token=crypto.randomBytes(24).toString('base64url'), hash=coupleHash(token);
+  const encrypted=coupleEncrypt(token);
+  if (!c) { await pool.execute('INSERT INTO couple_spaces (owner_id,invite_hash,invite_token_enc,invite_expires,board_json) VALUES (?,?,?,DATE_ADD(NOW(),INTERVAL 7 DAY),?)',[req.uid,hash,encrypted,'[]']); }
+  else { await pool.execute('UPDATE couple_spaces SET invite_hash=?,invite_token_enc=?,invite_expires=DATE_ADD(NOW(),INTERVAL 7 DAY) WHERE id=?',[hash,encrypted,c.id]); }
+  res.json({ url:(process.env.APP_URL || 'https://nutridesk.de').replace(/\/$/,'')+'/?couple='+encodeURIComponent(token), expiresDays:7 });
+}));
+app.post('/community/couple/join', auth, rateLimitUser('couple-join', 10), asyncRoute(async (req,res)=>{
+  const token=vStr(req.body.token,'Einladung',200), hash=coupleHash(token);
+  const own=await coupleFor(req.uid); if (own) throw bad('Du bist bereits in einem Couple Space');
+  const conn=await pool.getConnection(); try { await conn.beginTransaction();
+    const [[c]]=await conn.execute('SELECT * FROM couple_spaces WHERE invite_hash=? AND invite_expires>NOW() FOR UPDATE',[hash]);
+    if(!c) throw bad('Einladung ist ungültig oder abgelaufen'); if(c.partner_id) throw bad('Dieser Couple Space ist bereits voll'); if(Number(c.owner_id)===Number(req.uid)) throw bad('Du kannst deine eigene Einladung nicht annehmen');
+    await conn.execute('UPDATE couple_spaces SET partner_id=?,invite_hash=NULL,invite_token_enc=NULL,invite_expires=NULL,started_at=NULL WHERE id=?',[req.uid,c.id]); await conn.commit();
+  } catch(e){await conn.rollback();throw e} finally{conn.release()}
+  res.json(mapCouple(await coupleFor(req.uid),req.uid));
+}));
+app.post('/community/couple/start', auth, rateLimitUser('couple-start', 10), asyncRoute(async (req,res)=>{
+  const c=await coupleFor(req.uid); if(!c) return res.status(404).json({error:'Kein Couple Space'});
+  if(Number(c.owner_id)!==Number(req.uid)) throw bad('Nur die einladende Person kann den Couple Space starten');
+  if(!c.partner_id) throw bad('Warte noch auf die zweite Person');
+  await pool.execute('UPDATE couple_spaces SET started_at=COALESCE(started_at,NOW()) WHERE id=?',[c.id]); res.json(mapCouple(await coupleFor(req.uid),req.uid));
+}));
+app.put('/community/couple/status', auth, rateLimitUser('couple-status', 30), asyncRoute(async (req,res)=>{
+  const status=vEnum(req.body.status,'Status',COUPLE_STATUSES), c=await coupleFor(req.uid); if(!c) return res.status(404).json({error:'Kein Couple Space'});
+  const col=Number(c.owner_id)===Number(req.uid)?'owner_status':'partner_status'; await pool.execute('UPDATE couple_spaces SET '+col+'=? WHERE id=?',[status,c.id]); res.json({ok:true,status});
+}));
+app.put('/community/couple/board', auth, rateLimitUser('couple-board', 120), asyncRoute(async (req,res)=>{
+  const c=await coupleFor(req.uid); if(!c) return res.status(404).json({error:'Kein Couple Space'});
+  const expectedVersion=vInt(req.body.expectedVersion,'Board-Version',0,2147483647);
+  const strokes=Array.isArray(req.body.strokes)?req.body.strokes:[]; if(strokes.length>300) throw bad('Zeichenbrett ist voll');
+  const colors=['#84cc16','#ec4899','#38bdf8','#f59e0b','#f8fafc','#a78bfa','#fb7185','#2dd4bf','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#d946ef','#111827','#64748b'];
+  const clean=strokes.map(s=>({ color:vEnum(s.color,'Farbe',colors), width:vInt(s.width,'Stiftbreite',1,32), points:vStr(s.points,'Punkte',8000) }));
+  const json=JSON.stringify(clean); if(Buffer.byteLength(json)>220000) throw bad('Zeichnung ist zu groß');
+  const [u]=await pool.execute('UPDATE couple_spaces SET board_json=?,board_version=board_version+1 WHERE id=? AND board_version=?',[json,c.id,expectedVersion]);
+  if(!u.affectedRows) return res.status(409).json({error:'Die Zeichnung wurde inzwischen geändert. Bitte erneut versuchen.'});
+  res.json({ok:true,version:expectedVersion+1});
+}));
+app.delete('/community/couple/board', auth, rateLimitUser('couple-board-clear', 20), asyncRoute(async (req,res)=>{
+  const c=await coupleFor(req.uid); if(!c) return res.status(404).json({error:'Kein Couple Space'});
+  await pool.execute("UPDATE couple_spaces SET board_json='[]',board_version=board_version+1 WHERE id=?",[c.id]);
+  const [[v]]=await pool.execute('SELECT board_version FROM couple_spaces WHERE id=?',[c.id]); res.json({ok:true,version:v.board_version});
 }));
 
 // ---------- Cloud: Ordner & Dateien ----------
@@ -1986,7 +2338,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
   const q = (sql, params = []) => pool.execute(sql, [uid, ...params]).then(([rows]) => rows);
   const [user, settings, weights, water, foodLog, dishes, plan, shopping,
     transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, cooldowns] = await Promise.all([
-    q('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, created_at FROM users WHERE id = ?').then(r => r[0]),
+    q('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, totp_enabled, created_at FROM users WHERE id = ?').then(r => r[0]),
     q('SELECT * FROM user_settings WHERE user_id = ?').then(r => r[0]),
     q('SELECT id, `date`, kg FROM weights WHERE user_id = ? ORDER BY `date` ASC'),
     q('SELECT `date`, glasses FROM water_log WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)'),
@@ -2013,13 +2365,18 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
   aiCooldowns.available = true;
   // PIN-Hash bleibt auf dem Server, der Client bekommt nur ob einer gesetzt ist
   const settingsSafe = settings ? { ...settings, avatar: cleanAvatar(settings.avatar) } : settings;
-  if (settingsSafe) { settingsSafe.pin_set = settingsSafe.pin_hash ? 1 : 0; delete settingsSafe.pin_hash; }
+  if (settingsSafe) delete settingsSafe.pin_hash;
   // week_no=0 ist das Gesamt-Aggregat (fuer "Ganze Liste"); die echten Wochen bleiben in shopping,
   // damit alle bestehenden Summen unveraendert nur die Wochen zaehlen und nichts doppelt wird.
   const shoppingWhole = shopping.filter(it => Number(it.week_no) === 0);
   const shoppingWeeks = shopping.filter(it => Number(it.week_no) !== 0);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const financialSummary = {
+    obligations: getMonthlyFinancialObligations({ subscriptions, loans, goals, month: currentMonth }),
+    actualExpenses: getCurrentMonthExpenses({ transactions, month: currentMonth })
+  };
   res.json({ user, settings: settingsSafe, weights, water, foodLog, dishes, plan, shopping: shoppingWeeks, shoppingWhole,
-    transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns });
+    transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns, financialSummary });
 }));
 
 // ---------- KI-Schicht entfernt: Analyse und Planung laufen systembasiert (siehe unten). ----------
@@ -2617,96 +2974,9 @@ app.post('/support/ticket', auth, rateLimitUser('ticket', 20), asyncRoute(async 
   res.json({ ok: true, id: cardId });
 }));
 
-// ----- Admin: Board -----
-app.get('/board', auth, requireAdmin, asyncRoute(async (req, res) => {
-  const [lists] = await pool.execute('SELECT id, slug, name, dot, position FROM board_lists ORDER BY position ASC, id ASC');
-  const [cards] = await pool.execute(
-    `SELECT c.*, u.name authorName,
-       (SELECT COUNT(*) FROM board_comments bc WHERE bc.card_id=c.id AND bc.kind='comment') cc,
-       (SELECT COUNT(*) FROM board_attachments ba WHERE ba.card_id=c.id) ac
-     FROM board_cards c LEFT JOIN users u ON u.id=c.user_id ORDER BY c.position ASC, c.id ASC`);
-  res.json({ lists, cards: cards.map(mapBoardCard) });
-}));
-app.post('/board/cards', auth, requireAdmin, rateLimitUser('board', 120), asyncRoute(async (req, res) => {
-  const listId = vInt(req.body.list_id, 'Liste', 1, 4294967295);
-  const title = vStr(req.body.title, 'Titel', 200);
-  const [[l]] = await pool.execute('SELECT id FROM board_lists WHERE id = ?', [listId]);
-  if (!l) throw bad('Liste nicht gefunden');
-  const pos = await nextCardPos(listId);
-  const [r] = await pool.execute("INSERT INTO board_cards (list_id, title, type, created_by, position) VALUES (?,?,'roadmap',?,?)", [listId, title, req.uid, pos]);
-  await logCardActivity(r.insertId, req.uid, (await cardActorName(req.uid)) + ' hat diese Karte erstellt');
-  res.json({ ok: true, id: r.insertId });
-}));
-app.put('/board/cards/:id', auth, requireAdmin, asyncRoute(async (req, res) => {
-  const id = vInt(req.params.id, 'Karte', 1, 4294967295);
-  const b = req.body; const sets = [], vals = [];
-  if (b.title !== undefined) { sets.push('title=?'); vals.push(vStr(b.title, 'Titel', 200)); }
-  if (b.description !== undefined) { sets.push('description=?'); vals.push(b.description ? vStr(b.description, 'Beschreibung', 8000) : null); }
-  if (b.category !== undefined) { sets.push('category=?'); vals.push(b.category ? vStr(b.category, 'Label', 20).toLowerCase() : null); }
-  if (b.version !== undefined) { sets.push('version=?'); vals.push(b.version ? vStr(b.version, 'Version', 20) : null); }
-  if (b.due_date !== undefined) { sets.push('due_date=?'); vals.push(b.due_date ? vDate(b.due_date, 'Datum', { optional: true }) : null); }
-  if (b.ticket_id !== undefined) { sets.push('ticket_id=?'); vals.push(b.ticket_id ? vInt(b.ticket_id, 'Ticket', 1, 4294967295) : null); }
-  if (b.done !== undefined) { sets.push('done=?'); vals.push(vBool(b.done) ? 1 : 0); }
-  if (!sets.length) throw bad('Nichts zu ändern');
-  vals.push(id);
-  const [r] = await pool.execute('UPDATE board_cards SET ' + sets.join(', ') + ' WHERE id=?', vals);
-  if (!r.affectedRows) return res.status(404).json({ error: 'Karte nicht gefunden' });
-  res.json({ ok: true });
-}));
-app.post('/board/cards/:id/move', auth, requireAdmin, asyncRoute(async (req, res) => {
-  const id = vInt(req.params.id, 'Karte', 1, 4294967295);
-  const listId = vInt(req.body.list_id, 'Liste', 1, 4294967295);
-  const position = vInt(req.body.position, 'Position', 0, 1000000, { optional: true }) || 0;
-  const [[card]] = await pool.execute('SELECT list_id FROM board_cards WHERE id=?', [id]);
-  if (!card) return res.status(404).json({ error: 'Karte nicht gefunden' });
-  const [[l]] = await pool.execute('SELECT slug, name FROM board_lists WHERE id=?', [listId]);
-  if (!l) throw bad('Liste nicht gefunden');
-  await pool.execute('UPDATE board_cards SET position = position + 1 WHERE list_id=? AND position >= ? AND id <> ?', [listId, position, id]);
-  await pool.execute('UPDATE board_cards SET list_id=?, position=?, done=? WHERE id=?', [listId, position, l.slug === 'done' ? 1 : 0, id]);
-  if (card.list_id !== listId) await logCardActivity(id, req.uid, (await cardActorName(req.uid)) + ' hat diese Karte zu ' + l.name + ' verschoben');
-  res.json({ ok: true });
-}));
-app.delete('/board/cards/:id', auth, requireAdmin, asyncRoute(async (req, res) => {
-  const id = vInt(req.params.id, 'Karte', 1, 4294967295);
-  await pool.execute('DELETE FROM board_comments WHERE card_id=?', [id]);
-  await pool.execute('DELETE FROM board_attachments WHERE card_id=?', [id]);
-  const [r] = await pool.execute('DELETE FROM board_cards WHERE id=?', [id]);
-  if (!r.affectedRows) return res.status(404).json({ error: 'Karte nicht gefunden' });
-  res.json({ ok: true });
-}));
-app.get('/board/cards/:id', auth, requireAdmin, asyncRoute(async (req, res) => {
-  const id = vInt(req.params.id, 'Karte', 1, 4294967295);
-  const [[c]] = await pool.execute('SELECT c.*, u.name authorName, u.email authorEmail, (SELECT subject FROM tickets t WHERE t.id=c.ticket_id) ticketSubject FROM board_cards c LEFT JOIN users u ON u.id=c.user_id WHERE c.id=?', [id]);
-  if (!c) return res.status(404).json({ error: 'Karte nicht gefunden' });
-  const [atts] = await pool.execute('SELECT id FROM board_attachments WHERE card_id=?', [id]);
-  res.json({ card: { ...mapBoardCard(c), authorEmail: c.authorEmail || null, ticket_id: c.ticket_id || null, ticketSubject: c.ticketSubject || null }, feed: await loadCardFeed(id), attachments: atts.map(a => a.id) });
-}));
-app.post('/board/cards/:id/comment', auth, requireAdmin, rateLimitUser('board', 120), asyncRoute(async (req, res) => {
-  const id = vInt(req.params.id, 'Karte', 1, 4294967295);
-  const text = vStr(req.body.text, 'Kommentar', 4000);
-  const [[c]] = await pool.execute('SELECT id FROM board_cards WHERE id=?', [id]);
-  if (!c) return res.status(404).json({ error: 'Karte nicht gefunden' });
-  await pool.execute("INSERT INTO board_comments (card_id, user_id, kind, text) VALUES (?,?,'comment',?)", [id, req.uid, text]);
-  await pool.execute('UPDATE board_cards SET updated_at=CURRENT_TIMESTAMP WHERE id=?', [id]);
-  res.json({ ok: true });
-}));
-app.post('/board/lists', auth, requireAdmin, rateLimitUser('board', 120), asyncRoute(async (req, res) => {
-  const name = vStr(req.body.name, 'Listenname', 60);
-  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || ('liste-' + Date.now());
-  const [[mx]] = await pool.execute('SELECT COALESCE(MAX(position),-1)+1 p FROM board_lists');
-  try { const [r] = await pool.execute('INSERT INTO board_lists (slug, name, dot, position) VALUES (?,?,?,?)', [slug, name, 'var(--mut)', mx.p]); res.json({ ok: true, id: r.insertId, slug }); }
-  catch (e) { if (e.code === 'ER_DUP_ENTRY') throw bad('Liste existiert schon'); throw e; }
-}));
-app.delete('/board/lists/:id', auth, requireAdmin, asyncRoute(async (req, res) => {
-  const id = vInt(req.params.id, 'Liste', 1, 4294967295);
-  const [[cnt]] = await pool.execute('SELECT COUNT(*) n FROM board_cards WHERE list_id=?', [id]);
-  if (cnt.n > 0) throw bad('Liste ist nicht leer');
-  const [[l]] = await pool.execute('SELECT slug FROM board_lists WHERE id=?', [id]);
-  if (l && ['offen', 'done'].includes(l.slug)) throw bad('Diese Liste kann nicht gelöscht werden');
-  await pool.execute('DELETE FROM board_lists WHERE id=?', [id]);
-  res.json({ ok: true });
-}));
-app.get('/board/attachments/:id', auth, asyncRoute(async (req, res) => {
+// Das frühere Admin-Kanban wurde entfernt. Die darunterliegenden Ticket-Tabellen
+// bleiben bewusst bestehen, weil Support-Tickets sie weiterhin als Datenspeicher nutzen.
+app.get('/ticket-attachments/:id', auth, asyncRoute(async (req, res) => {
   const id = vInt(req.params.id, 'Anhang', 1, 4294967295);
   const [[a]] = await pool.execute('SELECT ba.data_uri, bc.user_id FROM board_attachments ba JOIN board_cards bc ON bc.id=ba.card_id WHERE ba.id=?', [id]);
   if (!a) return res.status(404).json({ error: 'Nicht gefunden' });
@@ -2840,6 +3110,250 @@ app.post('/bot/push', auth, asyncRoute(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ---------- KI-Assistent: strukturierte Notizen ----------
+const assistantTags = (v) => (Array.isArray(v) ? v : String(v || '').split(','))
+  .map(x => String(x).trim().slice(0, 60)).filter(Boolean).slice(0, 20);
+const assistantRelationIds = (v) => [...new Set((Array.isArray(v) ? v : []).map(x => parseInt(x, 10)).filter(x => x > 0))].slice(0, 50);
+
+app.get('/assistant-notes', auth, asyncRoute(async (req, res) => {
+  const [sections, notes, relations, quickNotes, images] = await Promise.all([
+    pool.execute('SELECT id,external_id,title,icon,sort_order FROM assistant_note_sections WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,section_id,external_id,title,content,tags_json,sort_order,updated_at FROM assistant_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT note_id,related_id FROM assistant_note_relations WHERE user_id=?', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,text,sort_order FROM assistant_quick_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,note_id,name,size,mime,created_at FROM assistant_note_images WHERE user_id=? ORDER BY id', [req.uid]).then(x=>x[0]),
+  ]);
+  const rel = new Map(); for (const r of relations) { if (!rel.has(r.note_id)) rel.set(r.note_id, []); rel.get(r.note_id).push(r.related_id); }
+  const imgs=new Map();for(const im of images){if(!imgs.has(im.note_id))imgs.set(im.note_id,[]);imgs.get(im.note_id).push({...im,url:'/assistant-note-images/'+im.id});}
+  res.json({ sections, notes: notes.map(n => { let tags=[]; try { tags=JSON.parse(n.tags_json || '[]'); } catch (_) {} return { ...n, tags, related_ids:rel.get(n.id)||[], images:imgs.get(n.id)||[] }; }), quickNotes });
+}));
+
+app.get('/assistant-notes/pdf', auth, asyncRoute(async (req, res) => {
+  const [[user], sections, notes, relations, quickNotes, images] = await Promise.all([
+    pool.execute('SELECT name,username,email FROM users WHERE id=?', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,title,icon,sort_order FROM assistant_note_sections WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,section_id,title,content,tags_json,sort_order,updated_at FROM assistant_notes WHERE user_id=? ORDER BY section_id,sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT note_id,related_id FROM assistant_note_relations WHERE user_id=?', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT text,sort_order FROM assistant_quick_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,note_id,name,stored_name FROM assistant_note_images WHERE user_id=? AND scan_status=? ORDER BY id',[req.uid,'clean']).then(x=>x[0]),
+  ]);
+  if (!user) return res.status(404).json({ error:'Konto nicht gefunden' });
+
+  const logoBuffer=await sharp(path.join(rendererRoot,'assets','icon.png')).resize(180,180,{fit:'contain'}).png().toBuffer();
+  const pdfImages=new Map();
+  for(const im of images){
+    try{
+      const out=await sharp(safeNoteImagePath(req.uid,im.stored_name)).rotate().resize({width:1100,height:900,fit:'inside',withoutEnlargement:true}).jpeg({quality:84}).toBuffer({resolveWithObject:true});
+      if(!pdfImages.has(Number(im.note_id)))pdfImages.set(Number(im.note_id),[]);
+      pdfImages.get(Number(im.note_id)).push({name:im.name,buffer:out.data,width:out.info.width,height:out.info.height});
+    }catch(_){}
+  }
+
+  const stamp = new Date().toISOString().slice(0, 10);
+  const filename = `nutridesk-notizen-${stamp}.pdf`;
+  res.set({
+    'Content-Type':'application/pdf',
+    'Content-Disposition':`attachment; filename="${filename}"`,
+    'Cache-Control':'no-store',
+    'X-Content-Type-Options':'nosniff',
+  });
+
+  const doc = new PDFDocument({
+    size:'A4', bufferPages:true, autoFirstPage:true,
+    margins:{ top:74, right:48, bottom:58, left:48 },
+    info:{
+      Title:'NutriDesk - Meine Notizen',
+      Author:user.name || user.username || 'NutriDesk',
+      Subject:'Persoenliche Wissenssammlung',
+      Creator:'NutriDesk',
+    },
+  });
+  doc.pipe(res);
+
+  const C = { navy:'#0F1117', panel:'#171C28', ink:'#18202D', soft:'#627083', line:'#DDE4EC', page:'#F6F8FB', lime:'#A3E635', teal:'#2DD4BF', white:'#FFFFFF' };
+  const pdfText = value => String(value == null ? '' : value)
+    .replace(/\u00a0/g,' ').replace(/\u2192/g,'->').replace(/[\u2010-\u2015]/g,'-').replace(/\u2026/g,'...');
+  const pageWidth = () => doc.page.width;
+  const contentWidth = () => doc.page.width - 96;
+  let contentPages = false;
+  const paintContentPage = () => {
+    const w=doc.page.width,h=doc.page.height;
+    doc.save().rect(0,0,w,h).fill(C.page).rect(0,0,w,48).fill(C.navy)
+      .roundedRect(48,14,22,22,6).fill(C.white)
+      .font('Helvetica-Bold').fontSize(10).fillColor(C.white).text('NUTRIDESK',80,20,{width:120,lineBreak:false})
+      .font('Helvetica').fontSize(8).fillColor('#9AA5B5').text('MEINE NOTIZEN',430,20,{width:117,align:'right',lineBreak:false}).restore();
+    doc.image(logoBuffer,49,15,{fit:[20,20],align:'center',valign:'center'});
+    doc.x=48; doc.y=70;
+  };
+  doc.on('pageAdded', () => { if (contentPages) paintContentPage(); });
+
+  // Titelseite im NutriDesk-Stil.
+  doc.rect(0,0,pageWidth(),doc.page.height).fill(C.navy);
+  doc.roundedRect(48,58,58,58,16).fill(C.white);
+  doc.image(logoBuffer,53,63,{fit:[48,48],align:'center',valign:'center'});
+  doc.font('Helvetica-Bold').fontSize(12).fillColor(C.lime).text('NUTRIDESK',48,145,{characterSpacing:2.2});
+  doc.font('Helvetica-Bold').fontSize(36).fillColor(C.white).text('Meine Notizen',48,178,{width:499});
+  doc.font('Helvetica').fontSize(13).fillColor('#AAB4C3').text('Deine persönliche Wissenssammlung - vollständig und übersichtlich exportiert.',48,232,{width:455,lineGap:4});
+  doc.roundedRect(48,310,499,138,18).fill(C.panel);
+  doc.font('Helvetica-Bold').fontSize(10).fillColor(C.lime).text('EXPORT FÜR',70,335,{characterSpacing:1.4});
+  doc.font('Helvetica-Bold').fontSize(21).fillColor(C.white).text(user.name || user.username || user.email,70,360,{width:360});
+  doc.font('Helvetica').fontSize(10).fillColor('#8F9AAC').text('@'+(user.username || String(user.email).split('@')[0]),70,391);
+  const stats=[['BEREICHE',sections.length],['NOTIZEN',notes.length],['SCHNELLNOTIZEN',quickNotes.length]];
+  stats.forEach((s,i)=>{const x=48+i*166;doc.roundedRect(x,485,151,78,14).fill(i===0?'#202A25':'#171C28');doc.font('Helvetica-Bold').fontSize(20).fillColor(i===0?C.lime:C.white).text(String(s[1]),x+16,503,{width:119});doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#8894A6').text(s[0],x+16,535,{characterSpacing:.8,width:119});});
+  doc.font('Helvetica').fontSize(9).fillColor('#6F7B8D').text('Erstellt am '+new Date().toLocaleDateString('de-DE'),48,752,{width:499});
+
+  contentPages=true;
+  const addPage = () => doc.addPage();
+  const ensure = (height=60) => { if (doc.y + height > doc.page.height - 62) addPage(); };
+  const sectionTitle = (title,count,countLabel='NOTIZEN') => {
+    ensure(62);
+    const y=doc.y;
+    doc.roundedRect(48,y,6,34,3).fill(C.lime);
+    doc.font('Helvetica-Bold').fontSize(17).fillColor(C.ink).text(pdfText(title),66,y+2,{width:350,height:28});
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(C.soft).text(String(count)+' '+countLabel,430,y+7,{width:117,align:'right',characterSpacing:.4,height:15});
+    doc.x=48;doc.y=y+50;
+  };
+  const noteById=new Map(notes.map(n=>[Number(n.id),n]));
+  const relByNote=new Map();
+  for(const r of relations){if(!relByNote.has(Number(r.note_id)))relByNote.set(Number(r.note_id),[]);relByNote.get(Number(r.note_id)).push(Number(r.related_id));}
+  const parseTags=(raw)=>{try{const x=JSON.parse(raw||'[]');return Array.isArray(x)?x:[];}catch(_){return[];}};
+  const writeWrapped = (value,x,width,{font='Helvetica',size=9.4,color='#354052',lineHeight=14,paragraphGap=5}={}) => {
+    doc.font(font).fontSize(size).fillColor(color);
+    const paragraphs=pdfText(value).replace(/\r/g,'').split('\n');
+    for(const paragraph of paragraphs){
+      const words=paragraph.trim().split(/\s+/).filter(Boolean);
+      if(!words.length){ensure(lineHeight);doc.y+=lineHeight*.65;continue;}
+      const lines=[];let line='';
+      for(const word of words){
+        const candidate=line?line+' '+word:word;
+        if(line&&doc.widthOfString(candidate)>width){lines.push(line);line=word;}else line=candidate;
+      }
+      if(line)lines.push(line);
+      // Genügend Sicherheitsabstand halten, damit PDFKit nie selbst mitten im Absatz
+      // eine ungestaltete Folgeseite anlegt. Seitenwechsel laufen nur über addPage().
+      for(const row of lines){ensure(lineHeight+90);doc.text(row,x,doc.y,{width,height:lineHeight,lineBreak:false});doc.y+=lineHeight;}
+      doc.y+=paragraphGap;
+    }
+  };
+  const noteBlock = (note,index) => {
+    const tags=parseTags(note.tags_json),title=pdfText(note.title);
+    doc.font('Helvetica-Bold').fontSize(12);
+    const titleH=Math.min(32,doc.heightOfString(title,{width:432}));
+    const headerH=Math.max(48,20+titleH+(tags.length?15:0));
+    ensure(headerH+38);
+    const y=doc.y;
+    doc.roundedRect(48,y,499,headerH,12).fill(C.white).strokeColor(C.line).lineWidth(.7).stroke();
+    doc.roundedRect(61,y+12,24,24,7).fill('#ECF8D8');
+    doc.font('Helvetica-Bold').fontSize(9).fillColor('#5C850C').text(String(index+1),61,y+19,{width:24,align:'center',lineBreak:false});
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(C.ink).text(title,96,y+10,{width:432,height:titleH});
+    if(tags.length)doc.font('Helvetica').fontSize(7.5).fillColor(C.soft).text(tags.map(t=>'#'+pdfText(t)).join('   '),96,y+14+titleH,{width:432,height:12,ellipsis:true});
+    doc.x=48;doc.y=y+headerH+12;
+    const text=pdfText(note.content).trim()||'Kein Inhalt hinterlegt.';
+    writeWrapped(text,58,479);
+    const related=(relByNote.get(Number(note.id))||[]).map(id=>noteById.get(id)).filter(Boolean).map(n=>n.title);
+    if(related.length){ensure(34);doc.y+=4;doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#769B20').text('VERKNÜPFT',58,doc.y,{characterSpacing:.7,lineBreak:false});doc.y+=13;writeWrapped(related.map(pdfText).join('  -  '),58,479,{size:8.2,color:C.soft,lineHeight:11,paragraphGap:1});}
+    const noteImages=pdfImages.get(Number(note.id))||[];
+    if(noteImages.length){
+      ensure(30);doc.y+=4;doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#769B20').text('BILDER',58,doc.y,{characterSpacing:.7,lineBreak:false});doc.y+=15;
+      for(const im of noteImages){const h=Math.max(80,Math.min(250,Math.round(im.height*479/Math.max(1,im.width))));ensure(h+30);const y=doc.y;doc.roundedRect(58,y,479,h+22,9).fill(C.white).strokeColor(C.line).lineWidth(.6).stroke();doc.image(im.buffer,66,y+8,{fit:[463,h],align:'center',valign:'center'});doc.font('Helvetica').fontSize(7).fillColor(C.soft).text(pdfText(im.name),66,y+h+10,{width:463,align:'center',height:9,ellipsis:true});doc.x=48;doc.y=y+h+32;}
+    }
+    doc.y+=7;
+    doc.strokeColor(C.line).lineWidth(.6).moveTo(58,doc.y).lineTo(537,doc.y).stroke();
+    doc.y+=18;
+  };
+
+  if(quickNotes.length){
+    addPage();
+    sectionTitle('Schnell gemerkt',quickNotes.length,'MERKSÄTZE');
+    doc.font('Helvetica').fontSize(9).fillColor(C.soft).text('Die wichtigsten Merksätze auf einen Blick.',66,doc.y-7,{width:440});
+    doc.moveDown(1.2);
+    quickNotes.forEach(q=>{const text=pdfText(q.text);doc.font('Helvetica').fontSize(9);const boxH=Math.max(30,doc.heightOfString(text,{width:451,lineGap:2})+16);ensure(boxH+9);const y=doc.y;doc.roundedRect(48,y,499,boxH,9).fill(C.white).strokeColor(C.line).stroke();doc.circle(64,y+15,4).fill(C.teal);doc.font('Helvetica').fontSize(9).fillColor(C.ink).text(text,78,y+9,{width:451,height:boxH-12,lineGap:2});doc.x=48;doc.y=y+boxH+9;});
+  }
+  for(const section of sections){
+    const sectionNotes=notes.filter(n=>Number(n.section_id)===Number(section.id));
+    addPage();
+    sectionTitle(section.title,sectionNotes.length);
+    if(!sectionNotes.length){doc.font('Helvetica').fontSize(9).fillColor(C.soft).text('In diesem Bereich sind noch keine Notizen gespeichert.',66,doc.y);doc.moveDown(2);continue;}
+    sectionNotes.forEach((n,i)=>noteBlock(n,i));
+  }
+  if(!sections.length){addPage();sectionTitle('Meine Notizen',0);doc.font('Helvetica').fontSize(11).fillColor(C.soft).text('Noch keine Notizen vorhanden.',66,doc.y);}
+
+  const range=doc.bufferedPageRange();
+  for(let i=range.start;i<range.start+range.count;i++){
+    doc.switchToPage(i);
+    const isCover=i===0;
+    const oldBottom=doc.page.margins.bottom;doc.page.margins.bottom=0;
+    doc.font('Helvetica').fontSize(7.5).fillColor(isCover?'#667386':C.soft)
+      .text('NutriDesk  -  Persönlicher Export',48,doc.page.height-31,{width:300,lineBreak:false})
+      .text((i+1)+' / '+range.count,447,doc.page.height-31,{width:100,align:'right',lineBreak:false});
+    doc.page.margins.bottom=oldBottom;
+  }
+  doc.end();
+}));
+
+app.post('/assistant-note-sections', auth, asyncRoute(async (req, res) => {
+  const title=vStr(req.body.title,'Bereich',120),icon=vStr(req.body.icon,'Icon',50,{optional:true})||'notebook-tabs';
+  const [[m]]=await pool.execute('SELECT COALESCE(MAX(sort_order),-1)+1 AS n FROM assistant_note_sections WHERE user_id=?',[req.uid]);
+  const [r]=await pool.execute('INSERT INTO assistant_note_sections (user_id,title,icon,sort_order) VALUES (?,?,?,?)',[req.uid,title,icon,m.n]);
+  res.json({id:r.insertId,title,icon,sort_order:m.n});
+}));
+
+async function saveAssistantRelations(conn, uid, noteId, ids) {
+  await conn.execute('DELETE FROM assistant_note_relations WHERE user_id=? AND (note_id=? OR related_id=?)',[uid,noteId,noteId]);
+  if (!ids.length) return;
+  const marks=ids.map(()=>'?').join(','),[valid]=await conn.execute(`SELECT id FROM assistant_notes WHERE user_id=? AND id IN (${marks})`,[uid,...ids]);
+  for (const row of valid) if (Number(row.id)!==Number(noteId)) {
+    await conn.execute('INSERT IGNORE INTO assistant_note_relations (user_id,note_id,related_id) VALUES (?,?,?)',[uid,noteId,row.id]);
+    await conn.execute('INSERT IGNORE INTO assistant_note_relations (user_id,note_id,related_id) VALUES (?,?,?)',[uid,row.id,noteId]);
+  }
+}
+
+app.post('/assistant-notes', auth, asyncRoute(async (req,res)=>{
+  const sectionId=vInt(req.body.section_id,'Bereich',1,4294967295),title=vStr(req.body.title,'Titel',180),content=vStr(req.body.content,'Inhalt',50000,{optional:true})||'',tags=assistantTags(req.body.tags),relations=assistantRelationIds(req.body.related_ids);
+  const [[section]]=await pool.execute('SELECT id FROM assistant_note_sections WHERE id=? AND user_id=?',[sectionId,req.uid]); if(!section) throw bad('Bereich nicht gefunden');
+  const conn=await pool.getConnection();try{await conn.beginTransaction();const [[m]]=await conn.execute('SELECT COALESCE(MAX(sort_order),-1)+1 AS n FROM assistant_notes WHERE user_id=? AND section_id=?',[req.uid,sectionId]);const [r]=await conn.execute('INSERT INTO assistant_notes (user_id,section_id,title,content,tags_json,sort_order) VALUES (?,?,?,?,?,?)',[req.uid,sectionId,title,content,JSON.stringify(tags),m.n]);await saveAssistantRelations(conn,req.uid,r.insertId,relations);await conn.commit();res.json({id:r.insertId});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
+}));
+
+app.put('/assistant-notes/:id', auth, asyncRoute(async (req,res)=>{
+  const id=vInt(req.params.id,'Notiz',1,4294967295),sectionId=vInt(req.body.section_id,'Bereich',1,4294967295),title=vStr(req.body.title,'Titel',180),content=vStr(req.body.content,'Inhalt',50000,{optional:true})||'',tags=assistantTags(req.body.tags),relations=assistantRelationIds(req.body.related_ids);
+  const [[section]]=await pool.execute('SELECT id FROM assistant_note_sections WHERE id=? AND user_id=?',[sectionId,req.uid]);if(!section)throw bad('Bereich nicht gefunden');
+  const conn=await pool.getConnection();try{await conn.beginTransaction();const [r]=await conn.execute('UPDATE assistant_notes SET section_id=?,title=?,content=?,tags_json=? WHERE id=? AND user_id=?',[sectionId,title,content,JSON.stringify(tags),id,req.uid]);if(!r.affectedRows)throw new HttpError(404,'Notiz nicht gefunden');await saveAssistantRelations(conn,req.uid,id,relations);await conn.commit();res.json({ok:true});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
+}));
+
+app.delete('/assistant-notes/:id', auth, asyncRoute(async (req,res)=>{
+  const id=vInt(req.params.id,'Notiz',1,4294967295);const [imgs]=await pool.execute('SELECT stored_name FROM assistant_note_images WHERE note_id=? AND user_id=?',[id,req.uid]);const [r]=await pool.execute('DELETE FROM assistant_notes WHERE id=? AND user_id=?',[id,req.uid]);if(!r.affectedRows)return res.status(404).json({error:'Notiz nicht gefunden'});for(const im of imgs)await fsp.unlink(safeNoteImagePath(req.uid,im.stored_name)).catch(()=>{});res.json({ok:true});
+}));
+
+app.post('/assistant-notes/:id/images', auth, rateLimitUser('note-image',20,600000), cloudUpload.single('file'), asyncRoute(async(req,res)=>{
+  if(!req.file)throw bad('Kein Bild empfangen');
+  const id=vInt(req.params.id,'Notiz',1,4294967295),qPath=req.file.path;
+  const cleanup=()=>fsp.unlink(qPath).catch(()=>{});
+  try{
+    const [[note]]=await pool.execute('SELECT id FROM assistant_notes WHERE id=? AND user_id=?',[id,req.uid]);if(!note)throw new HttpError(404,'Notiz nicht gefunden');
+    if(req.file.size>12*1024*1024)throw new HttpError(413,'Bild ist zu groß (max. 12 MB)');
+    const v=await validateUpload({path:qPath,originalName:utf8name(req.file.originalname),size:req.file.size});
+    if(!v.ok||!String(v.mime||'').startsWith('image/'))throw new HttpError(415,v.ok?'Nur Bilder sind erlaubt':uploadRejectMsg(v.reason));
+    let verdict;try{verdict=await scanFile(qPath);}catch(e){throw new HttpError(503,'Das Bild konnte gerade nicht sicher geprüft werden');}
+    if(verdict==='infected')throw new HttpError(422,'Das Bild wurde als schädlich erkannt und abgelehnt');
+    const [[cnt]]=await pool.execute('SELECT COUNT(*) n FROM assistant_note_images WHERE note_id=? AND user_id=?',[id,req.uid]);if(Number(cnt.n)>=12)throw bad('Maximal 12 Bilder pro Notiz');
+    const [[used]]=await pool.execute('SELECT (SELECT COALESCE(SUM(size),0) FROM cloud_files WHERE user_id=?)+(SELECT COALESCE(SUM(size),0) FROM assistant_note_images WHERE user_id=?) n',[req.uid,req.uid]);
+    if(Number(used.n)+req.file.size>await cloudQuota(req.uid))throw new HttpError(413,'Dein Speicher ist voll');
+    await ensureUserNoteImages(req.uid);const out=safeNoteImagePath(req.uid,req.file.filename);await fsp.copyFile(qPath,out);await cleanup();
+    const [r]=await pool.execute('INSERT INTO assistant_note_images (user_id,note_id,name,stored_name,size,mime,scan_status) VALUES (?,?,?,?,?,?,?)',[req.uid,id,v.safeName,req.file.filename,req.file.size,v.mime,'clean']);
+    res.json({id:r.insertId,note_id:id,name:v.safeName,size:req.file.size,mime:v.mime,url:'/assistant-note-images/'+r.insertId});
+  }catch(e){await cleanup();throw e;}
+}));
+
+app.get('/assistant-note-images/:id', auth, asyncRoute(async(req,res)=>{
+  const id=vInt(req.params.id,'Bild',1,4294967295);const [[im]]=await pool.execute('SELECT name,stored_name,size,mime,scan_status FROM assistant_note_images WHERE id=? AND user_id=?',[id,req.uid]);
+  if(!im||im.scan_status!=='clean')return res.status(404).json({error:'Bild nicht gefunden'});
+  const p=safeNoteImagePath(req.uid,im.stored_name);res.set({'Content-Type':im.mime,'Content-Length':String(im.size),'Content-Disposition':`inline; filename="${String(im.name).replace(/["\\]/g,'_')}"`,'Cache-Control':'private, max-age=300','X-Content-Type-Options':'nosniff'});fs.createReadStream(p).on('error',()=>{if(!res.headersSent)res.status(404).end();else res.destroy();}).pipe(res);
+}));
+
+app.delete('/assistant-note-images/:id', auth, asyncRoute(async(req,res)=>{
+  const id=vInt(req.params.id,'Bild',1,4294967295);const [[im]]=await pool.execute('SELECT stored_name FROM assistant_note_images WHERE id=? AND user_id=?',[id,req.uid]);if(!im)return res.status(404).json({error:'Bild nicht gefunden'});await pool.execute('DELETE FROM assistant_note_images WHERE id=? AND user_id=?',[id,req.uid]);await fsp.unlink(safeNoteImagePath(req.uid,im.stored_name)).catch(()=>{});res.json({ok:true});
+}));
+
 // ---------- Eigene Rezepte (Nutzer) + oeffentlich teilbar ----------
 // Naehrwerte serverseitig aus den Zutaten berechnen (food_id -> foods pro 100g).
 async function computeUserRecipe(ings) {
@@ -2931,7 +3445,37 @@ app.delete('/my-recipes/:id', auth, asyncRoute(async (req, res) => {
   } catch (e) { await conn.rollback(); conn.release(); throw e; }
 }));
 
-// Produktsuche über Open Food Facts: Markenprodukte wie bei YAZIO (kein Key nötig)
+// Open Food Facts ergänzt die lokale Datenbank bei Suchbegriffen, die noch nicht
+// ausreichend lokal vorhanden sind. Treffer werden zugleich lokal gecacht.
+async function openFoodFactsSearch(query, pageSize = 24) {
+  const params = new URLSearchParams({
+    search_terms: String(query).slice(0, 80), search_simple: '1', action: 'process', json: '1',
+    page_size: String(Math.max(1, Math.min(40, pageSize))),
+    fields: 'code,product_name_de,product_name,brands,nutriments,image_small_url,countries_tags',
+  });
+  const ctrl = new AbortController(); const timer = setTimeout(() => ctrl.abort(), 6500);
+  try {
+    const r = await fetch('https://world.openfoodfacts.org/cgi/search.pl?' + params.toString(), {
+      signal: ctrl.signal, headers: { 'User-Agent': 'NutriDesk/1.0 (https://nutridesk.de)', Accept: 'application/json' },
+    });
+    if (!r.ok) return [];
+    const body = await r.json();
+    return (Array.isArray(body.products) ? body.products : []).map(p => {
+      const n = p.nutriments || {}, name = String(p.product_name_de || p.product_name || '').trim();
+      const kcal = Number(n['energy-kcal_100g']), carbs = Number(n.carbohydrates_100g), protein = Number(n.proteins_100g), fat = Number(n.fat_100g);
+      if (!name || !Number.isFinite(kcal) || kcal < 0 || kcal > 1000) return null;
+      return { barcode:String(p.code || '').replace(/\D/g,'').slice(0,32)||null, name:name.slice(0,200), brand:String(p.brands||'').split(',')[0].trim().slice(0,140), kcal, carbs:Number.isFinite(carbs)?carbs:0, protein:Number.isFinite(protein)?protein:0, fat:Number.isFinite(fat)?fat:0, image_small_url:String(p.image_small_url||'').slice(0,500)||null };
+    }).filter(Boolean);
+  } catch (_) { return []; } finally { clearTimeout(timer); }
+}
+async function cacheOpenFoodFacts(items) {
+  await Promise.all((items || []).slice(0, 24).map(x => pool.execute(
+    'INSERT IGNORE INTO foods (barcode,name,brand,kcal,carbs,protein,fat,source,image_small_url) VALUES (?,?,?,?,?,?,?,?,?)',
+    [x.barcode,x.name,x.brand||null,x.kcal,x.carbs,x.protein,x.fat,'openfoodfacts',x.image_small_url]
+  ).catch(()=>null)));
+}
+
+// Produktsuche: lokale Food-DB zuerst, Open Food Facts als geprüfter Fallback (kein Key nötig).
 app.get('/food/search', auth, rateLimitUser('food-search', 40), asyncRoute(async (req, res) => {
   const q = vStr(req.query.q, 'Suchbegriff', 80);
   // Lokale Produktdatenbank (Import aus Open Food Facts), Volltext-Prefix-Suche
@@ -2960,14 +3504,27 @@ app.get('/food/search', auth, rateLimitUser('food-search', 40), asyncRoute(async
     });
     if (items.length >= 12) break;
   }
-  res.json({ items });
+  if (items.length < 8) {
+    const remote = await openFoodFactsSearch(q, 30);
+    cacheOpenFoodFacts(remote).catch(()=>{});
+    for (const x of remote) {
+      const key=((x.brand||'')+'|'+x.name).toLowerCase(); if(seen.has(key))continue;seen.add(key);
+      items.push({ id:null,name:x.name.slice(0,120),brand:(x.brand||'').slice(0,60),kcal:Math.round(x.kcal),carbs:Math.round(x.carbs),protein:Math.round(x.protein),fat:Math.round(x.fat),serving:null,img:x.image_small_url||null,source:'openfoodfacts' });
+      if(items.length>=12)break;
+    }
+  }
+  res.json({ items, source: items.some(x=>x.source==='openfoodfacts') ? 'local+openfoodfacts' : 'local' });
 }));
 
 // Barcode-Nachschlag in der lokalen Produktdatenbank (Import aus Open Food Facts), für den Scanner
 app.get('/food/barcode/:code', auth, rateLimitUser('food-search', 40), asyncRoute(async (req, res) => {
   const code = String(req.params.code || '').replace(/\D/g, '');
   if (code.length < 6 || code.length > 14) throw bad('Ungültiger Barcode');
-  const [[p]] = await pool.execute('SELECT name, brand, kcal, carbs, protein, fat FROM foods WHERE barcode = ? LIMIT 1', [code]);
+  let [[p]] = await pool.execute('SELECT name, brand, kcal, carbs, protein, fat FROM foods WHERE barcode = ? LIMIT 1', [code]);
+  if (!p) {
+    const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),6500);
+    try{const rr=await fetch('https://world.openfoodfacts.org/api/v2/product/'+encodeURIComponent(code)+'?fields=code,product_name_de,product_name,brands,nutriments,image_small_url',{signal:ctrl.signal,headers:{'User-Agent':'NutriDesk/1.0 (https://nutridesk.de)',Accept:'application/json'}});const j=rr.ok?await rr.json():null,raw=j&&j.status===1&&j.product?j.product:null;if(raw){const n=raw.nutriments||{},k=Number(n['energy-kcal_100g']);if(Number.isFinite(k)){const x={barcode:code,name:String(raw.product_name_de||raw.product_name||'Produkt').slice(0,200),brand:String(raw.brands||'').split(',')[0].trim().slice(0,140),kcal:k,carbs:Number(n.carbohydrates_100g)||0,protein:Number(n.proteins_100g)||0,fat:Number(n.fat_100g)||0,image_small_url:String(raw.image_small_url||'').slice(0,500)||null};await cacheOpenFoodFacts([x]);p=x;}}}catch(_){}finally{clearTimeout(timer);}
+  }
   if (!p) throw new HttpError(404, 'Produkt nicht gefunden');
   const name = String(p.name || 'Produkt').slice(0, 120);
   const brand = p.brand ? String(p.brand).split(',')[0].trim() : '';
@@ -2987,9 +3544,56 @@ app.get('/health', asyncRoute(async (req, res) => {
 // ---------- Bot-Backend (Fake-KI, keine LLM): Chat, Tickets, Hilfecenter, TTS, Gedächtnis ----------
 require('./bot')(app, { pool, auth, requireAdmin, asyncRoute, bad, HttpError, vStr, vInt, vNum, vDate, vEnum, vBool, rateLimitUser, reqIp, logEvent, botPost });
 
+app.use('/assets', express.static(path.join(rendererRoot, 'assets'), {
+  fallthrough: false,
+  immutable: true,
+  maxAge: '7d',
+  index: false,
+}));
+
+// Eine normale Monatsrate verbuchen: Restschuld und Ratenzähler werden gemeinsam atomar aktualisiert.
+app.post('/loans/:id/installment', auth, loanPayLimit, asyncRoute(async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[loan]] = await conn.execute('SELECT * FROM loans WHERE id = ? AND user_id = ? FOR UPDATE', [req.params.id, req.uid]);
+    if (!loan) { await conn.rollback(); return res.status(404).json({ error: 'Nicht gefunden' }); }
+    let next;
+    try { next = applyRegularInstallment(loan); }
+    catch (e) { await conn.rollback(); return res.status(400).json({ error: e.message }); }
+    await conn.execute('UPDATE loans SET balance = ?, paid_months = ? WHERE id = ?', [next.balance, next.paidMonths, loan.id]);
+    await conn.execute('INSERT INTO loan_payments (user_id, loan_id, amount, note) VALUES (?, ?, ?, ?)', [req.uid, loan.id, next.paid, 'Reguläre Rate #' + next.paidMonths]);
+    await conn.commit();
+    const [[row]] = await pool.execute('SELECT * FROM loans WHERE id = ?', [loan.id]);
+    res.json({ loan: row, payment: next.paid });
+  } catch (e) { try { await conn.rollback(); } catch (_) {} throw e; } finally { conn.release(); }
+}));
+
+// Letzte reguläre Rate zurücknehmen (sicheres Undo, Sondertilgungen bleiben unangetastet).
+app.delete('/loans/:id/installment', auth, loanPayLimit, asyncRoute(async (req, res) => {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [[loan]] = await conn.execute('SELECT * FROM loans WHERE id = ? AND user_id = ? FOR UPDATE', [req.params.id, req.uid]);
+    if (!loan) { await conn.rollback(); return res.status(404).json({ error: 'Nicht gefunden' }); }
+    const [[last]] = await conn.execute("SELECT * FROM loan_payments WHERE loan_id=? AND user_id=? AND note LIKE 'Reguläre Rate #%' ORDER BY id DESC LIMIT 1", [loan.id, req.uid]);
+    if (!last) { await conn.rollback(); return res.status(400).json({ error: 'Keine reguläre Rate zum Zurücknehmen vorhanden' }); }
+    const expected = 'Reguläre Rate #' + (Number(loan.paid_months) || 0);
+    if (last.note !== expected) { await conn.rollback(); return res.status(400).json({ error: 'Nur die zuletzt verbuchte reguläre Rate kann zurückgenommen werden' }); }
+    const restored = Math.round((Number(loan.balance) + Number(last.amount)) * 100) / 100;
+    await conn.execute('UPDATE loans SET balance=?, paid_months=GREATEST(0, paid_months-1) WHERE id=?', [restored, loan.id]);
+    await conn.execute('DELETE FROM loan_payments WHERE id=?', [last.id]);
+    await conn.commit();
+    const [[row]] = await pool.execute('SELECT * FROM loans WHERE id=?', [loan.id]);
+    res.json({ loan: row, undone: Number(last.amount) });
+  } catch (e) { try { await conn.rollback(); } catch (_) {} throw e; } finally { conn.release(); }
+}));
+app.get('/', (req, res) => res.sendFile(path.join(rendererRoot, 'index.html')));
+
 app.use((req, res) => res.status(404).json({ error: 'Route nicht gefunden' }));
 
 app.use((err, req, res, next) => {
+  if (err && err.status === 404) return res.status(404).json({ error: 'Datei nicht gefunden' });
   if (err instanceof HttpError) {
     if (err.status >= 500) {
       console.error(new Date().toISOString(), req.method, req.url, '->', err.status, err.message);

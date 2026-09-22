@@ -1,0 +1,8 @@
+MAIN_HARDCODE_PRIMARY_HOSTNAME = mail.nutridesk.de
+daemon_smtp_ports = 25 : 587
+
+# Ausschliesslich Loopback ist in update-exim4.conf.conf gebunden. Dadurch
+# darf die lokale NutriDesk-App AUTH auch ohne eine zusaetzliche TLS-Strecke
+# zum selben Server verwenden.
+AUTH_SERVER_ALLOW_NOTLS_PASSWORDS = yes
+MAIN_TLS_ADVERTISE_HOSTS =

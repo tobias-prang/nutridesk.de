@@ -28,7 +28,7 @@ module.exports = function registerBot(app, deps) {
   }
   // ElevenLabs (optional): Config-Datei /home/.elevenlabs.json = {"key":"...","man":"voiceId","woman":"voiceId","model":"eleven_turbo_v2_5"}.
   // Fehlt sie oder der Key, ist die Cloud-Sprachausgabe schlicht nicht verfuegbar (503) - KEIN Edge-Fallback.
-  // Vorlesen laeuft dann rein lokal im Client (SEC-003B, speechSynthesis mit lokaler OS-Stimme).
+  // Ohne aktivierte ElevenLabs-Cloud-Stimme bleibt die Sprachausgabe stumm.
   function elevenCfg() {
     try { return JSON.parse(fs.readFileSync(process.env.ELEVENLABS_FILE || '/home/.elevenlabs.json', 'utf8')); } catch (e) { return null; }
   }
@@ -977,7 +977,7 @@ module.exports = function registerBot(app, deps) {
     // Hunger/Durst: in einer Ernaehrungs-App das Naheliegendste ueberhaupt, fiel vorher durch.
     if (/\b(hab|habe|bin)\s*(grad |gerade |so |voll |mega |echt )*(hunger|hungrig|kohldampf)\b|\bhunger\b|\bwas essen\b|\bwas soll ich essen\b|\bhaette lust auf was\b/.test(n)) {
       const d = await dataAnswer(uid, 'kcal_today').catch(() => '');
-      return { intent: 'domain', reply: `${d} Wenn du magst, schau in deinen Ernährungsplan, da steht schon, was für heute vorgesehen ist. Oder sag mir ein Lebensmittel, dann sage ich dir die Nährwerte.`, quicks: [{ label: 'Was steht im Plan?', send: 'Wie funktioniert der Ernährungsplan?' }, { label: 'Essen eintragen', send: 'Ich möchte Essen eintragen' }] };
+      return { intent: 'domain', reply: `${d} Wenn du magst, such im Tracker nach einem Lebensmittel oder öffne „Meine Rezepte“. Dort kannst du eigene Rezepte aus Lebensmitteln der Datenbank zusammenstellen.`, quicks: [{ label: 'Lebensmittel prüfen', send: 'Wie viele Kalorien hat eine Banane?' }, { label: 'Essen eintragen', send: 'Ich möchte Essen eintragen' }] };
     }
     if (/\b(hab|habe|bin)\s*(grad |gerade |so )*(durst|durstig)\b/.test(n)) {
       return { intent: 'domain', reply: 'Trink am besten ein Glas Wasser. Faustregel sind etwa 30 bis 35 ml pro kg Körpergewicht am Tag, bei Hitze oder Sport mehr. Dein Wasserglas-Zähler ist im Ernährungsbereich.' };
@@ -1085,7 +1085,7 @@ module.exports = function registerBot(app, deps) {
     // Frage, wurde aber komplett von der Begruessung verschluckt, weil es mit "hey" anfaengt.
     const nurGruss = /^(hi+|hallo|hey+|moin|servus|gruess dich|guten (morgen|tag|abend)|na|yo|halloechen|hei|hallo zusammen)([ ,!.]+(du|anja|conrad|leute|zusammen|nochmal|wieder))*[ ,!.]*$/.test(n);
     if (nurGruss) {
-      return { intent: 'greet', reply: `Hallo! Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Ich helfe dir bei der App, bei Nährwerten, deinen Daten und kann Sachen für dich eintragen. Was brauchst du?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Hilfe', send: 'Wie funktioniert der Ernährungsplan?' }] };
+      return { intent: 'greet', reply: `Hallo! Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Ich helfe dir beim Tracken, mit Lebensmitteln und eigenen Rezepten, bei deinen Finanzen, Terminen und Notizen. Was brauchst du?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Lebensmittel suchen', send: 'Wie viele Kalorien hat eine Banane?' }] };
     }
 
     // "ich wiege 80 kg" fiel durch, obwohl der Bot Gewicht selbst als eintragbar bewirbt.
@@ -1305,6 +1305,7 @@ module.exports = function registerBot(app, deps) {
       'geht', 'gehen', 'finde', 'finden', 'sehe', 'sehen', 'brauche', 'brauchen', 'moechte', 'will', 'soll',
       'diese', 'dieser', 'dieses', 'meiner', 'einfach', 'bitte', 'nochmal', 'wieder']);
     const qWords = (fold(t).match(/[a-z0-9]{4,}/g) || []).filter((w) => !STOPW.has(w));
+    if (/ernaehrungsplan|essensplan|ki.?plan|wochenplan/.test(n)) return { intent:'domain', reply:'Den automatischen Ernährungsplan gibt es nicht mehr. Nutze den Tracker für Lebensmittel und „Meine Rezepte“, um eigene Rezepte aus der Lebensmittel-Datenbank anzulegen. Die Kalorien und Makros werden dabei aus deinen Zutaten berechnet.', quicks:[{label:'Lebensmittel suchen',send:'Wie viele Kalorien hat eine Banane?'},{label:'Essen eintragen',send:'Ich möchte Essen eintragen'}] };
     const helpRelevant = (a) => { const at = fold((a.title || '') + ' ' + (a.keywords || '') + ' ' + (a.slug || '')).match(/[a-z0-9]{4,}/g) || []; return qWords.some((w) => at.indexOf(w) >= 0); };
     const help = await searchHelp(t);
     // Den besten PASSENDEN nehmen, nicht nur den Bestplatzierten. Vorher gab der Bot auf, wenn

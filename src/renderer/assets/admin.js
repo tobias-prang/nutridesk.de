@@ -53,7 +53,7 @@
   function useDebounced(fn, ms) { var t = useRef(0); return function (arg) { clearTimeout(t.current); t.current = setTimeout(function () { fn(arg); }, ms); }; }
 
   var TABS = [
-    { id: 'users', label: 'Nutzer' }, { id: 'board', label: 'Board' }, { id: 'tickets', label: 'Tickets' },
+    { id: 'users', label: 'Nutzer' }, { id: 'tickets', label: 'Tickets' },
     { id: 'logs', label: 'Logs' }, { id: 'conv', label: 'Konversationen' }, { id: 'foods', label: 'Lebensmittel' },
     { id: 'recipes', label: 'Rezepte' }
   ];
@@ -65,53 +65,56 @@
     var s1 = useState(null), modal = s1[0], setModal = s1[1];
     var s2 = useState(false), busy = s2[0], setBusy = s2[1];
     var sL = useState(true), loading = sL[0], setLoading = sL[1];
-    function load() { setLoading(true); api('/admin/users').then(function (u) { setUsers(Array.isArray(u) ? u : []); }).catch(function (e) { toast(e.message); }).then(function () { setLoading(false); }); }
+    var sS = useState(null), storage = sS[0], setStorage = sS[1];
+    function fmtBytes(n) { n=Number(n)||0; if(n>=1073741824)return (n/1073741824).toFixed(n>=10737418240?0:1)+' GB'; if(n>=1048576)return (n/1048576).toFixed(n>=10485760?0:1)+' MB'; if(n>=1024)return Math.round(n/1024)+' KB'; return n+' B'; }
+    function load() { setLoading(true); Promise.all([api('/admin/users'),api('/admin/storage')]).then(function (r) { setUsers(Array.isArray(r[0]) ? r[0] : []);setStorage(r[1]||null); }).catch(function (e) { toast(e.message); }).then(function () { setLoading(false); }); }
     useEffect(function () { load(); }, []);
     function set(k, v) { setModal(function (m) { var n = Object.assign({}, m); n[k] = v; return n; }); }
-    function openNew() { setModal({ mode: 'new', email: '', name: '', password: '', admin: false }); }
+    function openNew() { if(!storage || !storage.mail_ready){toast('E-Mail-Versand ist noch nicht konfiguriert. Bitte zuerst SMTP in der Server-.env hinterlegen.');return;} setModal({ mode: 'new', email: '', firstName: '', lastName:'', username:'', admin: false }); }
     function openEdit(u) { setModal({ mode: 'edit', id: u.id, name: u.name, email: u.email, admin: !!u.admin, password: '', quotaGb: String(Math.round((u.cloud_quota || 2147483648) / 1073741824 * 10) / 10) }); }
     function saveNew() {
-      var m = modal; if (!m.email.trim() || !m.name.trim() || !m.password) { toast('Bitte E-Mail, Name und Passwort ausfüllen'); return; }
-      if (m.password.length < 8) { toast('Passwort braucht mind. 8 Zeichen'); return; }
-      setBusy(true); api('/admin/users', { method: 'POST', body: { email: m.email.trim(), name: m.name.trim(), password: m.password, admin: m.admin ? 1 : 0 } })
-        .then(function () { toast('Nutzer angelegt'); setModal(null); load(); }).catch(function (e) { toast(e.message); }).then(function () { setBusy(false); });
+      var m = modal; if (!m.email.trim() || !m.firstName.trim() || !m.lastName.trim() || !m.username.trim()) { toast('Bitte alle Angaben ausfüllen'); return; }
+      setBusy(true); api('/admin/users', { method: 'POST', body: { email: m.email.trim(), first_name:m.firstName.trim(),last_name:m.lastName.trim(),username:m.username.trim(), admin: m.admin ? 1 : 0 } })
+        .then(function () { toast('Nutzer angelegt und Zugangsdaten versendet'); setModal(null); load(); }).catch(function (e) { toast(e.message); }).then(function () { setBusy(false); });
     }
     function saveEdit() {
       var m = modal; if (!m.name.trim() || !m.email.trim()) { toast('Bitte Name und E-Mail ausfüllen'); return; }
-      if (m.password && m.password.length < 8) { toast('Neues Passwort mind. 8 Zeichen'); return; }
       setBusy(true); api('/admin/users/' + m.id, { method: 'PUT', body: { name: m.name.trim(), email: m.email.trim(), admin: m.admin ? 1 : 0 } })
-        .then(function () { return m.password ? api('/admin/users/' + m.id + '/password', { method: 'PUT', body: { password: m.password } }) : null; })
         .then(function () { toast('Nutzer aktualisiert'); setModal(null); load(); }).catch(function (e) { toast(e.message); }).then(function () { setBusy(false); });
     }
     function saveQuota() { var gb = parseFloat((modal.quotaGb || '0').replace(',', '.')); if (!(gb >= 0)) { toast('Ungültiger Wert'); return; } api('/admin/users/' + modal.id + '/quota', { method: 'PUT', body: { quota_gb: gb } }).then(function () { toast('Speicher: ' + gb + ' GB'); load(); }).catch(function (e) { toast(e.message); }); }
     function resetCd() { api('/admin/users/' + modal.id + '/cooldown', { method: 'DELETE' }).then(function () { toast('Cooldown zurückgesetzt'); }).catch(function (e) { toast(e.message); }); }
-    function del() { api('/admin/users/' + modal.id, { method: 'DELETE' }).then(function () { toast('Nutzer gelöscht'); setModal(null); load(); }).catch(function (e) { toast(e.message); }); }
+    function del() { if(!window.confirm('Diesen Nutzer und alle zugehörigen Daten wirklich löschen?'))return;api('/admin/users/' + modal.id, { method: 'DELETE' }).then(function () { toast('Nutzer gelöscht'); setModal(null); load(); }).catch(function (e) { toast(e.message); }); }
+    function sendPassword(){if(!storage || !storage.mail_ready){toast('E-Mail-Versand ist noch nicht konfiguriert.');return;}if(!window.confirm('Ein neues Passwort erzeugen und per E-Mail senden? Alle bestehenden Sitzungen werden beendet.'))return;setBusy(true);api('/admin/users/'+modal.id+'/send-password',{method:'POST',body:{}}).then(function(){toast('Neues Passwort wurde versendet');}).catch(function(e){toast(e.message);}).then(function(){setBusy(false);});}
     var rows = users.map(function (u) {
       return h('div', { key: u.id, style: { display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 0', borderBottom: '1px solid var(--chip)' } },
         h('div', { style: { width: '40px', height: '40px', borderRadius: '12px', background: 'var(--chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', fontWeight: 700, color: 'var(--ink3)' } }, (u.name || '?').slice(0, 1).toUpperCase()),
         h('div', { style: { flex: '1 1 auto', minWidth: 0 } },
           h('div', { style: { fontSize: '14px', fontWeight: 600 } }, u.name, u.admin ? h('span', { style: { marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--acc)', background: 'var(--acc-bg)', border: '1px solid var(--acc-bd)', padding: '2px 7px', borderRadius: '6px' } }, 'ADMIN') : null),
           h('div', { style: { fontSize: '12px', color: 'var(--ink3)', marginTop: '2px' } }, u.email + (u.username ? ' · @' + u.username : ''))),
+        h('div',{style:{fontSize:'11.5px',color:'var(--ink3)',textAlign:'right',minWidth:'92px'}},fmtBytes(u.storage_used),h('div',{style:{fontSize:'9.5px',color:'var(--mut)',marginTop:'2px'}},'belegt')),
         h('div', { onClick: function () { openEdit(u); }, style: btnGhost }, 'Bearbeiten'));
     });
     var modalEl = null;
     if (modal && modal.mode === 'new') modalEl = h(Modal, { title: 'Nutzer anlegen', onClose: function () { setModal(null); } },
       h(Field, { label: 'E-Mail', value: modal.email, onChange: function (e) { set('email', e.target.value); } }),
-      h(Field, { label: 'Name', value: modal.name, onChange: function (e) { set('name', e.target.value); } }),
-      h(Field, { label: 'Passwort', type: 'password', value: modal.password, onChange: function (e) { set('password', e.target.value); }, placeholder: 'mind. 8 Zeichen' }),
+      h(Field, { label: 'Vorname', value: modal.firstName, onChange: function (e) { set('firstName', e.target.value); } }),
+      h(Field, { label: 'Nachname', value: modal.lastName, onChange: function (e) { set('lastName', e.target.value); } }),
+      h(Field, { label: 'Benutzername', value: modal.username, onChange: function (e) { set('username', e.target.value); }, placeholder:'z.B. max.mustermann' }),
+      h('div',{style:{fontSize:'12px',color:'var(--ink3)',lineHeight:1.5,margin:'-3px 0 14px'}},'Ein sicheres Passwort wird automatisch erzeugt und von noreply@nutridesk.de per E-Mail versendet.'),
       h('label', { style: { display: 'flex', alignItems: 'center', gap: '9px', margin: '4px 0 18px', cursor: 'pointer', fontSize: '13.5px' } }, h('input', { type: 'checkbox', checked: modal.admin, onChange: function (e) { set('admin', e.target.checked); } }), 'Administrator'),
       h('div', { style: { display: 'flex', gap: '10px', justifyContent: 'flex-end' } }, h('div', { onClick: function () { setModal(null); }, style: btnGhost }, 'Abbrechen'), h('div', { onClick: busy ? null : saveNew, style: Object.assign({}, btnPrimary, busy ? { opacity: .6 } : {}) }, busy ? 'Speichert …' : 'Anlegen')));
     else if (modal && modal.mode === 'edit') modalEl = h(Modal, { title: 'Nutzer bearbeiten', onClose: function () { setModal(null); } },
       h(Field, { label: 'Name', value: modal.name, onChange: function (e) { set('name', e.target.value); } }),
       h(Field, { label: 'E-Mail', value: modal.email, onChange: function (e) { set('email', e.target.value); } }),
-      h(Field, { label: 'Neues Passwort (optional)', type: 'password', value: modal.password, onChange: function (e) { set('password', e.target.value); }, placeholder: 'leer = unverändert' }),
       h('label', { style: { display: 'flex', alignItems: 'center', gap: '9px', margin: '4px 0 14px', cursor: 'pointer', fontSize: '13.5px' } }, h('input', { type: 'checkbox', checked: modal.admin, onChange: function (e) { set('admin', e.target.checked); } }), 'Administrator'),
       h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '16px' } }, h('div', { style: { flex: 1 } }, h(Field, { label: 'Speicher (GB)', value: modal.quotaGb, onChange: function (e) { set('quotaGb', e.target.value); } })), h('div', { onClick: saveQuota, style: Object.assign({}, btnGhost, { marginBottom: '14px' }) }, 'Setzen')),
-      h('div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' } }, h('div', { onClick: resetCd, style: btnGhost }, 'Cooldown reset'), h('div', { onClick: del, style: btnDanger }, 'Löschen'), h('div', { style: { flex: 1 } }), h('div', { onClick: function () { setModal(null); }, style: btnGhost }, 'Abbrechen'), h('div', { onClick: saveEdit, style: btnPrimary }, 'Speichern')));
+      h('div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' } }, h('div', { onClick: resetCd, style: btnGhost }, 'Cooldown reset'), h('div',{onClick:sendPassword,style:btnGhost},'Neues Passwort schicken'),h('div', { onClick: del, style: btnDanger }, 'Löschen'), h('div', { style: { flex: 1 } }), h('div', { onClick: function () { setModal(null); }, style: btnGhost }, 'Abbrechen'), h('div', { onClick: saveEdit, style: btnPrimary }, 'Speichern')));
     return h('div', null,
       h('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' } },
-        head('Nutzerverwaltung', loading ? 'Lädt …' : users.length + ' Konten · anlegen, bearbeiten & Passwörter setzen'),
-        h('div', { onClick: openNew, style: btnPrimary }, '+ Nutzer anlegen')),
+        head('Nutzerverwaltung', loading ? 'Lädt …' : users.length + ' Konten · ' + (storage&&storage.mail_ready?'Zugangsdaten werden sicher per E-Mail versendet':'E-Mail-Versand noch nicht konfiguriert')),
+        h('div', { onClick: openNew, title:storage&&storage.mail_ready?'Nutzer anlegen':'Erfordert SMTP-Konfiguration', style:Object.assign({},btnPrimary,storage&&!storage.mail_ready?{opacity:.55}:null) }, storage&&!storage.mail_ready?'SMTP fehlt':'+ Nutzer anlegen')),
+      storage?h('div',{style:Object.assign({},box,{padding:'14px 18px',marginBottom:'14px',display:'flex',gap:'26px',flexWrap:'wrap'})},h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'SERVER BELEGT'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700},mono)},fmtBytes(storage.used))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'SERVER FREI'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700,color:'var(--acc)'},mono)},fmtBytes(storage.free))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'GESAMT'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700},mono)},fmtBytes(storage.total)))):null,
       h('div', { style: Object.assign({}, box, { padding: '8px 22px' }) },
         loading ? skRows(5, ['90px', '96px']) : (rows.length ? rows : empty('Keine Nutzer'))), modalEl);
   }
@@ -212,7 +215,7 @@
 
   function ReviewView(props) {
     var api = props.api, toast = props.toast;
-    var s0 = useState('pending'), view = s0[0], setView = s0[1];
+    var s0 = useState('all'), view = s0[0], setView = s0[1];
     var s1 = useState([]), list = s1[0], setList = s1[1];
     var s2 = useState(0), pending = s2[0], setPending = s2[1];
     var s3 = useState(true), loading = s3[0], setLoading = s3[1];
@@ -241,7 +244,7 @@
     var cards = list.map(function (r) {
       var fl = FLAG_LOOK[r.flag.worst];
       var st = r.status === 'approved' ? { c: '#34d399', t: 'Freigegeben' } : r.status === 'rejected' ? { c: '#f87171', t: 'Abgelehnt' } : { c: '#fbbf24', t: 'Wartet' };
-      return h('div', { key: r.id, style: Object.assign({}, box, { padding: '18px', marginBottom: '12px', borderColor: fl ? 'rgba(248,113,113,.35)' : 'var(--cardbd)' }) },
+      return h('div', { key: r.id, style: Object.assign({}, box, { padding: '18px', marginBottom: '12px', borderColor: fl ? 'rgba(248,113,113,.35)' : (r.status==='pending'&&r.is_public?'rgba(251,191,36,.6)':'var(--cardbd)'), background:r.status==='pending'&&r.is_public?'linear-gradient(135deg,rgba(251,191,36,.09),var(--panel))':'var(--panel)' }) },
         h('div', { style: { display: 'flex', alignItems: 'flex-start', gap: '12px' } },
           h('div', { style: { flex: '1 1 auto', minWidth: 0 } },
             h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' } },
@@ -262,10 +265,7 @@
     });
     return h('div', null,
       h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' } },
-        VIEWS_UR.map(function (v) {
-          return h('div', { key: v.id, onClick: function () { setView(v.id); }, style: chip(view === v.id) },
-            v.label, v.id === 'pending' && pending ? h('span', { style: { fontSize: '10.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '99px', background: view === 'pending' ? 'rgba(0,0,0,.18)' : 'var(--acc)', color: view === 'pending' ? '#0f1117' : '#0f1117' } }, String(pending)) : null);
-        }),
+        pending?h('div',{style:{padding:'7px 11px',borderRadius:'9px',background:'rgba(251,191,36,.12)',border:'1px solid rgba(251,191,36,.4)',color:'#fbbf24',fontSize:'12px',fontWeight:700}},pending+' zur Prüfung gelb markiert'):h('div',{style:{fontSize:'12px',color:'var(--ink3)'}},'Keine offenen Prüfungen'),
         h('div', { style: { flex: '1 1 auto' } }),
         h('div', { onClick: function () { if (!checking) checkup(); }, style: Object.assign({}, btnGhost, { opacity: checking ? .5 : 1 }) }, checking ? 'Prüfe …' : '🔍 Auf Troll-Rezepte prüfen')),
       check ? h('div', { style: Object.assign({}, box, { padding: '14px 18px', marginBottom: '12px', borderColor: check.flagged.length ? 'rgba(248,113,113,.35)' : 'rgba(52,211,153,.3)' }) },
@@ -291,18 +291,7 @@
           }, busy ? 'Lehnt ab …' : 'Ablehnen'))) : null);
   }
 
-  function RecipesTab(props) {
-    var s0 = useState('db'), seg = s0[0], setSeg = s0[1];
-    var s1 = useState(0), pend = s1[0], setPend = s1[1];
-    useEffect(function () { props.api('/admin/user-recipes?view=pending').then(function (r) { setPend((r && r.pending) || 0); }).catch(function () {}); }, [seg]);
-    return h('div', null,
-      head('Rezepte', seg === 'db' ? 'Die kuratierte Rezept-Datenbank der App' : 'Von Nutzern geteilte Rezepte prüfen und freigeben'),
-      h('div', { style: { display: 'flex', gap: '8px', marginBottom: '18px' } },
-        h('div', { onClick: function () { setSeg('db'); }, style: chip(seg === 'db') }, 'Datenbank'),
-        h('div', { onClick: function () { setSeg('review'); }, style: chip(seg === 'review') }, 'Freigaben',
-          pend ? h('span', { style: { fontSize: '10.5px', fontWeight: 800, padding: '1px 6px', borderRadius: '99px', background: seg === 'review' ? 'rgba(0,0,0,.18)' : 'var(--acc)', color: '#0f1117' } }, String(pend)) : null)),
-      seg === 'db' ? h(RecipeDbView, props) : h(ReviewView, props));
-  }
+  function RecipesTab(props) { return h('div',null,head('Rezepte','Nur von Nutzern erstellte Rezepte · offene Prüfungen sind gelb hervorgehoben'),h(ReviewView,props)); }
 
   // ---------------- Tickets ----------------
   function TicketsTab(props) {
@@ -368,58 +357,8 @@
         : (rows.length ? rows : empty('Keine Konversationen')));
   }
 
-  // ---------------- Board (Kanban, Lese/Basis) ----------------
-  function BoardTab(props) {
-    var api = props.api, toast = props.toast;
-    var s0 = useState({ lists: [], cards: [] }), data = s0[0], setData = s0[1];
-    var sL = useState(true), loading = sL[0], setLoading = sL[1];
-    var sP = useState(null), prompt = sP[0], setPrompt = sP[1];
-    var sB = useState(false), busy = sB[0], setBusy = sB[1];
-    function load() { setLoading(true); return api('/board').then(function (b) { setData({ lists: (b && b.lists) || [], cards: (b && b.cards) || [] }); }).catch(function (e) { toast(e.message); }).then(function () { setLoading(false); }); }
-    useEffect(function () { load(); }, []);
-    // Tauri-WebView kennt window.prompt nicht -> eigenes Eingabe-Modal statt prompt().
-    function submitPrompt() {
-      if (!prompt || busy) return;
-      var val = (prompt.value || '').trim();
-      if (!val) { toast(prompt.kind === 'list' ? 'Bitte einen Listennamen eingeben' : 'Bitte einen Kartentitel eingeben'); return; }
-      setBusy(true);
-      var req = prompt.kind === 'list'
-        ? api('/board/lists', { method: 'POST', body: { name: val } })
-        : api('/board/cards', { method: 'POST', body: { list_id: prompt.listId, title: val } });
-      req.then(function () { setPrompt(null); return load(); }).catch(function (e) { toast(e.message); }).then(function () { setBusy(false); });
-    }
-    function delList(id) { api('/board/lists/' + id, { method: 'DELETE' }).then(load).catch(function (e) { toast(e.message); }); }
-    var cols = data.lists.map(function (l) {
-      var cards = data.cards.filter(function (c) { return c.list_id === l.id; });
-      return h('div', { key: l.id, style: { flex: '0 0 260px', background: 'var(--bg2)', border: '1px solid var(--line3)', borderRadius: '14px', padding: '12px' } },
-        h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' } },
-          h('div', { style: { fontSize: '13px', fontWeight: 700 } }, l.name),
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: '8px' } },
-            h('div', { style: { fontSize: '11px', color: 'var(--ink3)' } }, cards.length),
-            h('div', { onClick: function () { delList(l.id); }, title: 'Liste löschen', style: { fontSize: '13px', color: 'var(--ink3)', cursor: 'pointer', lineHeight: 1 } }, '✕'))),
-        cards.map(function (c) { return h('div', { key: c.id, style: Object.assign({}, box, { padding: '10px 12px', marginBottom: '8px', fontSize: '13px' }) }, c.title); }),
-        h('div', { onClick: function () { setPrompt({ kind: 'card', listId: l.id, value: '' }); }, style: { fontSize: '12.5px', color: 'var(--ink3)', cursor: 'pointer', padding: '6px 4px' } }, '+ Karte'));
-    });
-    var modalEl = prompt ? h(Modal, { title: prompt.kind === 'list' ? 'Neue Liste' : 'Neue Karte', onClose: function () { setPrompt(null); } },
-      h('input', {
-        autoFocus: true, value: prompt.value,
-        onChange: function (e) { var v = e.target.value; setPrompt(function (p) { return Object.assign({}, p, { value: v }); }); },
-        onKeyDown: function (e) { if (e.key === 'Enter') submitPrompt(); else if (e.key === 'Escape') setPrompt(null); },
-        placeholder: prompt.kind === 'list' ? 'Name der Liste …' : 'Kartentitel …', style: inputStyle
-      }),
-      h('div', { style: { display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '18px' } },
-        h('div', { onClick: function () { setPrompt(null); }, style: btnGhost }, 'Abbrechen'),
-        h('div', { onClick: submitPrompt, style: Object.assign({}, btnPrimary, busy ? { opacity: .6 } : {}) }, busy ? 'Legt an …' : 'Anlegen'))) : null;
-    return h('div', null,
-      h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' } }, head('Board', loading ? 'Lädt …' : data.lists.length + ' Listen · ' + data.cards.length + ' Karten'), h('div', { onClick: function () { setPrompt({ kind: 'list', value: '' }); }, style: btnPrimary }, '+ Liste')),
-      h('div', { style: { display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '8px', alignItems: 'flex-start' } },
-        loading ? [0, 1, 2].map(function (i) { return h('div', { key: i, style: { flex: '0 0 260px', background: 'var(--bg2)', border: '1px solid var(--line3)', borderRadius: '14px', padding: '12px' } }, skBar('50%', 13), h('div', { style: { height: '12px' } }), skBar('100%', 42), h('div', { style: { height: '8px' } }), skBar('100%', 42)); })
-          : (cols.length ? cols : empty('Kein Board'))),
-      modalEl);
-  }
-
   // ---------------- Haupt-Komponente ----------------
-  var VIEWS = { users: UsersTab, logs: LogsTab, foods: FoodsTab, recipes: RecipesTab, tickets: TicketsTab, conv: ConvTab, board: BoardTab };
+  var VIEWS = { users: UsersTab, logs: LogsTab, foods: FoodsTab, recipes: RecipesTab, tickets: TicketsTab, conv: ConvTab };
   function AdminPanel(props) {
     var api = props.api, toast = props.toast || function () {};
     var tb = useState('users'), tab = tb[0], setTab = tb[1];

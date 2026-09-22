@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS loans (
   rate          DECIMAL(8,2) NOT NULL,
   interest      DECIMAL(6,4) NOT NULL DEFAULT 0,
   paid_months   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  total_installments SMALLINT UNSIGNED NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_loans_user (user_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -168,6 +169,9 @@ CREATE TABLE IF NOT EXISTS goals (
   saved         DECIMAL(10,2) NOT NULL DEFAULT 0,
   target        DECIMAL(10,2) NOT NULL,
   rate          DECIMAL(8,2) NOT NULL,
+  auto_save     TINYINT(1) NOT NULL DEFAULT 0,
+  start_date    DATE NULL,
+  target_date   DATE NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_goals_user (user_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -253,6 +257,77 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   content       VARCHAR(500) NOT NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- KI-Assistent: strukturierte Wissens- und Lernnotizen mit Bereichen und Verknüpfungen.
+-- Bewusst getrennt von den passwortgeschützten Tresor-Notizen oben.
+CREATE TABLE IF NOT EXISTS assistant_note_sections (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT UNSIGNED NOT NULL,
+  external_id   VARCHAR(100) NULL,
+  title         VARCHAR(120) NOT NULL,
+  icon          VARCHAR(50) NOT NULL DEFAULT 'notebook-tabs',
+  sort_order    INT NOT NULL DEFAULT 0,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_assistant_section_external (user_id, external_id),
+  KEY idx_assistant_sections_user (user_id, sort_order),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS assistant_notes (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT UNSIGNED NOT NULL,
+  section_id    INT UNSIGNED NOT NULL,
+  external_id   VARCHAR(120) NULL,
+  title         VARCHAR(180) NOT NULL,
+  content       MEDIUMTEXT NULL,
+  tags_json     TEXT NULL,
+  sort_order    INT NOT NULL DEFAULT 0,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_assistant_note_external (user_id, external_id),
+  KEY idx_assistant_notes_user_section (user_id, section_id, sort_order),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (section_id) REFERENCES assistant_note_sections(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS assistant_note_relations (
+  user_id       INT UNSIGNED NOT NULL,
+  note_id       INT UNSIGNED NOT NULL,
+  related_id    INT UNSIGNED NOT NULL,
+  PRIMARY KEY (user_id, note_id, related_id),
+  KEY idx_assistant_rel_related (related_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (note_id) REFERENCES assistant_notes(id) ON DELETE CASCADE,
+  FOREIGN KEY (related_id) REFERENCES assistant_notes(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+CREATE TABLE IF NOT EXISTS assistant_quick_notes (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT UNSIGNED NOT NULL,
+  text          VARCHAR(500) NOT NULL,
+  sort_order    INT NOT NULL DEFAULT 0,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_assistant_quick_user (user_id, sort_order),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Privater Couple Space: genau zwei Konten, Einmal-Einladung, gemeinsames Zeichenbrett
+CREATE TABLE IF NOT EXISTS couple_spaces (
+  id              INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  owner_id        INT UNSIGNED NOT NULL UNIQUE,
+  partner_id      INT UNSIGNED NULL UNIQUE,
+  invite_hash     CHAR(64) NULL UNIQUE,
+  invite_token_enc TEXT NULL,
+  invite_expires  DATETIME NULL,
+  started_at      DATETIME NULL,
+  owner_status    VARCHAR(24) NOT NULL DEFAULT 'happy',
+  partner_status  VARCHAR(24) NOT NULL DEFAULT 'happy',
+  board_json      MEDIUMTEXT NULL,
+  board_version   INT UNSIGNED NOT NULL DEFAULT 0,
+  updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (partner_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 -- user_settings hat zusätzlich: vault_pin_hash VARCHAR(100) NULL (PIN für den Tresor, bcrypt)
 
@@ -342,6 +417,38 @@ ALTER TABLE users
   ADD COLUMN IF NOT EXISTS zip VARCHAR(20) NULL,
   ADD COLUMN IF NOT EXISTS city VARCHAR(80) NULL,
   ADD COLUMN IF NOT EXISTS country VARCHAR(60) NULL;
+
+-- Zwei-Faktor-Authentifizierung (TOTP). Das Secret wird serverseitig mit
+-- AES-256-GCM verschluesselt; pending ist nur waehrend der Einrichtung gesetzt.
+ALTER TABLE users
+  ADD COLUMN IF NOT EXISTS totp_secret_enc TEXT NULL,
+  ADD COLUMN IF NOT EXISTS totp_pending_enc TEXT NULL,
+  ADD COLUMN IF NOT EXISTS totp_enabled TINYINT(1) NOT NULL DEFAULT 0;
+
+-- Persistente FinTS-3.0-Bankparameter. Zugangsdaten bleiben separat AES-GCM-verschlüsselt;
+-- banking_info enthält ausschließlich BPD/UPD, Konten und TAN-Verfahrensmetadaten.
+ALTER TABLE bank_connections
+  ADD COLUMN IF NOT EXISTS banking_info MEDIUMTEXT NULL,
+  ADD COLUMN IF NOT EXISTS tan_method INT NULL,
+  ADD COLUMN IF NOT EXISTS tan_media VARCHAR(160) NULL,
+  ADD COLUMN IF NOT EXISTS client_version VARCHAR(40) NULL;
+
+-- Bilder in strukturierten Notizen. Die Dateien liegen ausserhalb des Webroots
+-- unter STORAGE_ROOT/note-images/{user_id}; Downloads sind immer authentifiziert.
+CREATE TABLE IF NOT EXISTS assistant_note_images (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT UNSIGNED NOT NULL,
+  note_id       INT UNSIGNED NOT NULL,
+  name          VARCHAR(200) NOT NULL,
+  stored_name   VARCHAR(80) NOT NULL,
+  size          BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  mime          VARCHAR(80) NOT NULL,
+  scan_status   VARCHAR(24) NOT NULL DEFAULT 'clean',
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_ani_user_note (user_id, note_id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (note_id) REFERENCES assistant_notes(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
 
 -- KI-Multi-Chat: Titel pro Session (2026-07-14)
 ALTER TABLE bot_sessions ADD COLUMN IF NOT EXISTS title VARCHAR(120) NULL;
