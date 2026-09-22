@@ -80,7 +80,7 @@ const asyncRoute = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 
 // Öffentlicher Changelog aus GitHub-Releases. Der kurze Cache schützt die GitHub-API
 // vor unnötigen Aufrufen; bei einem temporären GitHub-Ausfall wird der letzte Stand geliefert.
-const CHANGELOG_REPO = process.env.GITHUB_REPOSITORY || 'tobias-prang/NutriDesk';
+const CHANGELOG_REPO = process.env.GITHUB_REPOSITORY || 'tobias-prang/nutridesk.de';
 const CHANGELOG_FALLBACK = [{v:'1.0.4',title:'NutriDesk Web-App',date:'2026-07-18',changes:[
   {t:'new',text:'Bot-Fähigkeiten, Einkaufsliste und Neuigkeiten erweitert'},
   {t:'fix',text:'Lebensmittelbilder und Finanz-Routing verbessert'},
