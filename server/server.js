@@ -1534,6 +1534,9 @@ app.get('/bank/search', auth, rateLimitUser('bank-search', 60), asyncRoute(async
 function friendlyFintsError(err, action) {
   const raw = String(err && err.message ? err.message : err || '');
   const codes = [...raw.matchAll(/\b(9\d{3})\b/g)].map(m => m[1]);
+  if (codes.includes('9955') && /ger[aä]tebezeichnung|tan.?medium/i.test(raw)) {
+    return 'Die Sparkasse kennt die angegebene pushTAN-Gerätebezeichnung nicht (Code 9955). Trage exakt die Gerätebezeichnung aus deinem Online-Banking unter „pushTAN verwalten“ ein – nicht den Handymodellnamen und nicht das App-Passwort.';
+  }
   if (codes.includes('9050') || codes.includes('9800') || codes.includes('9010')) {
     return 'Die Bank hat den FinTS-Dialog abgelehnt (Code ' + [...new Set(codes)].join('/') + '). Prüfe, ob du den bankeigenen Online-Banking-Anmeldenamen (z. B. VR-NetKey oder Legitimations-ID – nicht die IBAN) verwendest, FinTS/HBCI im Banking freigeschaltet ist und keine Erstanmeldung oder PIN-Änderung offen ist.';
   }
@@ -1548,6 +1551,7 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
   const blz = vStr(req.body.blz, 'Bankleitzahl', 20).replace(/\s/g, '');
   const login = vStr(req.body.login, 'Anmeldename', 120);
   const pin = vStr(req.body.pin, 'PIN', 100);
+  const requestedTanMedia = vStr(req.body.tan_media, 'pushTAN-Gerätebezeichnung', 120, { optional: true });
   let url;
   try { url = await resolveFintsUrl(pool, blz); }
   catch (e) {
@@ -1563,7 +1567,15 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
     const methods=config.availableTanMethods||[];
     if(methods.length&&!config.selectedTanMethod){
       const requested=Number(req.body.tan_method)||methods[0].id;const method=client.selectTanMethod(requested);
-      if(method.activeTanMedia&&method.activeTanMedia.length)client.selectTanMedia(String(req.body.tan_media||method.activeTanMedia[0]));
+      if(requestedTanMedia){
+        // Beim ersten Dialog kennt lib-fints die Mediennamen noch nicht. Direkt setzen,
+        // damit Sparkassen nicht den ungueltigen Bibliotheks-Platzhalter "default" erhalten.
+        config.tanMediaName=requestedTanMedia;
+      }else if(method.activeTanMedia&&method.activeTanMedia.length){
+        client.selectTanMedia(method.activeTanMedia[0]);
+      }else if(method.tanMediaRequirement===2){
+        throw new Error('9955 Gerätebezeichnung für das pushTAN-Medium erforderlich');
+      }
       response=await client.synchronize();requireFintsSuccess(response,'Die Verbindung');
       if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,method));}
     }
