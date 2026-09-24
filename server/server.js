@@ -1480,14 +1480,17 @@ function requireFintsSuccess(response, action) {
   err.bankAnswers = response && response.bankAnswers;
   throw err;
 }
-function tanPayload(token, response, method) {
+function tanPayload(token, response, method, progress) {
   const decoupled=!!(method && method.isDecoupled);
   return {
     ok:false, requiresTan:true, tanToken:token,
     challenge:decoupled ? 'Authentifizierung noch ausstehend' : String(response.tanChallenge || 'Bitte bestätige den Auftrag mit deiner Bank.').slice(0,1000),
     decoupled,
-    pollIntervalMs:2000,
+    // Sparkassen können zu häufige decoupled-Statusabfragen mit einem abgebrochenen
+    // Dialog (9010) beantworten. Fünf Sekunden sind für pushTAN robust genug.
+    pollIntervalMs:5000,
     media:response.tanMediaName || (method && method.activeTanMedia && method.activeTanMedia[0]) || null,
+    progress:progress||null,
   };
 }
 function putPendingFints(uid, value) {
@@ -1516,6 +1519,7 @@ function statementRanges(days,chunkDays=365){
 function localIsoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function rowsForRange(statements,range){const lo=localIsoDate(range.from),hi=localIsoDate(range.to);return normalizeModernStatements(statements).filter(r=>r.date>=lo&&r.date<=hi);}
 function statementDateBounds(rows){const dates=rows.map(r=>r.date).filter(Boolean).sort();return {oldestDate:dates[0]||null,newestDate:dates[dates.length-1]||null};}
+function statementProgress(p){const total=Math.max(1,(p.ranges||[]).length*Math.max(1,(p.accounts||[]).length));const done=Math.min(total,p.rangeIndex*Math.max(1,(p.accounts||[]).length)+p.accountIndex);return {percent:Math.max(1,Math.min(99,Math.round(done/total*100))),found:(p.rows||[]).length,current:Math.min((p.rangeIndex||0)+1,(p.ranges||[]).length),totalRanges:(p.ranges||[]).length};}
 async function continueStatementFetch(client,accounts,ranges,rangeIndex=0,accountIndex=0,rows=[]){
   for(let ri=rangeIndex;ri<ranges.length;ri++){
     const range=ranges[ri],start=ri===rangeIndex?accountIndex:0;
@@ -1688,7 +1692,7 @@ app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(
     const accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
     const ranges=statementRanges(days);
     const out=await continueStatementFetch(client,accounts,ranges);
-    if(out.pending){const token=putPendingFints(req.uid,{kind:'sync',client,connectionId:c.id,rows:out.rows,...out.pending});return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod));}
+    if(out.pending){const state={kind:'sync',client,connectionId:c.id,rows:out.rows,...out.pending};const token=putPendingFints(req.uid,state);return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod,statementProgress(state)));}
     const result=await stageRows(req.uid,out.rows,'bank',c);await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),config.tanMediaName||null,c.id,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped,historyStopped:!!out.historyStopped,...statementDateBounds(out.rows)});
   }catch(e){logEvent('warning','bank_sync_failed','FinTS-Abruf fehlgeschlagen: '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Der Bank-Abruf'));}
@@ -1699,15 +1703,15 @@ app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), as
   if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='sync'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte den Abruf neu starten.');
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
   try{const response=await pending.client.getAccountStatementsWithTan(pending.response.tanReference,tan);
-    if(response.requiresTan){pending.response=response;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod));}
+    if(response.requiresTan){pending.response=response;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod,statementProgress(pending)));}
     requireFintsSuccess(response,'Die Freigabe');
     const currentRange=pending.ranges[pending.rangeIndex];
     pending.rows.push(...rowsForRange(response.statements,currentRange));
     const out=await continueStatementFetch(pending.client,pending.accounts,pending.ranges,pending.rangeIndex,pending.accountIndex+1,pending.rows);
-    if(out.pending){Object.assign(pending,out.pending,{rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod));}
+    if(out.pending){Object.assign(pending,out.pending,{rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod,statementProgress(pending)));}
     pendingFints.delete(token);const [[connection]]=await pool.execute('SELECT id,bank_name,account_iban FROM bank_connections WHERE id=? AND user_id=?',[pending.connectionId,req.uid]);const result=await stageRows(req.uid,out.rows,'bank',connection||{id:pending.connectionId});await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.client.config.tanMediaName||null,pending.connectionId,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped,historyStopped:!!out.historyStopped,...statementDateBounds(out.rows)});
-  }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
+  }catch(e){logEvent('warning','bank_sync_tan_failed','FinTS-Freigabe fehlgeschlagen: '+String(e.message||e).slice(0,400),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
 
 app.delete('/bank/:id', auth, asyncRoute(async (req, res) => {
