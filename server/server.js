@@ -1520,13 +1520,24 @@ function localIsoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padSt
 function rowsForRange(statements,range){const lo=localIsoDate(range.from),hi=localIsoDate(range.to);return normalizeModernStatements(statements).filter(r=>r.date>=lo&&r.date<=hi);}
 function statementDateBounds(rows){const dates=rows.map(r=>r.date).filter(Boolean).sort();return {oldestDate:dates[0]||null,newestDate:dates[dates.length-1]||null};}
 function statementProgress(p){const total=Math.max(1,(p.ranges||[]).length*Math.max(1,(p.accounts||[]).length));const done=Math.min(total,p.rangeIndex*Math.max(1,(p.accounts||[]).length)+p.accountIndex);return {percent:Math.max(1,Math.min(99,Math.round(done/total*100))),found:(p.rows||[]).length,current:Math.min((p.rangeIndex||0)+1,(p.ranges||[]).length),totalRanges:(p.ranges||[]).length};}
+async function requestStatements(client,account,range){
+  let response=await client.getAccountStatements(account,range.from,range.to,true);
+  const answers=bankAnswerText(response);
+  // Manche Sparkassen melden HKCAZ/CAMT zwar in der UPD als erlaubt, erzeugen dafür
+  // bei einem Umsatzabruf aber keine Challenge (3905/9010). HKKAZ/MT940 ist für
+  // dasselbe Konto ebenfalls freigegeben und liefert in diesem Fall die Umsätze.
+  if(!response.requiresTan&&!response.success&&/\b3905\b/.test(answers)&&/\b9010\b/.test(answers)&&client.config.isAccountTransactionSupported(account,'HKKAZ')){
+    response=await client.getAccountStatements(account,range.from,range.to,false);
+  }
+  return response;
+}
 async function continueStatementFetch(client,accounts,ranges,rangeIndex=0,accountIndex=0,rows=[]){
   for(let ri=rangeIndex;ri<ranges.length;ri++){
     const range=ranges[ri],start=ri===rangeIndex?accountIndex:0;
     for(let i=start;i<accounts.length;i++){
       const account=accounts[i];if(!client.canGetAccountStatements(account))continue;
       let response;
-      try{response=await client.getAccountStatements(account,range.from,range.to,true);}
+      try{response=await requestStatements(client,account,range);}
       catch(e){if(ri>0&&rows.length)return {rows,historyStopped:true};throw e;}
       if(response.requiresTan)return {rows,pending:{rangeIndex:ri,accountIndex:i,accounts,ranges,response}};
       requireFintsSuccess(response,'Der Bank-Abruf');
