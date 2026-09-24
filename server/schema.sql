@@ -125,6 +125,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   amount        DECIMAL(10,2) NOT NULL,
   tag           VARCHAR(40) NULL,
   planned       TINYINT(1) NOT NULL DEFAULT 0,
+  bank_connection_id INT UNSIGNED NULL,
+  bank_name     VARCHAR(120) NULL,
+  account_iban  VARCHAR(40) NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_tx_user_date (user_id, `date`),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -257,6 +260,25 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   content       VARCHAR(500) NOT NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- Prüfliste für CSV- und FinTS-Importe vor der Übernahme ins Finanzbuch.
+CREATE TABLE IF NOT EXISTS staging_transactions (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  `date` DATE NOT NULL,
+  name VARCHAR(200) NOT NULL,
+  category VARCHAR(60) NULL,
+  amount DECIMAL(12,2) NOT NULL,
+  info VARCHAR(400) NULL,
+  source VARCHAR(20) DEFAULT 'csv',
+  dedup_key VARCHAR(120) NULL,
+  bank_connection_id INT UNSIGNED NULL,
+  bank_name VARCHAR(120) NULL,
+  account_iban VARCHAR(40) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_staging_user (user_id),
+  KEY idx_staging_dedup (user_id, dedup_key)
 ) ENGINE=InnoDB;
 
 -- KI-Assistent: strukturierte Wissens- und Lernnotizen mit Bereichen und Verknüpfungen.
@@ -432,6 +454,17 @@ ALTER TABLE bank_connections
   ADD COLUMN IF NOT EXISTS tan_method INT NULL,
   ADD COLUMN IF NOT EXISTS tan_media VARCHAR(160) NULL,
   ADD COLUMN IF NOT EXISTS client_version VARCHAR(40) NULL;
+
+-- Herkunftskonto von importierten Finanzbuchungen als Snapshot speichern. Dadurch
+-- bleibt die Zuordnung auch sichtbar, wenn eine Bankverbindung später getrennt wird.
+ALTER TABLE staging_transactions
+  ADD COLUMN IF NOT EXISTS bank_connection_id INT UNSIGNED NULL,
+  ADD COLUMN IF NOT EXISTS bank_name VARCHAR(120) NULL,
+  ADD COLUMN IF NOT EXISTS account_iban VARCHAR(40) NULL;
+ALTER TABLE transactions
+  ADD COLUMN IF NOT EXISTS bank_connection_id INT UNSIGNED NULL,
+  ADD COLUMN IF NOT EXISTS bank_name VARCHAR(120) NULL,
+  ADD COLUMN IF NOT EXISTS account_iban VARCHAR(40) NULL;
 
 -- Mehrere Bankverbindungen pro Nutzer werden mit
 -- server/scripts/migrate-bank-connections.sql migriert.

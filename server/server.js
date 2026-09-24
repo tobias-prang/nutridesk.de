@@ -1388,18 +1388,21 @@ app.post('/games/daily-login', auth, asyncRoute(async (req, res) => {
 // Der Client parst die CSV lokal (Datenschutz) und schickt normalisierte Zeilen als EINEN Bulk-Request.
 const STAGING_CAP = 5000;
 // Gemeinsame Dedup-+-Bulk-Insert-Logik für CSV und Bank (dedup gegen gestagte UND gebuchte Umsätze).
-async function stageRows(uid, rows, source) {
+async function stageRows(uid, rows, source, bankConnection = null) {
   const [[cnt]] = await pool.execute('SELECT COUNT(*) AS n FROM staging_transactions WHERE user_id = ?', [uid]);
   let room = STAGING_CAP - cnt.n;
   if (room <= 0) throw bad('Zu viele nicht gebuchte Transaktionen, bitte erst übernehmen oder aufräumen.');
-  const dedupKey=(date,amount,name,info)=>crypto.createHash('sha256').update([date,(Math.round(Number(amount)*100)/100).toFixed(2),String(name||'').trim(),String(info||'').trim()].join('\u001f')).digest('hex');
+  const accountId=bankConnection&&Number(bankConnection.id)>0?Number(bankConnection.id):null;
+  const accountName=bankConnection?String(bankConnection.bank_name||'').slice(0,120)||null:null;
+  const accountIban=bankConnection?String(bankConnection.account_iban||'').slice(0,40)||null:null;
+  const dedupKey=(date,amount,name,info,connectionId)=>crypto.createHash('sha256').update([connectionId||0,date,(Math.round(Number(amount)*100)/100).toFixed(2),String(name||'').trim(),String(info||'').trim()].join('\u001f')).digest('hex');
   const seen = new Set();
-  const [stg] = await pool.execute('SELECT `date`,amount,name,info FROM staging_transactions WHERE user_id = ?', [uid]);
-  for (const r of stg) seen.add(dedupKey(r.date,r.amount,r.name,r.info));
+  const [stg] = await pool.execute('SELECT `date`,amount,name,info,bank_connection_id FROM staging_transactions WHERE user_id = ?', [uid]);
+  for (const r of stg) seen.add(dedupKey(r.date,r.amount,r.name,r.info,r.bank_connection_id));
   // Gesamte Historie vergleichen, nicht nur die letzten 800 Tage. Sonst würden bei
   // einem Zehnjahresabruf bereits gebuchte Altumsätze erneut in „Nicht gebucht“ landen.
-  const [tx] = await pool.execute('SELECT `date`,amount,name,info FROM transactions WHERE user_id = ?', [uid]);
-  for (const r of tx) seen.add(dedupKey(r.date,r.amount,r.name,r.info));
+  const [tx] = await pool.execute('SELECT `date`,amount,name,info,bank_connection_id FROM transactions WHERE user_id = ?', [uid]);
+  for (const r of tx) seen.add(dedupKey(r.date,r.amount,r.name,r.info,r.bank_connection_id));
   const vals = [];
   let skipped = 0;
   for (const r of rows) {
@@ -1412,14 +1415,14 @@ async function stageRows(uid, rows, source) {
     } catch (e) { skipped++; continue; }
     const info = (r.info != null && r.info !== '') ? String(r.info).slice(0, 400) : null;
     const category = r.category ? String(r.category).slice(0, 60) : null;
-    const key = dedupKey(date,amount,name,info);
+    const key = dedupKey(date,amount,name,info,accountId);
     if (seen.has(key)) { skipped++; continue; }
     seen.add(key);
-    vals.push([uid, date, name, category, amount, info, source, key.slice(0, 120)]);
+    vals.push([uid, date, name, category, amount, info, source, key.slice(0, 120), accountId, accountName, accountIban]);
     room--;
   }
   if (vals.length) {
-    await pool.query('INSERT INTO staging_transactions (user_id, `date`, name, category, amount, info, source, dedup_key) VALUES ?', [vals]);
+    await pool.query('INSERT INTO staging_transactions (user_id, `date`, name, category, amount, info, source, dedup_key, bank_connection_id, bank_name, account_iban) VALUES ?', [vals]);
   }
   return { added: vals.length, skipped };
 }
@@ -1445,8 +1448,8 @@ app.post('/staging/book', auth, rateLimitUser('staging-book', 30, 60000), asyncR
   if (!rows.length) return res.json({ booked: 0 });
   const [[cnt]] = await pool.execute('SELECT COUNT(*) AS n FROM transactions WHERE user_id = ?', [req.uid]);
   if (cnt.n + rows.length > 200000) throw bad('Transaktions-Limit erreicht.');
-  const vals = rows.map(r => [req.uid, r.date, r.name, r.category || (parseFloat(r.amount) >= 0 ? 'Einzahlung' : 'Sonstiges'), r.amount, r.info || null, 'Bank', 0]);
-  await pool.query('INSERT INTO transactions (user_id, `date`, name, category, amount, info, tag, planned) VALUES ?', [vals]);
+  const vals = rows.map(r => [req.uid, r.date, r.name, r.category || (parseFloat(r.amount) >= 0 ? 'Einzahlung' : 'Sonstiges'), r.amount, r.info || null, r.source==='bank'?'Bank':'CSV', 0, r.bank_connection_id||null, r.bank_name||null, r.account_iban||null]);
+  await pool.query('INSERT INTO transactions (user_id, `date`, name, category, amount, info, tag, planned, bank_connection_id, bank_name, account_iban) VALUES ?', [vals]);
   await pool.execute(`DELETE FROM staging_transactions WHERE user_id = ? AND id IN (${ph})`, [req.uid, ...ids]);
   res.json({ booked: rows.length });
 }));
@@ -1683,7 +1686,7 @@ app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(
     const ranges=statementRanges(days);
     const out=await continueStatementFetch(client,accounts,ranges);
     if(out.pending){const token=putPendingFints(req.uid,{kind:'sync',client,connectionId:c.id,rows:out.rows,...out.pending});return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod));}
-    const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),config.tanMediaName||null,c.id,req.uid]);
+    const result=await stageRows(req.uid,out.rows,'bank',c);await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),config.tanMediaName||null,c.id,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped,historyStopped:!!out.historyStopped,...statementDateBounds(out.rows)});
   }catch(e){logEvent('warning','bank_sync_failed','FinTS-Abruf fehlgeschlagen: '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Der Bank-Abruf'));}
 }));
@@ -1698,7 +1701,7 @@ app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), as
     pending.rows.push(...rowsForRange(response.statements,currentRange));
     const out=await continueStatementFetch(pending.client,pending.accounts,pending.ranges,pending.rangeIndex,pending.accountIndex+1,pending.rows);
     if(out.pending){Object.assign(pending,out.pending,{rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod));}
-    pendingFints.delete(token);const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.client.config.tanMediaName||null,pending.connectionId,req.uid]);
+    pendingFints.delete(token);const [[connection]]=await pool.execute('SELECT id,bank_name,account_iban FROM bank_connections WHERE id=? AND user_id=?',[pending.connectionId,req.uid]);const result=await stageRows(req.uid,out.rows,'bank',connection||{id:pending.connectionId});await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.client.config.tanMediaName||null,pending.connectionId,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped,historyStopped:!!out.historyStopped,...statementDateBounds(out.rows)});
   }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
