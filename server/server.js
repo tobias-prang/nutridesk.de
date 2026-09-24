@@ -1392,11 +1392,14 @@ async function stageRows(uid, rows, source) {
   const [[cnt]] = await pool.execute('SELECT COUNT(*) AS n FROM staging_transactions WHERE user_id = ?', [uid]);
   let room = STAGING_CAP - cnt.n;
   if (room <= 0) throw bad('Zu viele nicht gebuchte Transaktionen, bitte erst übernehmen oder aufräumen.');
+  const dedupKey=(date,amount,name,info)=>crypto.createHash('sha256').update([date,(Math.round(Number(amount)*100)/100).toFixed(2),String(name||'').trim(),String(info||'').trim()].join('\u001f')).digest('hex');
   const seen = new Set();
-  const [stg] = await pool.execute('SELECT dedup_key FROM staging_transactions WHERE user_id = ? AND dedup_key IS NOT NULL', [uid]);
-  for (const r of stg) seen.add(r.dedup_key);
-  const [tx] = await pool.execute("SELECT CONCAT(`date`,'|',FORMAT(amount,2),'|',LEFT(name,40)) AS k FROM transactions WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 800 DAY)", [uid]);
-  for (const r of tx) seen.add(r.k);
+  const [stg] = await pool.execute('SELECT `date`,amount,name,info FROM staging_transactions WHERE user_id = ?', [uid]);
+  for (const r of stg) seen.add(dedupKey(r.date,r.amount,r.name,r.info));
+  // Gesamte Historie vergleichen, nicht nur die letzten 800 Tage. Sonst würden bei
+  // einem Zehnjahresabruf bereits gebuchte Altumsätze erneut in „Nicht gebucht“ landen.
+  const [tx] = await pool.execute('SELECT `date`,amount,name,info FROM transactions WHERE user_id = ?', [uid]);
+  for (const r of tx) seen.add(dedupKey(r.date,r.amount,r.name,r.info));
   const vals = [];
   let skipped = 0;
   for (const r of rows) {
@@ -1409,7 +1412,7 @@ async function stageRows(uid, rows, source) {
     } catch (e) { skipped++; continue; }
     const info = (r.info != null && r.info !== '') ? String(r.info).slice(0, 400) : null;
     const category = r.category ? String(r.category).slice(0, 60) : null;
-    const key = date + '|' + (Math.round(amount * 100) / 100).toFixed(2) + '|' + name.slice(0, 40);
+    const key = dedupKey(date,amount,name,info);
     if (seen.has(key)) { skipped++; continue; }
     seen.add(key);
     vals.push([uid, date, name, category, amount, info, source, key.slice(0, 120)]);
