@@ -1566,7 +1566,13 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
     if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,config.selectedTanMethod));}
     const methods=config.availableTanMethods||[];
     if(methods.length&&!config.selectedTanMethod){
-      const requested=Number(req.body.tan_method)||methods[0].id;const method=client.selectTanMethod(requested);
+      const requested=Number(req.body.tan_method)||0;
+      const preferred=(requested&&methods.find(m=>Number(m.id)===requested))
+        ||(requestedTanMedia&&methods.find(m=>m.isDecoupled||/push|app|decoupled/i.test(String(m.name||''))))
+        ||methods.find(m=>m.isDecoupled)
+        ||methods[0];
+      const method=client.selectTanMethod(preferred.id);
+      const originalMediaRequirement=method.tanMediaRequirement;
       if(requestedTanMedia){
         // Beim ersten Dialog kennt lib-fints die Mediennamen noch nicht. Direkt setzen,
         // damit Sparkassen nicht den ungueltigen Bibliotheks-Platzhalter "default" erhalten.
@@ -1574,10 +1580,13 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
       }else if(method.activeTanMedia&&method.activeTanMedia.length){
         client.selectTanMedia(method.activeTanMedia[0]);
       }else if(method.tanMediaRequirement===2){
-        throw new Error('9955 Gerätebezeichnung für das pushTAN-Medium erforderlich');
+        // Beim Erstkontakt ist die Medienliste noch unbekannt. Kein erfundenes "default"
+        // senden; nach erfolgreicher Initialisierung liefert HKTAB die echten Mediennamen.
+        method.tanMediaRequirement=1;
       }
-      response=await client.synchronize();requireFintsSuccess(response,'Die Verbindung');
+      response=await client.synchronize();method.tanMediaRequirement=originalMediaRequirement;requireFintsSuccess(response,'Die Verbindung');
       if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,method));}
+      if(!config.tanMediaName&&method.activeTanMedia&&method.activeTanMedia.length)client.selectTanMedia(method.activeTanMedia[0]);
     }
     const accounts=await saveModernConnection(req.uid,{blz,url,login,pin},client);
     logEvent('info','bank_connect','Bankkonto per FinTS 3.0 verknüpft ('+blz+')',{uid:req.uid,ip:reqIp(req)});

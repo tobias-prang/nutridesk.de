@@ -2370,11 +2370,6 @@
                       <input type="password" value="{{ bankPin }}" onchange="{{ setBankPin }}" placeholder="PIN" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
                     </div>
                   </div>
-                  <div style="margin-bottom:14px;">
-                    <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">pushTAN-Gerätebezeichnung</span>
-                    <input id="bank-tan-media" value="{{ bankUrl }}" onchange="{{ setBankUrl }}" placeholder="Exakt wie unter pushTAN verwalten, z. B. Mein iPhone" autocomplete="off" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
-                    <div style="font-size:11px;color:var(--mut);line-height:1.45;margin-top:6px;">Nur bei pushTAN nötig. Die Bezeichnung findest du im Sparkassen-Online-Banking unter „pushTAN verwalten“; Groß-/Kleinschreibung exakt übernehmen.</div>
-                  </div>
                   <div style="font-size:11.5px;color:var(--mut);line-height:1.5;margin-bottom:16px;">Je nach Bank kann beim Verbinden eine TAN-Freigabe in deiner Banking-App nötig sein. Such einfach deine Bank, die Verbindungsadresse kennt NutriDesk selbst.</div>
                   <div style="display:flex;justify-content:flex-end;">
                     <div onclick="{{ connectBank }}" style="display:flex;align-items:center;gap:8px;padding:11px 20px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="link" style="width:16px;height:16px;"></i>{{ bankConnectBtnLabel }}</div>
@@ -8135,10 +8130,9 @@ class Component extends DCLogic {
     const s = this.state;
     if (s.bankBusy) return;
     if (!s.bankBlz || !s.bankLogin.trim() || !s.bankPin) { this._toast('Bitte Bank auswaehlen und Anmeldename plus PIN ausfuellen'); return; }
-    const tanMedia = String(s.bankUrl || '').trim();
     this.setState({ bankBusy: true });
     try {
-      const r=await this.api('/bank/connect', { method: 'POST', body: { blz: String(s.bankBlz).trim(), login: s.bankLogin.trim(), pin: s.bankPin, tan_media: tanMedia || undefined } });
+      const r=await this.api('/bank/connect', { method: 'POST', body: { blz: String(s.bankBlz).trim(), login: s.bankLogin.trim(), pin: s.bankPin } });
       await this._handleBankResult(r,'connect');
     } catch (e) { this.setState({ bankBusy: false }); this._toast(e.message); }
   };
