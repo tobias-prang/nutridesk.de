@@ -3206,7 +3206,7 @@
       <div style="margin-bottom:16px;">
         <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Wie weit zurück?</span>
         <select value="{{ bankSyncDays }}" onchange="{{ setBankSyncDays }}" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 12px;color:var(--ink);font-size:13.5px;font-family:'Space Grotesk',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;">
-          <option value="30">Letzte 30 Tage</option><option value="90">Letzte 90 Tage</option><option value="180">Letzte 6 Monate</option><option value="365">Letztes Jahr</option><option value="730">So weit wie möglich</option>
+          <option value="30">Letzte 30 Tage</option><option value="90">Letzte 90 Tage</option><option value="180">Letzte 6 Monate</option><option value="365">Letztes Jahr</option><option value="3650">Gesamte verfügbare Historie</option>
         </select>
       </div>
       <div style="font-size:11.5px;color:var(--mut);line-height:1.5;margin-bottom:20px;">Die Umsätze landen unter „Nicht gebucht", dort prüfst du sie und übernimmst sie. Bereits bekannte werden übersprungen. Je nach Bank ist eine TAN-Freigabe in deiner Banking-App nötig.</div>
@@ -3224,8 +3224,8 @@
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;"><span style="display:flex;align-items:center;gap:9px;font-size:17px;font-weight:700;"><i data-lucide="shield-check" style="width:19px;height:19px;color:var(--acc);"></i>Bankfreigabe</span><div onclick="{{ cancelBankTan }}" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line3);display:flex;align-items:center;justify-content:center;cursor:pointer;"><i data-lucide="x" style="width:15px;height:15px;"></i></div></div>
       <div style="padding:13px 15px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);color:var(--ink2);font-size:13px;line-height:1.55;margin-bottom:16px;">{{ bankTanChallenge }}</div>
       <sc-if value="{{ bankTanNeedsCode }}"><label style="display:block;font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:16px;">TAN<input inputmode="numeric" autocomplete="one-time-code" value="{{ bankTanCode }}" oninput="{{ setBankTanCode }}" placeholder="TAN der Bank" style="display:block;width:100%;box-sizing:border-box;margin-top:7px;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:12px 13px;color:var(--ink);font:700 18px 'JetBrains Mono',monospace;letter-spacing:.12em;"></label></sc-if>
-      <sc-if value="{{ bankTanDecoupled }}"><div style="font-size:12.5px;color:var(--ink3);line-height:1.55;margin-bottom:17px;">Bestätige den Auftrag jetzt in deiner Banking-App. Danach klickst du auf „Freigabe prüfen“.</div></sc-if>
-      <div style="display:flex;gap:10px;justify-content:flex-end;"><div onclick="{{ cancelBankTan }}" style="padding:10px 15px;border-radius:10px;border:1px solid var(--line3);font-size:13px;cursor:pointer;">Abbrechen</div><div onclick="{{ submitBankTan }}" style="padding:10px 17px;border-radius:10px;background:var(--acc);color:#0f1117;font-size:13px;font-weight:700;cursor:pointer;">{{ bankTanButton }}</div></div>
+      <sc-if value="{{ bankTanDecoupled }}"><div style="font-size:12.5px;color:var(--ink3);line-height:1.55;margin-bottom:17px;">Bestätige den Auftrag jetzt in deiner Banking-App. NutriDesk prüft die Freigabe automatisch alle 2 Sekunden.</div></sc-if>
+      <div style="display:flex;gap:10px;justify-content:flex-end;"><div onclick="{{ cancelBankTan }}" style="padding:10px 15px;border-radius:10px;border:1px solid var(--line3);font-size:13px;cursor:pointer;">Abbrechen</div><sc-if value="{{ bankTanNeedsCode }}"><div onclick="{{ submitBankTan }}" style="padding:10px 17px;border-radius:10px;background:var(--acc);color:#0f1117;font-size:13px;font-weight:700;cursor:pointer;">{{ bankTanButton }}</div></sc-if></div>
     </div>
   </div>
   </sc-if>
@@ -5248,7 +5248,7 @@ class Component extends DCLogic {
       netMode:'monthly', netBrutto:'3500', netWeeklyHours:'40', netFrom:'', netTo:'', netTaxClass:'I', netState:'Rheinland-Pfalz', netChurch:false, netChildless:true,
       txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txQ:'', txFilter:'all',
       bookTab:'tx', bookAnalysisOpen:false, staging:[], stagingSel:{}, txEditId:0, txInfo:'', txDate:'', txMonth:'',
-      bankStatus:null, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'90', bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
+      bankStatus:null, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
       kiPrefs:{ veggie:false, protein:true, cheap:false, fast:false, vegan:false, lowcarb:false, lactosefree:false, glutenfree:false, mealprep:false }, kiBudget:'50', kiBudgetType:'woche', kiPersons:1, kiDays:30, kiMeals:{ fruh:true, mittag:true, abend:true, snack:true }, kiWish:'',
       kiStep:'form', kiQs:[], kiQBusy:false, kiFree:'', kiStartTs:0, kiSummary:null,
       kiNotes:{sections:[],notes:[],quickNotes:[]},kiNotesQ:'',kiNotesSection:'all',kiNoteOpen:0,kiNotesPdfBusy:false,kinId:0,kinSection:'',kinTitle:'',kinContent:'',kinTags:'',kinRelations:[],kinRelQ:'',kinNewImages:[],
@@ -5484,7 +5484,7 @@ class Component extends DCLogic {
       if (window.nutridesk.getAutostart) window.nutridesk.getAutostart().then(on => this.setState({ autostart: !!on })).catch(() => {});
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); this._syncUrlRoute(); }
   _routeForState = () => {
     const s=this.state;
@@ -8120,7 +8120,8 @@ class Component extends DCLogic {
   _searchBanks = async (q) => { try { const r = await this.api('/bank/search?q=' + encodeURIComponent(q)); this.setState({ bankResults: Array.isArray(r) ? r : [] }); } catch (e) {} };
   pickBank = (e) => { const blz = e.currentTarget.dataset.blz; const name = e.currentTarget.dataset.name; this.setState({ bankBlz: blz, bankBankName: name, bankSearch: name, bankResults: [] }); };
   _handleBankResult = async (r, action) => {
-    if(r&&r.requiresTan){this.setState({bankBusy:false,modal:'bankTan',bankTanToken:r.tanToken,bankTanChallenge:r.challenge||'Bitte Bankauftrag bestätigen',bankTanCode:'',bankTanDecoupled:!!r.decoupled,bankTanAction:action});return false;}
+    if(r&&r.requiresTan){const decoupled=!!r.decoupled;this.setState({bankBusy:false,modal:'bankTan',bankTanToken:r.tanToken,bankTanChallenge:decoupled?'Authentifizierung noch ausstehend':(r.challenge||'Bitte Bankauftrag bestätigen'),bankTanCode:'',bankTanDecoupled:decoupled,bankTanAction:action},()=>{if(decoupled)this._scheduleBankTanPoll(r.pollIntervalMs);});return false;}
+    this._clearBankTanPoll();
     this.setState({bankBusy:false,bankPin:'',modal:'',bookTab:action==='sync'?'staging':this.state.bookTab});
     if(action==='sync'){this._toast((r.added||0)+' neue Umsätze geladen'+(r.skipped?', '+r.skipped+' schon bekannt':''));this.loadStaging();}
     else{this._toast('Bank sicher per FinTS 3.0 verbunden');this.loadBank();}
@@ -8141,19 +8142,21 @@ class Component extends DCLogic {
     try { await this.api('/bank', { method: 'DELETE' }); this._toast('Bank getrennt'); this.loadBank(); }
     catch (e) { this._toast(e.message); }
   };
-  openBankSync = () => this.setState({ modal: 'bankSync', bankSyncDays: '90' });
+  openBankSync = () => this.setState({ modal: 'bankSync', bankSyncDays: '3650' });
   setBankSyncDays = (e) => this.setState({ bankSyncDays: e.target.value });
   runBankSync = async () => {
     if (this.state.bankBusy) return;
     this.setState({ bankBusy: true });
     try {
-      const r = await this.api('/bank/sync', { method: 'POST', body: { days: parseInt(this.state.bankSyncDays) || 90 } });
+      const r = await this.api('/bank/sync', { method: 'POST', body: { days: parseInt(this.state.bankSyncDays) || 3650 } });
       await this._handleBankResult(r,'sync');
     } catch (e) { this.setState({ bankBusy: false }); this._toast(e.message); }
   };
   setBankTanCode = (e) => this.setState({bankTanCode:String(e.target.value||'').replace(/\s/g,'').slice(0,40)});
-  cancelBankTan = () => this.setState({modal:'',bankTanToken:'',bankTanCode:'',bankTanChallenge:'',bankTanDecoupled:false,bankBusy:false});
-  submitBankTan = async () => {const s=this.state;if(s.bankBusy)return;if(!s.bankTanDecoupled&&!s.bankTanCode.trim()){this._toast('Bitte TAN eingeben');return;}this.setState({bankBusy:true});try{const base=s.bankTanAction==='sync'?'/bank/sync/tan':'/bank/connect/tan';const r=await this.api(base,{method:'POST',body:{token:s.bankTanToken,tan:s.bankTanDecoupled?undefined:s.bankTanCode.trim()}});await this._handleBankResult(r,s.bankTanAction);}catch(e){this.setState({bankBusy:false});this._toast(e.message);}};
+  _clearBankTanPoll = () => {clearTimeout(this._bankTanPollT);this._bankTanPollT=null;};
+  _scheduleBankTanPoll = (delay) => {this._clearBankTanPoll();this._bankTanPollT=setTimeout(()=>{this._bankTanPollT=null;if(this.state.modal==='bankTan'&&this.state.bankTanDecoupled&&this.state.bankTanToken)this.submitBankTan(true);},Math.max(2000,Number(delay)||2000));};
+  cancelBankTan = () => {this._clearBankTanPoll();this.setState({modal:'',bankTanToken:'',bankTanCode:'',bankTanChallenge:'',bankTanDecoupled:false,bankBusy:false});};
+  submitBankTan = async (mode) => {const automatic=mode===true,s=this.state;if(s.bankBusy)return;if(!s.bankTanDecoupled&&!s.bankTanCode.trim()){if(!automatic)this._toast('Bitte TAN eingeben');return;}this._clearBankTanPoll();this.setState({bankBusy:true});try{const base=s.bankTanAction==='sync'?'/bank/sync/tan':'/bank/connect/tan';const r=await this.api(base,{method:'POST',body:{token:s.bankTanToken,tan:s.bankTanDecoupled?undefined:s.bankTanCode.trim()}});await this._handleBankResult(r,s.bankTanAction);}catch(e){this.setState({bankBusy:false});this._toast(e.message);}};
 
   pickAboType = (e) => this.setState({ aboType: e.currentTarget.dataset.type });
   setAboName = (e) => this.setState({ aboName: e.target.value });
@@ -10576,7 +10579,7 @@ class Component extends DCLogic {
       setBankBlz: this.setBankBlz, setBankUrl: this.setBankUrl, setBankLogin: this.setBankLogin, setBankPin: this.setBankPin,
       connectBank: this.connectBank, disconnectBank: this.disconnectBank, openBankSync: this.openBankSync,
       bankConnectBtnLabel: s.bankBusy ? 'Verbinde …' : 'Verbinden',
-      modBankSync: s.modal === 'bankSync', bankSyncDays: String(s.bankSyncDays || '90'), setBankSyncDays: this.setBankSyncDays, runBankSync: this.runBankSync,
+      modBankSync: s.modal === 'bankSync', bankSyncDays: String(s.bankSyncDays || '3650'), setBankSyncDays: this.setBankSyncDays, runBankSync: this.runBankSync,
       bankSyncBtnLabel: s.bankBusy ? 'Rufe ab …' : 'Jetzt abrufen',
       modBankTan:s.modal==='bankTan',bankTanChallenge:s.bankTanChallenge,bankTanCode:s.bankTanCode,setBankTanCode:this.setBankTanCode,bankTanDecoupled:!!s.bankTanDecoupled,bankTanNeedsCode:!s.bankTanDecoupled,submitBankTan:this.submitBankTan,cancelBankTan:this.cancelBankTan,bankTanButton:s.bankBusy?'Prüfe …':(s.bankTanDecoupled?'Freigabe prüfen':'TAN bestätigen'),
       txQ: s.txQ, setTxQ: this.setTxQ,

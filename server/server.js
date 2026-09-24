@@ -1457,10 +1457,12 @@ function requireFintsSuccess(response, action) {
   throw err;
 }
 function tanPayload(token, response, method) {
+  const decoupled=!!(method && method.isDecoupled);
   return {
     ok:false, requiresTan:true, tanToken:token,
-    challenge:String(response.tanChallenge || 'Bitte bestätige den Auftrag mit deiner Bank.').slice(0,1000),
-    decoupled:!!(method && method.isDecoupled),
+    challenge:decoupled ? 'Authentifizierung noch ausstehend' : String(response.tanChallenge || 'Bitte bestätige den Auftrag mit deiner Bank.').slice(0,1000),
+    decoupled,
+    pollIntervalMs:2000,
     media:response.tanMediaName || (method && method.activeTanMedia && method.activeTanMedia[0]) || null,
   };
 }
@@ -1597,7 +1599,7 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
   }
 }));
 
-app.post('/bank/connect/tan', auth, rateLimitUser('bank-connect-tan', 12, 600000), asyncRoute(async(req,res)=>{
+app.post('/bank/connect/tan', auth, rateLimitUser('bank-connect-tan', 360, 600000), asyncRoute(async(req,res)=>{
   const token=vStr(req.body.token,'Freigabe-Token',200),pending=pendingFints.get(token);
   if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='connect'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte neu verbinden.');
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
@@ -1609,7 +1611,8 @@ app.post('/bank/connect/tan', auth, rateLimitUser('bank-connect-tan', 12, 600000
 }));
 
 app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(async (req, res) => {
-  const days = vInt(req.body.days, 'Zeitraum', 1, 3650, { optional: true }) || 90;
+  // Bis zu zehn Jahre anfragen. Die Bank liefert davon den Zeitraum, den sie per FinTS bereitstellt.
+  const days = vInt(req.body.days, 'Zeitraum', 1, 3650, { optional: true }) || 3650;
   const [[c]] = await pool.execute('SELECT * FROM bank_connections WHERE user_id = ?', [req.uid]);
   if (!c) throw bad('Keine Bankverbindung. Bitte zuerst in den Kontoeinstellungen verknüpfen.');
   let pin;
@@ -1629,7 +1632,7 @@ app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(
   }catch(e){logEvent('warning','bank_sync_failed','FinTS-Abruf fehlgeschlagen: '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Der Bank-Abruf'));}
 }));
 
-app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 20, 600000), asyncRoute(async(req,res)=>{
+app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), asyncRoute(async(req,res)=>{
   const token=vStr(req.body.token,'Freigabe-Token',200),pending=pendingFints.get(token);
   if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='sync'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte den Abruf neu starten.');
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
