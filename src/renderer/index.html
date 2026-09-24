@@ -8120,7 +8120,7 @@ class Component extends DCLogic {
     if(r&&r.requiresTan){const decoupled=!!r.decoupled;this.setState({bankBusy:false,modal:'bankTan',bankTanToken:r.tanToken,bankTanChallenge:decoupled?'Authentifizierung noch ausstehend':(r.challenge||'Bitte Bankauftrag bestätigen'),bankTanCode:'',bankTanDecoupled:decoupled,bankTanAction:action},()=>{if(decoupled)this._scheduleBankTanPoll(r.pollIntervalMs);});return false;}
     this._clearBankTanPoll();
     this.setState({bankBusy:false,bankPin:'',modal:'',bookTab:action==='sync'?'staging':this.state.bookTab});
-    if(action==='sync'){this._toast((r.added||0)+' neue Umsätze geladen'+(r.skipped?', '+r.skipped+' schon bekannt':''));await Promise.all([this.loadStaging(),this.loadBank()]);}
+    if(action==='sync'){const fd=x=>this._ddmm(x)+String(x).slice(0,4),span=r.oldestDate&&r.newestDate?' · '+fd(r.oldestDate)+' bis '+fd(r.newestDate):'';this._toast((r.added||0)+' neue Umsätze geladen'+(r.skipped?', '+r.skipped+' schon bekannt':'')+span);await Promise.all([this.loadStaging(),this.loadBank()]);}
     else{this._toast('Bank sicher per FinTS 3.0 verbunden');await this.loadBank();this.setState({bankBlz:'',bankLogin:'',bankPin:'',bankSearch:'',bankBankName:'',bankResults:[]});}
     return true;
   };

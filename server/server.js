@@ -1501,14 +1501,26 @@ function normalizeModernStatements(statements) {
   }
   return rows;
 }
-async function continueStatementFetch(client, accounts, from, to, index=0, rows=[]) {
-  for(let i=index;i<accounts.length;i++){
-    const account=accounts[i];
-    if(!client.canGetAccountStatements(account))continue;
-    const response=await client.getAccountStatements(account,from,to,true);
-    requireFintsSuccess(response,'Der Bank-Abruf');
-    if(response.requiresTan)return {rows,pending:{accountIndex:i,accounts,from,to,response}};
-    rows.push(...normalizeModernStatements(response.statements));
+function statementRanges(days,chunkDays=365){
+  const earliest=new Date();earliest.setHours(0,0,0,0);earliest.setDate(earliest.getDate()-days);
+  const ranges=[];let to=new Date();to.setHours(23,59,59,999);
+  while(to>=earliest){const from=new Date(to);from.setHours(0,0,0,0);from.setDate(from.getDate()-(chunkDays-1));if(from<earliest)from=new Date(earliest);ranges.push({from,to:new Date(to)});to=new Date(from);to.setDate(to.getDate()-1);to.setHours(23,59,59,999);}
+  return ranges;
+}
+function localIsoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function rowsForRange(statements,range){const lo=localIsoDate(range.from),hi=localIsoDate(range.to);return normalizeModernStatements(statements).filter(r=>r.date>=lo&&r.date<=hi);}
+function statementDateBounds(rows){const dates=rows.map(r=>r.date).filter(Boolean).sort();return {oldestDate:dates[0]||null,newestDate:dates[dates.length-1]||null};}
+async function continueStatementFetch(client,accounts,ranges,rangeIndex=0,accountIndex=0,rows=[]){
+  for(let ri=rangeIndex;ri<ranges.length;ri++){
+    const range=ranges[ri],start=ri===rangeIndex?accountIndex:0;
+    for(let i=start;i<accounts.length;i++){
+      const account=accounts[i];if(!client.canGetAccountStatements(account))continue;
+      let response;
+      try{response=await client.getAccountStatements(account,range.from,range.to,true);requireFintsSuccess(response,'Der Bank-Abruf');}
+      catch(e){if(ri>0&&rows.length)return {rows,historyStopped:true};throw e;}
+      if(response.requiresTan)return {rows,pending:{rangeIndex:ri,accountIndex:i,accounts,ranges,response}};
+      rows.push(...rowsForRange(response.statements,range));
+    }
   }
   return {rows};
 }
@@ -1665,11 +1677,11 @@ app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(
     else if(activeMedia.length)client.selectTanMedia(activeMedia[0]);
     else if(selectedMethod&&selectedMethod.isDecoupled&&selectedMethod.tanMediaRequirement===2)selectedMethod.tanMediaRequirement=1;
     const accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
-    const to=new Date(),from=new Date();from.setDate(from.getDate()-days);
-    const out=await continueStatementFetch(client,accounts,from,to);
+    const ranges=statementRanges(days);
+    const out=await continueStatementFetch(client,accounts,ranges);
     if(out.pending){const token=putPendingFints(req.uid,{kind:'sync',client,connectionId:c.id,rows:out.rows,...out.pending});return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod));}
     const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),config.tanMediaName||null,c.id,req.uid]);
-    res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
+    res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped,historyStopped:!!out.historyStopped,...statementDateBounds(out.rows)});
   }catch(e){logEvent('warning','bank_sync_failed','FinTS-Abruf fehlgeschlagen: '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Der Bank-Abruf'));}
 }));
 
@@ -1679,11 +1691,12 @@ app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), as
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
   try{const response=await pending.client.getAccountStatementsWithTan(pending.response.tanReference,tan);requireFintsSuccess(response,'Die Freigabe');
     if(response.requiresTan){pending.response=response;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod));}
-    pending.rows.push(...normalizeModernStatements(response.statements));
-    const out=await continueStatementFetch(pending.client,pending.accounts,pending.from,pending.to,pending.accountIndex+1,pending.rows);
+    const currentRange=pending.ranges[pending.rangeIndex];
+    pending.rows.push(...rowsForRange(response.statements,currentRange));
+    const out=await continueStatementFetch(pending.client,pending.accounts,pending.ranges,pending.rangeIndex,pending.accountIndex+1,pending.rows);
     if(out.pending){Object.assign(pending,out.pending,{rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod));}
     pendingFints.delete(token);const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.client.config.tanMediaName||null,pending.connectionId,req.uid]);
-    res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
+    res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped,historyStopped:!!out.historyStopped,...statementDateBounds(out.rows)});
   }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
 
