@@ -1510,7 +1510,7 @@ function normalizeModernStatements(statements) {
 function statementRanges(days,chunkDays=365){
   const earliest=new Date();earliest.setHours(0,0,0,0);earliest.setDate(earliest.getDate()-days);
   const ranges=[];let to=new Date();to.setHours(23,59,59,999);
-  while(to>=earliest){const from=new Date(to);from.setHours(0,0,0,0);from.setDate(from.getDate()-(chunkDays-1));if(from<earliest)from=new Date(earliest);ranges.push({from,to:new Date(to)});to=new Date(from);to.setDate(to.getDate()-1);to.setHours(23,59,59,999);}
+  while(to>=earliest){let from=new Date(to);from.setHours(0,0,0,0);from.setDate(from.getDate()-(chunkDays-1));if(from<earliest)from=new Date(earliest);ranges.push({from,to:new Date(to)});to=new Date(from);to.setDate(to.getDate()-1);to.setHours(23,59,59,999);}
   return ranges;
 }
 function localIsoDate(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
@@ -1522,9 +1522,10 @@ async function continueStatementFetch(client,accounts,ranges,rangeIndex=0,accoun
     for(let i=start;i<accounts.length;i++){
       const account=accounts[i];if(!client.canGetAccountStatements(account))continue;
       let response;
-      try{response=await client.getAccountStatements(account,range.from,range.to,true);requireFintsSuccess(response,'Der Bank-Abruf');}
+      try{response=await client.getAccountStatements(account,range.from,range.to,true);}
       catch(e){if(ri>0&&rows.length)return {rows,historyStopped:true};throw e;}
       if(response.requiresTan)return {rows,pending:{rangeIndex:ri,accountIndex:i,accounts,ranges,response}};
+      requireFintsSuccess(response,'Der Bank-Abruf');
       rows.push(...rowsForRange(response.statements,range));
     }
   }
@@ -1610,8 +1611,8 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
     const {FinTSConfig,FinTSClient}=await loadFints();
     const config=FinTSConfig.forFirstTimeUse(FINTS_PRODUCT_ID,process.env.FINTS_PRODUCT_VERSION||'1.0.4',url,blz,login,pin);
     const client=new FinTSClient(config);let response=await client.synchronize();
-    requireFintsSuccess(response,'Die Verbindung');
     if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,config.selectedTanMethod));}
+    requireFintsSuccess(response,'Die Verbindung');
     const methods=config.availableTanMethods||[];
     if(methods.length&&!config.selectedTanMethod){
       const requested=Number(req.body.tan_method)||0;
@@ -1632,8 +1633,9 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
         // senden; nach erfolgreicher Initialisierung liefert HKTAB die echten Mediennamen.
         method.tanMediaRequirement=1;
       }
-      response=await client.synchronize();method.tanMediaRequirement=originalMediaRequirement;requireFintsSuccess(response,'Die Verbindung');
+      response=await client.synchronize();method.tanMediaRequirement=originalMediaRequirement;
       if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,method));}
+      requireFintsSuccess(response,'Die Verbindung');
       if(!config.tanMediaName&&method.activeTanMedia&&method.activeTanMedia.length)client.selectTanMedia(method.activeTanMedia[0]);
     }
     const saved=await saveModernConnection(req.uid,{blz,url,login,pin},client);
@@ -1649,8 +1651,9 @@ app.post('/bank/connect/tan', auth, rateLimitUser('bank-connect-tan', 360, 60000
   const token=vStr(req.body.token,'Freigabe-Token',200),pending=pendingFints.get(token);
   if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='connect'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte neu verbinden.');
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
-  try{const response=await pending.client.synchronizeWithTan(pending.tanReference,tan);requireFintsSuccess(response,'Die Freigabe');
+  try{const response=await pending.client.synchronizeWithTan(pending.tanReference,tan);
     if(response.requiresTan){pending.tanReference=response.tanReference;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod));}
+    requireFintsSuccess(response,'Die Freigabe');
     pendingFints.delete(token);const saved=await saveModernConnection(req.uid,pending.meta,pending.client);
     logEvent('info','bank_connect','Bankkonto nach TAN/App-Freigabe verknüpft ('+pending.meta.blz+')',{uid:req.uid,ip:reqIp(req)});res.json({ok:true,accountCount:saved.accounts.length,connectionId:saved.connectionId});
   }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
@@ -1695,8 +1698,9 @@ app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), as
   const token=vStr(req.body.token,'Freigabe-Token',200),pending=pendingFints.get(token);
   if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='sync'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte den Abruf neu starten.');
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
-  try{const response=await pending.client.getAccountStatementsWithTan(pending.response.tanReference,tan);requireFintsSuccess(response,'Die Freigabe');
+  try{const response=await pending.client.getAccountStatementsWithTan(pending.response.tanReference,tan);
     if(response.requiresTan){pending.response=response;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod));}
+    requireFintsSuccess(response,'Die Freigabe');
     const currentRange=pending.ranges[pending.rangeIndex];
     pending.rows.push(...rowsForRange(response.statements,currentRange));
     const out=await continueStatementFetch(pending.client,pending.accounts,pending.ranges,pending.rangeIndex,pending.accountIndex+1,pending.rows);
