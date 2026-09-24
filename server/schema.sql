@@ -376,8 +376,10 @@ CREATE TABLE IF NOT EXISTS cloud_files (
   mime          VARCHAR(120) NULL,
   category      ENUM('garantie','vertrag','rechnung','versicherung','sonstiges') NOT NULL DEFAULT 'sonstiges',
   tags          VARCHAR(300) NULL,         -- kommagetrennt
+  transaction_id INT UNSIGNED NULL,        -- optional mit Finanzbuchung verknüpft
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_cfil_user (user_id, folder_id),
+  KEY idx_cfil_transaction (user_id, transaction_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   FOREIGN KEY (folder_id) REFERENCES cloud_folders(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
@@ -465,6 +467,9 @@ ALTER TABLE transactions
   ADD COLUMN IF NOT EXISTS bank_connection_id INT UNSIGNED NULL,
   ADD COLUMN IF NOT EXISTS bank_name VARCHAR(120) NULL,
   ADD COLUMN IF NOT EXISTS account_iban VARCHAR(40) NULL;
+ALTER TABLE cloud_files
+  ADD COLUMN IF NOT EXISTS transaction_id INT UNSIGNED NULL,
+  ADD INDEX IF NOT EXISTS idx_cfil_transaction (user_id, transaction_id);
 
 -- Mehrere Bankverbindungen pro Nutzer werden mit
 -- server/scripts/migrate-bank-connections.sql migriert.

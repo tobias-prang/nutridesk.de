@@ -1182,6 +1182,11 @@ for (const [route, cfg] of Object.entries(RESOURCES)) {
     res.json(row);
   }));
   app.delete('/' + route + '/:id', auth, rwLimit, asyncRoute(async (req, res) => {
+    // Cloud-Belege bleiben beim Löschen einer Buchung erhalten, verlieren aber sauber
+    // ihre Verknüpfung. So verschwinden keine Rechnungen aus dem persönlichen Archiv.
+    if (cfg.table === 'transactions') {
+      await pool.execute('UPDATE cloud_files SET transaction_id=NULL WHERE user_id=? AND transaction_id=?', [req.uid, req.params.id]);
+    }
     const [r] = await pool.execute(`DELETE FROM ${cfg.table} WHERE id = ? AND user_id = ?`, [req.params.id, req.uid]);
     if (!r.affectedRows) return res.status(404).json({ error: 'Nicht gefunden' });
     res.json({ ok: true });
@@ -2225,7 +2230,7 @@ app.get('/cloud', auth, asyncRoute(async (req, res) => {
   else if (cat) { where.push('category = ?'); params.push(cat); }
   else { where.push(folderId ? 'folder_id = ?' : 'folder_id IS NULL'); if (folderId) params.push(folderId); }
   const [files] = await pool.execute(
-    'SELECT id, folder_id, name, size, mime, category, tags, created_at FROM cloud_files WHERE ' + where.join(' AND ') + ' ORDER BY created_at DESC LIMIT 500', params);
+    'SELECT cf.id, cf.folder_id, cf.name, cf.size, cf.mime, cf.category, cf.tags, cf.created_at, cf.transaction_id,(SELECT t.name FROM transactions t WHERE t.id=cf.transaction_id AND t.user_id=cf.user_id) AS transaction_name,(SELECT t.`date` FROM transactions t WHERE t.id=cf.transaction_id AND t.user_id=cf.user_id) AS transaction_date FROM cloud_files cf WHERE ' + where.map(x=>x.replace(/\buser_id\b/g,'cf.user_id').replace(/\bname\b/g,'cf.name').replace(/\btags\b/g,'cf.tags').replace(/\bcategory\b/g,'cf.category').replace(/\bfolder_id\b/g,'cf.folder_id').replace(/\bscan_status\b/g,'cf.scan_status')).join(' AND ') + ' ORDER BY cf.created_at DESC LIMIT 500', params);
   const crumbs = [];
   let cur = folderId;
   for (let i = 0; i < 40 && cur; i++) {
@@ -2282,6 +2287,8 @@ app.post('/cloud/upload', auth, rateLimitUser('cloud-up', 30), cloudUpload.singl
     const folderId = req.body.folder_id ? parseInt(req.body.folder_id, 10) : null;
     if (folderId) { const [[p]] = await pool.execute('SELECT id FROM cloud_folders WHERE id=? AND user_id=?', [folderId, req.uid]); if (!p) { await cleanupQ(); throw bad('Ordner nicht gefunden'); } }
     const category = CLOUD_CATS.includes(req.body.category) ? req.body.category : 'sonstiges';
+    const transactionId=req.body.transaction_id?vInt(req.body.transaction_id,'Buchung',1,4294967295,{optional:true}):null;
+    if(transactionId){const [[tx]]=await pool.execute('SELECT id FROM transactions WHERE id=? AND user_id=?',[transactionId,req.uid]);if(!tx){await cleanupQ();throw bad('Buchung nicht gefunden');}}
     // 1) Struktur-/Typvalidierung (Allowlist + Magic-Bytes + Struktur), niemals nur Endung/Client-MIME.
     const v = await validateUpload({ path: qPath, originalName: utf8name(req.file.originalname), size: req.file.size });
     if (!v.ok) {
@@ -2329,8 +2336,8 @@ app.post('/cloud/upload', auth, rateLimitUser('cloud-up', 30), cloudUpload.singl
         return res.status(413).json({ error: 'Dein Cloud-Speicher ist voll' });
       }
       const [r] = await conn.execute(
-        'INSERT INTO cloud_files (user_id, folder_id, name, stored_name, size, mime, category, scan_status, mime_verified, detected_type, scanned_at) VALUES (?,?,?,?,?,?,?,?,?,?,NOW())',
-        [req.uid, folderId, v.safeName, req.file.filename, req.file.size, v.mime, category, 'clean', 1, v.detectedType]);
+        'INSERT INTO cloud_files (user_id, folder_id, name, stored_name, size, mime, category, transaction_id, scan_status, mime_verified, detected_type, scanned_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,NOW())',
+        [req.uid, folderId, v.safeName, req.file.filename, req.file.size, v.mime, category, transactionId, 'clean', 1, v.detectedType]);
       insertId = r.insertId;
       await conn.commit();
     } catch (e) {
@@ -2468,7 +2475,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
     q('SELECT * FROM dishes WHERE user_id = ? ORDER BY id ASC'),
     q('SELECT * FROM meal_plan WHERE user_id = ? AND `date` BETWEEN DATE_SUB(CURDATE(), INTERVAL 45 DAY) AND DATE_ADD(CURDATE(), INTERVAL 60 DAY)'),
     q('SELECT * FROM shopping_items WHERE user_id = ? ORDER BY id ASC'),
-    q('SELECT * FROM transactions WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 400 DAY) ORDER BY `date` DESC, id DESC'),
+    q("SELECT t.*,(SELECT COUNT(*) FROM cloud_files cf WHERE cf.user_id=t.user_id AND cf.transaction_id=t.id AND cf.scan_status IN ('clean','legacy_unverified')) AS attachment_count FROM transactions t WHERE t.user_id = ? ORDER BY t.`date` DESC, t.id DESC LIMIT 200000"),
     q('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY `day` ASC'),
     q('SELECT * FROM loans WHERE user_id = ? ORDER BY id ASC'),
     q('SELECT * FROM goals WHERE user_id = ? ORDER BY id ASC'),
@@ -3230,6 +3237,11 @@ app.post('/bot/push', auth, asyncRoute(async (req, res) => {
   if (EPHEMERAL_KINDS.has(kind)) await pool.execute('DELETE FROM bot_messages WHERE user_id=? AND kind=?', [req.uid, kind]);
   await botPost(req.uid, kind, ref, icon, color, title, text);
   res.json({ ok: true });
+}));
+
+app.get('/transactions/:id/attachments',auth,asyncRoute(async(req,res)=>{
+  const id=vInt(req.params.id,'Buchung',1,4294967295);const [[tx]]=await pool.execute('SELECT id FROM transactions WHERE id=? AND user_id=?',[id,req.uid]);if(!tx)return res.status(404).json({error:'Buchung nicht gefunden'});
+  const [rows]=await pool.execute("SELECT id,name,size,category,created_at FROM cloud_files WHERE user_id=? AND transaction_id=? AND scan_status IN ('clean','legacy_unverified') ORDER BY created_at DESC",[req.uid,id]);res.json(rows);
 }));
 
 // ---------- KI-Assistent: strukturierte Notizen ----------

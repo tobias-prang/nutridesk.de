@@ -1400,8 +1400,9 @@
       </div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:18px;flex-wrap:wrap;">
         <div style="display:flex;gap:4px;background:var(--panel);border:1px solid var(--cardbd);border-radius:12px;padding:4px;">
-          <div onclick="{{ fBookTx }}" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:{{ bookSegTx.c }};background:{{ bookSegTx.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="list" style="width:15px;height:15px;"></i>Transaktionen</div>
-          <div onclick="{{ fBookStaging }}" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:{{ bookSegStg.c }};background:{{ bookSegStg.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="inbox" style="width:15px;height:15px;"></i>Nicht gebucht<span style="display:{{ stagingBadgeD }};font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#0f1117;background:#fbbf24;padding:0 6px;border-radius:6px;">{{ stagingCount }}</span></div>
+          <div onclick="{{ fBookTx }}" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:{{ bookSegTx.c }};background:{{ bookSegTx.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="chart-no-axes-combined" style="width:15px;height:15px;"></i>Transaktionsübersicht</div>
+          <div onclick="{{ fBookStaging }}" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:{{ bookSegStg.c }};background:{{ bookSegStg.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="inbox" style="width:15px;height:15px;"></i>Nicht einsortiert<span style="display:{{ stagingBadgeD }};font-family:'JetBrains Mono',monospace;font-size:10.5px;font-weight:700;color:#0f1117;background:#fbbf24;padding:0 6px;border-radius:6px;">{{ stagingCount }}</span></div>
+          <div onclick="{{ fBookBooked }}" style="display:flex;align-items:center;gap:7px;padding:8px 16px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;color:{{ bookSegBooked.c }};background:{{ bookSegBooked.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="folder-tree" style="width:15px;height:15px;"></i>Verbuchungen</div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--cardbd);border-radius:11px;padding:4px 5px 4px 11px;color:var(--ink3);font-size:11.5px;font-weight:600;">
           <i data-lucide="landmark" style="width:14px;height:14px;color:var(--acc);"></i>Konto:
@@ -1419,12 +1420,12 @@
       <sc-if value="{{ bookIsStaging }}">
         <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:20px 22px;">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
-            <span style="font-size:14.5px;font-weight:700;flex:0 0 auto;">Nicht gebucht</span>
-            <span style="font-size:12px;color:var(--ink3);flex:1 1 auto;min-width:0;">Aus CSV oder Bank importiert. Prüfen, dann übernehmen oder verwerfen.</span>
+            <span style="font-size:14.5px;font-weight:700;flex:0 0 auto;">Nicht einsortiert</span>
+            <span style="font-size:12px;color:var(--ink3);flex:1 1 auto;min-width:0;">Eingangskorb aus CSV und Bank. Prüfen und anschließend in die Verbuchungen einsortieren.</span>
             <sc-if value="{{ hasStaging }}">
               <div style="display:flex;align-items:center;gap:8px;flex:0 0 auto;flex-wrap:wrap;">
                 <div onclick="{{ stagingSelectAll }}" style="font-size:12px;font-weight:600;color:var(--ink2);cursor:pointer;padding:6px 10px;border-radius:8px;border:1px solid var(--line3);" style-hover="background:var(--chip);">Alle wählen</div>
-                <div onclick="{{ bookStaging }}" style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#0f1117;background:var(--acc);cursor:pointer;padding:7px 13px;border-radius:9px;" style-hover="opacity:.9;"><i data-lucide="check-check" style="width:14px;height:14px;"></i>{{ stagingBookLabel }}</div>
+                <div onclick="{{ bookStaging }}" style="display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:#0f1117;background:var(--acc);cursor:pointer;padding:7px 13px;border-radius:9px;" style-hover="opacity:.9;"><i data-lucide="folder-input" style="width:14px;height:14px;"></i>{{ stagingBookLabel }}</div>
                 <div onclick="{{ clearStaging }}" title="Alle verwerfen" style="width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:pointer;border:1px solid var(--line3);flex:0 0 auto;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:15px;height:15px;"></i></div>
               </div>
             </sc-if>
@@ -1515,6 +1516,12 @@
         </sc-for>
         <sc-if value="{{ !hasBooked }}"><div style="display:flex;flex-direction:column;align-items:center;gap:9px;padding:48px 16px;text-align:center;color:var(--mut);"><div style="width:48px;height:48px;border-radius:14px;background:var(--chip);display:flex;align-items:center;justify-content:center;"><i data-lucide="receipt" style="width:22px;height:22px;color:var(--ink3);"></i></div><div style="font-size:14px;font-weight:600;color:var(--ink2);">Keine Transaktionen</div><span style="font-size:12.5px;line-height:1.5;max-width:340px;">Leg eine Buchung an, importier eine CSV oder hol deine Umsätze von der Bank.</span></div></sc-if>
       </div>
+      </sc-if>
+      <sc-if value="{{ bookIsBooked }}">
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <sc-for list="{{ bookFolders }}" as="bf" hint-placeholder-count="5"><div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);overflow:hidden;"><div style="display:flex;align-items:center;gap:11px;padding:15px 18px;background:var(--bg2);border-bottom:1px solid var(--line2);"><div style="width:34px;height:34px;border-radius:10px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;"><i data-lucide="folder" style="width:17px;height:17px;color:var(--acc);"></i></div><div><div style="font-size:14px;font-weight:700;">{{ bf.name }}</div><div style="font-size:10.5px;color:var(--mut);">{{ bf.countLabel }}</div></div><span style="margin-left:auto;font:600 12px 'JetBrains Mono',monospace;color:{{ bf.c }};">{{ bf.sum }}</span></div><sc-for list="{{ bf.items }}" as="be" hint-placeholder-count="3"><div onclick="{{ openTxEdit }}" data-id="{{ be.id }}" style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--chip);cursor:pointer;" style-hover="background:var(--wchip);"><i data-lucide="receipt" style="width:16px;height:16px;color:var(--ink3);"></i><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ be.name }}</div><div style="font-size:10.5px;color:var(--mut);">{{ be.date }} · {{ be.account }}</div></div><span style="display:{{ be.attachD }};align-items:center;gap:4px;font-size:10px;color:var(--acc);"><i data-lucide="paperclip" style="width:11px;height:11px;"></i>{{ be.attachments }}</span><span style="font:600 12.5px 'JetBrains Mono',monospace;color:{{ be.c }};">{{ be.amt }}</span></div></sc-for></div></sc-for>
+          <sc-if value="{{ !hasBookFolders }}"><div style="padding:50px;text-align:center;color:var(--mut);border:1.5px dashed var(--line3);border-radius:18px;"><i data-lucide="folder-input" style="width:26px;height:26px;margin-bottom:10px;"></i><div style="font-weight:600;color:var(--ink2);">Noch keine Verbuchungen</div><div style="font-size:12px;margin-top:5px;">Sortiere Einträge aus „Nicht einsortiert“ ein.</div></div></sc-if>
+        </div>
       </sc-if>
     </div>
     </sc-if>
@@ -2634,6 +2641,7 @@
               </div>
             </div>
             <div style="display:{{ fl.tagsD }};font-size:11px;color:var(--ink3);">#{{ fl.tagsLabel }}</div>
+            <div style="display:{{ fl.linkD }};align-items:center;gap:6px;padding:7px 9px;border-radius:8px;background:var(--acc-bg);border:1px solid var(--acc-bd);font-size:10.5px;color:var(--ink2);"><i data-lucide="link-2" style="width:12px;height:12px;color:var(--acc);flex:0 0 auto;"></i><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ fl.linkLabel }}</span></div>
             <div style="display:flex;align-items:center;gap:8px;">
               <span style="font-size:10.5px;font-weight:700;letter-spacing:.03em;color:{{ fl.catC }};background:var(--chip);border:1px solid var(--line3);padding:2px 8px;border-radius:6px;">{{ fl.catLabel }}</span>
               <div style="margin-left:auto;display:flex;gap:4px;">
@@ -3340,6 +3348,7 @@
         <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Verwendungszweck <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--mut);">optional</span></span>
         <input value="{{ txInfo }}" onchange="{{ setTxInfo }}" placeholder="z. B. Rechnungsnummer, Notiz …" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
       </div>
+      <div style="margin-bottom:18px;padding:13px 14px;border-radius:12px;background:var(--bg2);border:1px solid var(--line3);"><input id="nd-tx-attachment" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.txt,.docx,.xlsx" multiple onchange="{{ onTxAttachments }}" style="display:none;"><div style="display:flex;align-items:center;gap:9px;"><div><div style="font-size:12.5px;font-weight:700;">Belege &amp; Rechnungen</div><div style="font-size:10.5px;color:var(--mut);margin-top:2px;">Wird sicher in deine Cloud geladen und mit dieser Verbuchung gekoppelt.</div></div><div onclick="{{ pickTxAttachments }}" style="margin-left:auto;display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:9px;border:1px solid var(--line3);font-size:11.5px;font-weight:600;cursor:pointer;"><i data-lucide="paperclip" style="width:13px;height:13px;"></i>Anhängen</div></div><div style="display:{{ txAttachmentsD }};margin-top:10px;font-size:11px;color:var(--ink3);line-height:1.7;">{{ txAttachmentsLabel }}</div><sc-for list="{{ txExistingAttachments }}" as="ta" hint-placeholder-count="1"><div style="display:flex;align-items:center;gap:7px;margin-top:8px;font-size:11px;color:var(--ink2);"><i data-lucide="link-2" style="width:12px;height:12px;color:var(--acc);"></i><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ ta.name }}</span><div onclick="{{ downloadFile }}" data-id="{{ ta.id }}" data-name="{{ ta.name }}" style="cursor:pointer;color:var(--acc);">Öffnen</div></div></sc-for></div>
       <div style="display:flex;gap:10px;align-items:center;">
         <div onclick="{{ delTxFromModal }}" title="Buchung löschen" style="display:{{ txDelEditD }};align-items:center;justify-content:center;width:40px;height:40px;border-radius:11px;border:1px solid var(--line3);color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></div>
         <div style="flex:1 1 auto;"></div>
@@ -5230,7 +5239,7 @@ class Component extends DCLogic {
       sgMode:'dates', sgAmount:'1500', sgFrom:'', sgTo:'', sgMonths:'12',
       netMode:'monthly', netBrutto:'3500', netWeeklyHours:'40', netFrom:'', netTo:'', netTaxClass:'I', netState:'Rheinland-Pfalz', netChurch:false, netChildless:true,
       txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txQ:'', txFilter:'all', txAccount:'all',
-      bookTab:'tx', bookAnalysisOpen:false, staging:[], stagingSel:{}, txEditId:0, txInfo:'', txDate:'', txMonth:'',
+      bookTab:'overview', bookAnalysisOpen:false, staging:[], stagingSel:{}, txEditId:0, txInfo:'', txDate:'', txMonth:'', txAttachments:[], txExistingAttachments:[],
       bankStatus:null, bankConnectionId:0, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSyncProgress:1, bankSyncFound:0, bankSyncRange:1, bankSyncRanges:10, bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
       kiPrefs:{ veggie:false, protein:true, cheap:false, fast:false, vegan:false, lowcarb:false, lactosefree:false, glutenfree:false, mealprep:false }, kiBudget:'50', kiBudgetType:'woche', kiPersons:1, kiDays:30, kiMeals:{ fruh:true, mittag:true, abend:true, snack:true }, kiWish:'',
       kiStep:'form', kiQs:[], kiQBusy:false, kiFree:'', kiStartTs:0, kiSummary:null,
@@ -7572,16 +7581,19 @@ class Component extends DCLogic {
   openFood = (e) => this.setState({ modal:'food', foodStep:'list', foodSel:null, foodMeal: e.currentTarget.dataset.meal || 'fruh', foodQ:'', foodAi:null, foodDb:[], foodDbBusy:false });
   foodBackToList = () => this.setState({ foodStep:'list' });
   openKi = () => this.setState({ modal:'ki', kiStep: this.state.kiBusy ? 'progress' : 'form', kiQs:[], kiFree:'' });
-  openTx = () => this.setState({ modal:'tx', txEditId:0, txName:'', txAmt:'', txType:'out', txCat:'Lebensmittel', txInfo:'', txDate:this._todayIso() });
+  openTx = () => {this._txAttachmentFiles=[];this.setState({ modal:'tx', txEditId:0, txName:'', txAmt:'', txType:'out', txCat:'Lebensmittel', txInfo:'', txDate:this._todayIso(),txAttachments:[],txExistingAttachments:[] });};
   openTxEdit = (e) => {
     const id = parseInt(e.currentTarget.dataset.id);
     if (!id) return; // automatische Einkommenszeilen (id 0) nicht bearbeitbar
     const t = ((this.state.data && this.state.data.transactions) || []).find(x => x.id === id);
     if (!t) return;
     const amt = parseFloat(t.amount) || 0;
-    this.setState({ modal:'tx', txEditId:id, txName:t.name, txAmt:String(Math.abs(amt)).replace('.', ','), txType: amt >= 0 ? 'in' : 'out', txCat: t.category || 'Sonstiges', txInfo: t.info || '', txDate: String(t.date).slice(0, 10) });
+    this._txAttachmentFiles=[];this.setState({ modal:'tx', txEditId:id, txName:t.name, txAmt:String(Math.abs(amt)).replace('.', ','), txType: amt >= 0 ? 'in' : 'out', txCat: t.category || 'Sonstiges', txInfo: t.info || '', txDate: String(t.date).slice(0, 10),txAttachments:[],txExistingAttachments:[] });
+    this.api('/transactions/'+id+'/attachments').then(rows=>this.setState({txExistingAttachments:Array.isArray(rows)?rows:[]})).catch(()=>{});
   };
   setTxInfo = (e) => this.setState({ txInfo: e.target.value });
+  pickTxAttachments = () => {const el=document.getElementById('nd-tx-attachment');if(el)el.click();};
+  onTxAttachments = (e) => {this._txAttachmentFiles=Array.from(e.currentTarget.files||[]).slice(0,10);e.currentTarget.value='';this.setState({txAttachments:this._txAttachmentFiles.map(f=>f.name)});};
   setTxDate = (e) => this.setState({ txDate: e.target.value });
   _curMonth = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   _shiftMonth = (ym, delta) => { let y = parseInt(ym.slice(0, 4)), m = parseInt(ym.slice(5, 7)) - 1 + delta; y += Math.floor(m / 12); m = ((m % 12) + 12) % 12; return y + '-' + String(m + 1).padStart(2, '0'); };
@@ -7870,12 +7882,20 @@ class Component extends DCLogic {
       date: s.txDate || this._todayIso(), name: s.txName.trim(), category: s.txCat,
       amount: s.txType === 'in' ? amt : -amt, info: s.txInfo.trim() || null,
     };
-    this.setState({ modal:'' });
     try {
-      if (s.txEditId) await this.api('/transactions/' + s.txEditId, { method:'PUT', body });
-      else await this.api('/transactions', { method:'POST', body });
-      this._toast(s.txEditId ? 'Buchung aktualisiert' : 'Buchung gespeichert');
-      this.refresh();
+      const saved = s.txEditId
+        ? await this.api('/transactions/' + s.txEditId, { method:'PUT', body })
+        : await this.api('/transactions', { method:'POST', body });
+      const txId = Number((saved && saved.id) || s.txEditId);
+      const files = Array.isArray(this._txAttachmentFiles) ? this._txAttachmentFiles : [];
+      for (const file of files) {
+        const fd = new FormData(); fd.append('file', file); fd.append('category', 'rechnung'); fd.append('transaction_id', String(txId));
+        await this._upload('/cloud/upload', fd);
+      }
+      this._txAttachmentFiles=[];
+      this.setState({ modal:'', txAttachments:[], txExistingAttachments:[] });
+      this._toast((s.txEditId ? 'Buchung aktualisiert' : 'Buchung gespeichert') + (files.length ? ' · ' + files.length + (files.length===1?' Beleg verknüpft':' Belege verknüpft') : ''));
+      await this.refresh();
     } catch (e) { this._toast(e.message); }
   };
   delTx = async (e) => {
@@ -7989,8 +8009,9 @@ class Component extends DCLogic {
   };
 
   // ---- Finanzbuch: Reiter + nicht gebuchte Transaktionen (CSV/Bank) ----
-  fBookTx = () => this.setState({ bookTab: 'tx' });
+  fBookTx = () => this.setState({ bookTab: 'overview' });
   fBookStaging = () => { this.setState({ bookTab: 'staging' }); this.loadStaging(); };
+  fBookBooked = () => this.setState({ bookTab: 'booked' });
   loadStaging = async () => {
     try { const staging = await this.api('/staging'); this.setState({ staging }); }
     catch (e) {}
@@ -8076,11 +8097,11 @@ class Component extends DCLogic {
     const sel = this.state.stagingSel || {};
     let ids = Object.keys(sel).map(Number);
     if (!ids.length) {const account=String(this.state.txAccount||'all'),visible=r=>account==='all'||(account==='none'?!Number(r.bank_connection_id):String(r.bank_connection_id)===account);ids=(this.state.staging||[]).filter(visible).map(r=>r.id);}
-    if (!ids.length) { this._toast('Nichts zum Übernehmen'); return; }
+    if (!ids.length) { this._toast('Nichts zum Einsortieren'); return; }
     try {
       const r = await this.api('/staging/book', { method: 'POST', body: { ids } });
-      this._toast(r.booked + ' übernommen');
-      this.setState({ stagingSel: {} });
+      this._toast(r.booked + ' einsortiert');
+      this.setState({ stagingSel: {}, bookTab:'booked' });
       this.loadStaging(); this.refresh();
     } catch (e) { this._toast(e.message); }
   };
@@ -9499,6 +9520,7 @@ class Component extends DCLogic {
       tag: t._income ? 'Auto' : (t.tag || ''), tagC: t._income ? 'var(--ink3)' : 'var(--acc)', amtN: t.amountN,
       amt: (t.amountN >= 0 ? '+ € ' : '− € ') + fmt(Math.abs(t.amountN)),
       c: t.amountN >= 0 ? 'var(--acc)' : 'var(--ink2)',
+      attachments: Number(t.attachment_count) || 0,
       delD: t._income ? 'none' : 'flex', cursor: t._income ? 'default' : 'pointer',
     }));
     // Ohne Suche: nur der gewählte Monat (Kontoauszug). Mit Suche: alle Monate durchsuchen.
@@ -9534,6 +9556,18 @@ class Component extends DCLogic {
     }));
     const txAtCurrentMonth = selMonth >= curMonthStr;
     const txSearchActive = !!q;
+    const folderMap = {};
+    for (const t of txView.filter(e => accountMatch(e) && !e._income)) {
+      const name = (t.cat || 'Sonstiges').trim() || 'Sonstiges';
+      if (!folderMap[name]) folderMap[name] = { name, items:[], total:0 };
+      folderMap[name].total += t.amtN;
+      folderMap[name].items.push({ id:t.id, name:t.name, date:this._ddmm(t.iso) + String(t.iso).slice(0,4), account:t.account,
+        attachments:t.attachments, attachD:t.attachments ? 'flex' : 'none', amt:t.amt, c:t.c });
+    }
+    const bookFolders = Object.values(folderMap).sort((a,b)=>a.name.localeCompare(b.name,'de')).map(f=>({
+      ...f, countLabel:f.items.length + (f.items.length===1?' Verbuchung':' Verbuchungen'),
+      sum:(f.total>=0?'+ € ':'− € ')+fmt(Math.abs(f.total)), c:f.total>=0?'var(--acc)':'var(--ink2)'
+    }));
 
     const aboActive = d.subscriptions.filter(x => aboState(x) !== 'gekuendigt');
     const aboSum = aboActive.reduce((x, b) => x + (b.cycle === 'jährlich' ? parseFloat(b.price) / 12 : parseFloat(b.price)), 0);
@@ -9997,6 +10031,7 @@ class Component extends DCLogic {
           id: f.id, name: f.name, icon: ic, sizeLabel: this._fmtBytes(f.size),
           catLabel: cat.l, catC: cat.c, dateLabel: f.created_at ? this._ddmm(String(f.created_at).slice(0, 10)) + String(f.created_at).slice(0, 4) : '',
           tagsLabel: (f.tags && f.tags.length) ? f.tags.join(' · ') : '', tagsD: (f.tags && f.tags.length) ? 'block' : 'none',
+          linkD: f.transaction_id ? 'flex' : 'none', linkLabel: f.transaction_id ? ('Verbuchung: ' + (f.transaction_name || ('#' + f.transaction_id)) + (f.transaction_date ? ' · ' + this._ddmm(String(f.transaction_date).slice(0,10)) + String(f.transaction_date).slice(0,4) : '')) : '',
         };
       }),
       hasCloudItems: (s.clFolders || []).length > 0 || (s.clFiles || []).length > 0,
@@ -10539,12 +10574,15 @@ class Component extends DCLogic {
       txModalTitle: s.txEditId ? 'Buchung bearbeiten' : 'Buchung hinzufügen',
       txInfo: s.txInfo || '', setTxInfo: this.setTxInfo, txDate: s.txDate || '', setTxDate: this.setTxDate,
       txDelEditD: s.txEditId ? 'flex' : 'none', delTxFromModal: this.delTxFromModal,
-      bookIsTx: s.bookTab !== 'staging', bookIsStaging: s.bookTab === 'staging',
-      bookSegTx: seg(s.bookTab !== 'staging'), bookSegStg: seg(s.bookTab === 'staging'),
-      bookTxBtnD: s.bookTab !== 'staging' ? 'flex' : 'none', bookStgBtnD: s.bookTab === 'staging' ? 'flex' : 'none',
+      txAttachmentsD:(s.txAttachments||[]).length?'block':'none', txAttachmentsLabel:(s.txAttachments||[]).join(' · '),
+      txExistingAttachments:(s.txExistingAttachments||[]).map(a=>({id:a.id,name:a.name})), pickTxAttachments:this.pickTxAttachments, onTxAttachments:this.onTxAttachments,
+      bookIsTx: s.bookTab === 'overview', bookIsStaging: s.bookTab === 'staging', bookIsBooked:s.bookTab === 'booked',
+      bookSegTx: seg(s.bookTab === 'overview'), bookSegStg: seg(s.bookTab === 'staging'), bookSegBooked:seg(s.bookTab === 'booked'),
+      bookTxBtnD: s.bookTab === 'overview' ? 'flex' : 'none', bookStgBtnD: s.bookTab === 'staging' ? 'flex' : 'none',
+      bookFolders, hasBookFolders:bookFolders.length>0,
       txAccount:String(s.txAccount||'all'),setTxAccount:this.setTxAccount,txAccountOptions,
       stagingCount: (s.staging || []).length, stagingBadgeD: (s.staging || []).length ? 'inline-flex' : 'none', hasStaging: (s.staging || []).some(r=>accountMatch(r)),
-      stagingBookLabel: Object.keys(s.stagingSel || {}).length ? ('Übernehmen (' + Object.keys(s.stagingSel || {}).length + ')') : 'Alle übernehmen',
+      stagingBookLabel: Object.keys(s.stagingSel || {}).length ? ('Einsortieren (' + Object.keys(s.stagingSel || {}).length + ')') : 'Alle einsortieren',
       stagingView: (s.staging || []).filter(r=>accountMatch(r)).map(r => {
         const amtN = parseFloat(r.amount) || 0; const seld = !!(s.stagingSel || {})[r.id];
         return { id: r.id, d: this._ddmm(String(r.date).slice(0, 10)), name: r.name, info: r.info || '',
@@ -10552,7 +10590,7 @@ class Component extends DCLogic {
           amt: (amtN >= 0 ? '+ € ' : '− € ') + fmt(Math.abs(amtN)), c: amtN >= 0 ? 'var(--acc)' : 'var(--ink2)',
           boxBg: seld ? 'var(--acc)' : 'transparent', boxBd: seld ? 'var(--acc)' : 'var(--line3)', boxColor: seld ? '#0f1117' : 'transparent' };
       }),
-      fBookTx: this.fBookTx, fBookStaging: this.fBookStaging, pickCsv: this.pickCsv, onCsvFile: this.onCsvFile,
+      fBookTx: this.fBookTx, fBookStaging: this.fBookStaging, fBookBooked:this.fBookBooked, pickCsv: this.pickCsv, onCsvFile: this.onCsvFile,
       toggleStagingSel: this.toggleStagingSel, stagingSelectAll: this.stagingSelectAll, bookStaging: this.bookStaging, delStaging: this.delStaging, clearStaging: this.clearStaging,
       bankConnected: !!(s.bankStatus && s.bankStatus.connected), bankAvailable: !(s.bankStatus) || !!(s.bankStatus && s.bankStatus.available),
       bankBtnD: (s.bankStatus && s.bankStatus.connected && s.bookTab === 'staging') ? 'flex' : 'none',
