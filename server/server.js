@@ -1689,8 +1689,14 @@ app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(
     if(storedMedia&&activeMedia.includes(storedMedia))client.selectTanMedia(storedMedia);
     else if(activeMedia.length)client.selectTanMedia(activeMedia[0]);
     else if(selectedMethod&&selectedMethod.isDecoupled&&selectedMethod.tanMediaRequirement===2)selectedMethod.tanMediaRequirement=1;
-    const accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
     const ranges=statementRanges(days);
+    // Vor dem Umsatzauftrag immer einen frischen FinTS-Dialog aufbauen. Einige
+    // Sparkassen lehnen einen direkt aus gespeicherten BPD/UPD gestarteten HKKAZ/
+    // HKCAZ-Auftrag mit 3905/9010 ab, obwohl Login und PIN korrekt sind.
+    const syncResponse=await client.synchronize();
+    if(syncResponse.requiresTan){const accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];const state={kind:'sync',phase:'initialize',client,connectionId:c.id,rows:[],rangeIndex:0,accountIndex:0,accounts,ranges,response:syncResponse};const token=putPendingFints(req.uid,state);return res.json(tanPayload(token,syncResponse,config.selectedTanMethod,statementProgress(state)));}
+    requireFintsSuccess(syncResponse,'Die Bank-Synchronisierung');
+    const accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
     const out=await continueStatementFetch(client,accounts,ranges);
     if(out.pending){const state={kind:'sync',client,connectionId:c.id,rows:out.rows,...out.pending};const token=putPendingFints(req.uid,state);return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod,statementProgress(state)));}
     const result=await stageRows(req.uid,out.rows,'bank',c);await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),config.tanMediaName||null,c.id,req.uid]);
@@ -1702,7 +1708,18 @@ app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), as
   const token=vStr(req.body.token,'Freigabe-Token',200),pending=pendingFints.get(token);
   if(!pending||pending.uid!==Number(req.uid)||pending.kind!=='sync'||pending.expires<Date.now())throw bad('Die Bankfreigabe ist abgelaufen. Bitte den Abruf neu starten.');
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
-  try{const response=await pending.client.getAccountStatementsWithTan(pending.response.tanReference,tan);
+  try{
+    if(pending.phase==='initialize'){
+      const response=await pending.client.synchronizeWithTan(pending.response.tanReference,tan);
+      if(response.requiresTan){pending.response=response;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod,statementProgress(pending)));}
+      requireFintsSuccess(response,'Die Bank-Synchronisierung');
+      pending.phase='statements';pending.accounts=(pending.client.config.bankingInformation.upd&&pending.client.config.bankingInformation.upd.bankAccounts)||[];
+      const out=await continueStatementFetch(pending.client,pending.accounts,pending.ranges,0,0,pending.rows);
+      if(out.pending){Object.assign(pending,out.pending,{phase:'statements',rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod,statementProgress(pending)));}
+      pendingFints.delete(token);const [[connection]]=await pool.execute('SELECT id,bank_name,account_iban FROM bank_connections WHERE id=? AND user_id=?',[pending.connectionId,req.uid]);const result=await stageRows(req.uid,out.rows,'bank',connection||{id:pending.connectionId});await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.client.config.tanMediaName||null,pending.connectionId,req.uid]);
+      return res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped,historyStopped:!!out.historyStopped,...statementDateBounds(out.rows)});
+    }
+    const response=await pending.client.getAccountStatementsWithTan(pending.response.tanReference,tan);
     if(response.requiresTan){pending.response=response;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod,statementProgress(pending)));}
     requireFintsSuccess(response,'Die Freigabe');
     const currentRange=pending.ranges[pending.rangeIndex];
