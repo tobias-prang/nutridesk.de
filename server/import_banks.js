@@ -6,9 +6,9 @@ const fs = require('fs');
 const mysql = require('mysql2/promise');
 
 // Gezielte Korrekturen fuer Institute, die im Mirror veraltet sind.
-// 57351030: aktueller Name "Sparkasse Westerwald-Sieg", FinTS-Endpunkt auf rp3.
+// 57351030: aktueller Name "Sparkasse Westerwald-Sieg", FinTS-Endpunkt auf rp1.
 const OVERRIDES = {
-  '57351030': { name: 'Sparkasse Westerwald-Sieg', city: 'Altenkirchen (Westerwald)', bic: 'MALADE51AKI', url: 'https://banking-rp3.s-fints-pt-rp.de/fints30' },
+  '57351030': { name: 'Sparkasse Westerwald-Sieg', city: 'Altenkirchen (Westerwald)', bic: 'MALADE51AKI', url: 'https://banking-rp1.s-fints-pt-rp.de/fints30' },
 };
 
 function parse(file) {
