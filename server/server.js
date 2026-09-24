@@ -1653,12 +1653,22 @@ app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(
   catch (e) { throw bad('Die gespeicherte Bank-Adresse ist ungültig, bitte neu verknüpfen.'); }
   try{
     const {FinTSConfig,FinTSClient}=await loadFints();let info;try{info=JSON.parse(c.banking_info||'');}catch(_){throw new Error('Veraltete Bankverbindung. Bitte einmal neu verknüpfen.');}
-    const config=FinTSConfig.fromBankingInformation(FINTS_PRODUCT_ID,process.env.FINTS_PRODUCT_VERSION||'1.0.4',info,c.login,pin,c.tan_method||undefined,c.tan_media||undefined);
-    const client=new FinTSClient(config),accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
+    // Nie einen veralteten oder von der Bibliothek erfundenen Mediennamen übernehmen.
+    // Die Sparkasse liefert die gültigen pushTAN-Medien in der gespeicherten BPD/UPD;
+    // genau daraus wählen wir. Ohne Auswahl würde lib-fints bei Requirement=2 "default"
+    // senden, was Sparkassen mit 9955 (unbekannte Gerätebezeichnung) ablehnen.
+    const config=FinTSConfig.fromBankingInformation(FINTS_PRODUCT_ID,process.env.FINTS_PRODUCT_VERSION||'1.0.4',info,c.login,pin,c.tan_method||undefined,undefined);
+    const client=new FinTSClient(config),selectedMethod=config.selectedTanMethod;
+    const activeMedia=(selectedMethod&&Array.isArray(selectedMethod.activeTanMedia))?selectedMethod.activeTanMedia.filter(Boolean):[];
+    const storedMedia=String(c.tan_media||'').trim();
+    if(storedMedia&&activeMedia.includes(storedMedia))client.selectTanMedia(storedMedia);
+    else if(activeMedia.length)client.selectTanMedia(activeMedia[0]);
+    else if(selectedMethod&&selectedMethod.isDecoupled&&selectedMethod.tanMediaRequirement===2)selectedMethod.tanMediaRequirement=1;
+    const accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
     const to=new Date(),from=new Date();from.setDate(from.getDate()-days);
     const out=await continueStatementFetch(client,accounts,from,to);
     if(out.pending){const token=putPendingFints(req.uid,{kind:'sync',client,connectionId:c.id,rows:out.rows,...out.pending});return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod));}
-    const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),c.id,req.uid]);
+    const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),config.tanMediaName||null,c.id,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
   }catch(e){logEvent('warning','bank_sync_failed','FinTS-Abruf fehlgeschlagen: '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Der Bank-Abruf'));}
 }));
@@ -1672,7 +1682,7 @@ app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), as
     pending.rows.push(...normalizeModernStatements(response.statements));
     const out=await continueStatementFetch(pending.client,pending.accounts,pending.from,pending.to,pending.accountIndex+1,pending.rows);
     if(out.pending){Object.assign(pending,out.pending,{rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod));}
-    pendingFints.delete(token);const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.connectionId,req.uid]);
+    pendingFints.delete(token);const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=?,tan_media=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.client.config.tanMediaName||null,pending.connectionId,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
   }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
