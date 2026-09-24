@@ -506,7 +506,15 @@ app.get('/admin/users', auth, requireAdmin, asyncRoute(async (req, res) => {
 app.get('/admin/storage', auth, requireAdmin, asyncRoute(async (req,res) => {
   const st = await fsp.statfs(process.env.STORAGE_ROOT || '/home/nutridesk.de/storage');
   const total = Number(st.blocks) * Number(st.bsize), free = Number(st.bavail) * Number(st.bsize);
-  res.json({ total, free, used:Math.max(0,total-free), mail_ready:SMTP_READY });
+  const [[q]]=await pool.execute('SELECT COALESCE(SUM(cloud_quota),0) AS allocated FROM users');
+  const [[u]]=await pool.execute('SELECT COALESCE(SUM(size),0) AS cloud_used FROM cloud_files');
+  const [[n]]=await pool.execute('SELECT COALESCE(SUM(size),0) AS note_used FROM assistant_note_images');
+  const allocated=Number(q.allocated)||0,managedUsed=(Number(u.cloud_used)||0)+(Number(n.note_used)||0);
+  res.json({
+    total,free,used:Math.max(0,total-free),allocated,managed_used:managedUsed,
+    allocation_free:Math.max(0,total-allocated),allocation_overbooked:Math.max(0,allocated-total),
+    mail_ready:SMTP_READY,mail_transport:SMTP_READY?'Lokaler SMTP-Server':'Deaktiviert',
+  });
 }));
 
 app.delete('/admin/users/:id/cooldown', auth, requireAdmin, asyncRoute(async (req, res) => {
@@ -520,6 +528,10 @@ app.put('/admin/users/:id/quota', auth, requireAdmin, asyncRoute(async (req, res
   const id = parseInt(req.params.id, 10);
   const gb = vNum(req.body.quota_gb, 'Speicher (GB)', 0, 1024);
   const bytes = Math.round(gb * 1024 * 1024 * 1024);
+  const [[quotaState]]=await pool.execute('SELECT COALESCE(SUM(cloud_quota),0) AS allocated,COALESCE(MAX(CASE WHEN id=? THEN cloud_quota END),0) AS current_quota FROM users',[id]);
+  const disk=await fsp.statfs(process.env.STORAGE_ROOT || '/home/nutridesk.de/storage');
+  const diskTotal=Number(disk.blocks)*Number(disk.bsize);
+  if((Number(quotaState.allocated)||0)-(Number(quotaState.current_quota)||0)+bytes>diskTotal)throw bad('Nicht genügend zuweisbarer Serverspeicher verfügbar');
   const [r] = await pool.execute('UPDATE users SET cloud_quota = ? WHERE id = ?', [bytes, id]);
   if (!r.affectedRows) return res.status(404).json({ error: 'Nutzer nicht gefunden' });
   logEvent('info', 'admin_quota', 'Cloud-Speicher für Nutzer #' + id + ' auf ' + gb + ' GB gesetzt', { uid: req.uid, ip: reqIp(req) });
@@ -2117,10 +2129,10 @@ app.put('/community/couple/status', auth, rateLimitUser('couple-status', 30), as
 app.put('/community/couple/board', auth, rateLimitUser('couple-board', 120), asyncRoute(async (req,res)=>{
   const c=await coupleFor(req.uid); if(!c) return res.status(404).json({error:'Kein Couple Space'});
   const expectedVersion=vInt(req.body.expectedVersion,'Board-Version',0,2147483647);
-  const strokes=Array.isArray(req.body.strokes)?req.body.strokes:[]; if(strokes.length>300) throw bad('Zeichenbrett ist voll');
+  const strokes=Array.isArray(req.body.strokes)?req.body.strokes:[]; if(strokes.length>800) throw bad('Zeichenbrett ist voll');
   const colors=['#84cc16','#ec4899','#38bdf8','#f59e0b','#f8fafc','#a78bfa','#fb7185','#2dd4bf','#ef4444','#f97316','#eab308','#22c55e','#06b6d4','#3b82f6','#8b5cf6','#d946ef','#111827','#64748b'];
-  const clean=strokes.map(s=>({ color:vEnum(s.color,'Farbe',colors), width:vInt(s.width,'Stiftbreite',1,32), points:vStr(s.points,'Punkte',8000) }));
-  const json=JSON.stringify(clean); if(Buffer.byteLength(json)>220000) throw bad('Zeichnung ist zu groß');
+  const clean=strokes.map(s=>({ color:vEnum(s.color,'Farbe',colors), width:vInt(s.width,'Stiftbreite',1,32), points:vStr(s.points,'Punkte',50000) }));
+  const json=JSON.stringify(clean); if(Buffer.byteLength(json)>1500000) throw bad('Zeichnung ist zu groß');
   const [u]=await pool.execute('UPDATE couple_spaces SET board_json=?,board_version=board_version+1 WHERE id=? AND board_version=?',[json,c.id,expectedVersion]);
   if(!u.affectedRows) return res.status(409).json({error:'Die Zeichnung wurde inzwischen geändert. Bitte erneut versuchen.'});
   res.json({ok:true,version:expectedVersion+1});

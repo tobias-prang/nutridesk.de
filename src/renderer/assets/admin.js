@@ -53,7 +53,7 @@
   function useDebounced(fn, ms) { var t = useRef(0); return function (arg) { clearTimeout(t.current); t.current = setTimeout(function () { fn(arg); }, ms); }; }
 
   var TABS = [
-    { id: 'users', label: 'Nutzer' }, { id: 'tickets', label: 'Tickets' },
+    { id: 'users', label: 'Nutzer' },
     { id: 'logs', label: 'Logs' }, { id: 'conv', label: 'Konversationen' }, { id: 'foods', label: 'Lebensmittel' },
     { id: 'recipes', label: 'Rezepte' }
   ];
@@ -92,7 +92,7 @@
         h('div', { style: { flex: '1 1 auto', minWidth: 0 } },
           h('div', { style: { fontSize: '14px', fontWeight: 600 } }, u.name, u.admin ? h('span', { style: { marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--acc)', background: 'var(--acc-bg)', border: '1px solid var(--acc-bd)', padding: '2px 7px', borderRadius: '6px' } }, 'ADMIN') : null),
           h('div', { style: { fontSize: '12px', color: 'var(--ink3)', marginTop: '2px' } }, u.email + (u.username ? ' · @' + u.username : ''))),
-        h('div',{style:{fontSize:'11.5px',color:'var(--ink3)',textAlign:'right',minWidth:'92px'}},fmtBytes(u.storage_used),h('div',{style:{fontSize:'9.5px',color:'var(--mut)',marginTop:'2px'}},'belegt')),
+        h('div',{style:{fontSize:'11.5px',color:'var(--ink3)',textAlign:'right',minWidth:'118px'}},fmtBytes(u.storage_used)+' / '+fmtBytes(u.cloud_quota),h('div',{style:{fontSize:'9.5px',color:'var(--mut)',marginTop:'2px'}},'belegt / zugewiesen')),
         h('div', { onClick: function () { openEdit(u); }, style: btnGhost }, 'Bearbeiten'));
     });
     var modalEl = null;
@@ -112,9 +112,9 @@
       h('div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' } }, h('div', { onClick: resetCd, style: btnGhost }, 'Cooldown reset'), h('div',{onClick:sendPassword,style:btnGhost},'Neues Passwort schicken'),h('div', { onClick: del, style: btnDanger }, 'Löschen'), h('div', { style: { flex: 1 } }), h('div', { onClick: function () { setModal(null); }, style: btnGhost }, 'Abbrechen'), h('div', { onClick: saveEdit, style: btnPrimary }, 'Speichern')));
     return h('div', null,
       h('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' } },
-        head('Nutzerverwaltung', loading ? 'Lädt …' : users.length + ' Konten · ' + (storage&&storage.mail_ready?'Zugangsdaten werden sicher per E-Mail versendet':'E-Mail-Versand noch nicht konfiguriert')),
+        head('Nutzerverwaltung', loading ? 'Lädt …' : users.length + ' Konten · ' + (storage&&storage.mail_ready?'E-Mail aktiv über '+(storage.mail_transport||'SMTP'):'E-Mail-Versand noch nicht konfiguriert')),
         h('div', { onClick: openNew, title:storage&&storage.mail_ready?'Nutzer anlegen':'Erfordert SMTP-Konfiguration', style:Object.assign({},btnPrimary,storage&&!storage.mail_ready?{opacity:.55}:null) }, storage&&!storage.mail_ready?'SMTP fehlt':'+ Nutzer anlegen')),
-      storage?h('div',{style:Object.assign({},box,{padding:'14px 18px',marginBottom:'14px',display:'flex',gap:'26px',flexWrap:'wrap'})},h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'SERVER BELEGT'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700},mono)},fmtBytes(storage.used))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'SERVER FREI'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700,color:'var(--acc)'},mono)},fmtBytes(storage.free))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'GESAMT'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700},mono)},fmtBytes(storage.total)))):null,
+      storage?h('div',{style:Object.assign({},box,{padding:'14px 18px',marginBottom:'14px',display:'flex',gap:'26px',flexWrap:'wrap'})},h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'NUTZERN ZUGEWIESEN'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700},mono)},fmtBytes(storage.allocated))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'NOCH ZUWEISBAR'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700,color:'var(--acc)'},mono)},fmtBytes(storage.allocation_free))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'APP-DATEN BELEGT'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700},mono)},fmtBytes(storage.managed_used))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'SERVER FREI'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700,color:'var(--acc)'},mono)},fmtBytes(storage.free))),h('div',null,h('div',{style:{fontSize:'10px',color:'var(--mut)'}},'SERVER GESAMT'),h('div',{style:Object.assign({fontSize:'18px',fontWeight:700},mono)},fmtBytes(storage.total)))):null,
       h('div', { style: Object.assign({}, box, { padding: '8px 22px' }) },
         loading ? skRows(5, ['90px', '96px']) : (rows.length ? rows : empty('Keine Nutzer'))), modalEl);
   }
@@ -358,7 +358,7 @@
   }
 
   // ---------------- Haupt-Komponente ----------------
-  var VIEWS = { users: UsersTab, logs: LogsTab, foods: FoodsTab, recipes: RecipesTab, tickets: TicketsTab, conv: ConvTab };
+  var VIEWS = { users: UsersTab, logs: LogsTab, foods: FoodsTab, recipes: RecipesTab, conv: ConvTab };
   function AdminPanel(props) {
     var api = props.api, toast = props.toast || function () {};
     var tb = useState('users'), tab = tb[0], setTab = tb[1];
