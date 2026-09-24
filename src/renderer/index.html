@@ -1519,6 +1519,7 @@
       </sc-if>
       <sc-if value="{{ bookIsBooked }}">
         <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="display:flex;align-items:center;gap:12px;padding:2px 2px 4px;"><div><div style="font-size:14px;font-weight:700;">Deine Finanzordner</div><div style="font-size:11.5px;color:var(--ink3);margin-top:2px;">Dieselben Ordner erscheinen auch in deiner Cloud.</div></div><div onclick="{{ openFinanceFolder }}" style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:10px;background:var(--acc);color:#0f1117;font-size:12px;font-weight:700;cursor:pointer;"><i data-lucide="folder-plus" style="width:15px;height:15px;"></i>Ordner erstellen</div></div>
           <sc-for list="{{ bookFolders }}" as="bf" hint-placeholder-count="5"><div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);overflow:hidden;"><div style="display:flex;align-items:center;gap:11px;padding:15px 18px;background:var(--bg2);border-bottom:1px solid var(--line2);"><div style="width:34px;height:34px;border-radius:10px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;"><i data-lucide="folder" style="width:17px;height:17px;color:var(--acc);"></i></div><div><div style="font-size:14px;font-weight:700;">{{ bf.name }}</div><div style="font-size:10.5px;color:var(--mut);">{{ bf.countLabel }}</div></div><span style="margin-left:auto;font:600 12px 'JetBrains Mono',monospace;color:{{ bf.c }};">{{ bf.sum }}</span></div><sc-for list="{{ bf.items }}" as="be" hint-placeholder-count="3"><div onclick="{{ openTxEdit }}" data-id="{{ be.id }}" style="display:flex;align-items:center;gap:12px;padding:11px 18px;border-bottom:1px solid var(--chip);cursor:pointer;" style-hover="background:var(--wchip);"><i data-lucide="receipt" style="width:16px;height:16px;color:var(--ink3);"></i><div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ be.name }}</div><div style="font-size:10.5px;color:var(--mut);">{{ be.date }} · {{ be.account }}</div></div><span style="display:{{ be.attachD }};align-items:center;gap:4px;font-size:10px;color:var(--acc);"><i data-lucide="paperclip" style="width:11px;height:11px;"></i>{{ be.attachments }}</span><span style="font:600 12.5px 'JetBrains Mono',monospace;color:{{ be.c }};">{{ be.amt }}</span></div></sc-for></div></sc-for>
           <sc-if value="{{ !hasBookFolders }}"><div style="padding:50px;text-align:center;color:var(--mut);border:1.5px dashed var(--line3);border-radius:18px;"><i data-lucide="folder-input" style="width:26px;height:26px;margin-bottom:10px;"></i><div style="font-weight:600;color:var(--ink2);">Noch keine Verbuchungen</div><div style="font-size:12px;margin-top:5px;">Sortiere Einträge aus „Nicht einsortiert“ ein.</div></div></sc-if>
         </div>
@@ -3344,6 +3345,10 @@
           <sc-for list="{{ txCatOptions }}" as="tc" hint-placeholder-count="6"><option value="{{ tc }}">{{ tc }}</option></sc-for>
         </select>
       </div>
+      <div style="margin-bottom:14px;">
+        <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Finanzordner</span>
+        <select data-dc-bind-value="{{ txFolder }}" onchange="{{ setTxFolder }}" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 12px;color:var(--ink);font-size:13.5px;font-family:'Space Grotesk',sans-serif;outline:none;cursor:pointer;box-sizing:border-box;"><sc-for list="{{ txFolderOptions }}" as="tf" hint-placeholder-count="4"><option value="{{ tf.id }}">{{ tf.label }}</option></sc-for></select>
+      </div>
       <div style="margin-bottom:18px;">
         <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Verwendungszweck <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--mut);">optional</span></span>
         <input value="{{ txInfo }}" onchange="{{ setTxInfo }}" placeholder="z. B. Rechnungsnummer, Notiz …" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;box-sizing:border-box;" style-focus="border-color:var(--acc);">
@@ -4264,6 +4269,8 @@
     </div>
   </div>
   </sc-if>
+
+  <sc-if value="{{ modFinanceFolder }}"><div onclick="{{ eatClick }}" style="position:fixed;inset:0;background:rgba(5,7,11,.78);z-index:100;display:flex;align-items:center;justify-content:center;padding:30px;"><div onclick="{{ eatClick }}" style="width:430px;max-width:100%;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);"><div style="display:flex;align-items:center;gap:11px;margin-bottom:18px;"><div style="width:40px;height:40px;border-radius:11px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="folder-plus" style="width:19px;height:19px;"></i></div><div><div style="font-size:17px;font-weight:700;">Neuer Finanzordner</div><div style="font-size:11px;color:var(--ink3);margin-top:2px;">Wird gleichzeitig in der Cloud angelegt.</div></div></div><span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Ordnername</span><input value="{{ finFolderName }}" onchange="{{ setFinFolderName }}" placeholder="z. B. Wohnen, Auto oder Steuern" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:12px 14px;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;"><div style="display:flex;justify-content:flex-end;gap:9px;margin-top:20px;"><div onclick="{{ closeModal }}" style="padding:10px 15px;border:1px solid var(--line3);border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;">Abbrechen</div><div onclick="{{ saveFinanceFolder }}" style="display:flex;align-items:center;gap:7px;padding:10px 16px;background:var(--acc);color:#0f1117;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;"><i data-lucide="folder-plus" style="width:14px;height:14px;"></i>Erstellen</div></div></div></div></sc-if>
 
   <sc-if value="{{ modTotp }}">
   <div onclick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(5,7,11,.82);z-index:120;display:flex;align-items:center;justify-content:center;padding:24px;"><div onclick="{{ eatClick }}" role="dialog" style="width:520px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:18px;font-weight:750;">{{ totpModalTitle }}</div><div onclick="{{ closeModal }}" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line3);display:flex;align-items:center;justify-content:center;cursor:pointer;"><i data-lucide="x" style="width:15px;height:15px;"></i></div></div><div style="font-size:12.5px;color:var(--ink3);line-height:1.55;margin-bottom:18px;">{{ totpModalHint }}</div>
@@ -5238,7 +5245,7 @@ class Component extends DCLogic {
       glName:'', glTarget:'', glRate:'', glIcon:'plane', glDate:'', glStart:'', glAuto:true,
       sgMode:'dates', sgAmount:'1500', sgFrom:'', sgTo:'', sgMonths:'12',
       netMode:'monthly', netBrutto:'3500', netWeeklyHours:'40', netFrom:'', netTo:'', netTaxClass:'I', netState:'Rheinland-Pfalz', netChurch:false, netChildless:true,
-      txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txQ:'', txFilter:'all', txAccount:'all',
+      txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txFolder:'', finFolderName:'', txQ:'', txFilter:'all', txAccount:'all',
       bookTab:'overview', bookAnalysisOpen:false, staging:[], stagingSel:{}, txEditId:0, txInfo:'', txDate:'', txMonth:'', txAttachments:[], txExistingAttachments:[],
       bankStatus:null, bankConnectionId:0, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSyncProgress:1, bankSyncFound:0, bankSyncRange:1, bankSyncRanges:10, bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
       kiPrefs:{ veggie:false, protein:true, cheap:false, fast:false, vegan:false, lowcarb:false, lactosefree:false, glutenfree:false, mealprep:false }, kiBudget:'50', kiBudgetType:'woche', kiPersons:1, kiDays:30, kiMeals:{ fruh:true, mittag:true, abend:true, snack:true }, kiWish:'',
@@ -7581,14 +7588,14 @@ class Component extends DCLogic {
   openFood = (e) => this.setState({ modal:'food', foodStep:'list', foodSel:null, foodMeal: e.currentTarget.dataset.meal || 'fruh', foodQ:'', foodAi:null, foodDb:[], foodDbBusy:false });
   foodBackToList = () => this.setState({ foodStep:'list' });
   openKi = () => this.setState({ modal:'ki', kiStep: this.state.kiBusy ? 'progress' : 'form', kiQs:[], kiFree:'' });
-  openTx = () => {this._txAttachmentFiles=[];this.setState({ modal:'tx', txEditId:0, txName:'', txAmt:'', txType:'out', txCat:'Lebensmittel', txInfo:'', txDate:this._todayIso(),txAttachments:[],txExistingAttachments:[] });};
+  openTx = () => {this._txAttachmentFiles=[];this.setState({ modal:'tx', txEditId:0, txName:'', txAmt:'', txType:'out', txCat:'Lebensmittel', txFolder:'', txInfo:'', txDate:this._todayIso(),txAttachments:[],txExistingAttachments:[] });};
   openTxEdit = (e) => {
     const id = parseInt(e.currentTarget.dataset.id);
     if (!id) return; // automatische Einkommenszeilen (id 0) nicht bearbeitbar
     const t = ((this.state.data && this.state.data.transactions) || []).find(x => x.id === id);
     if (!t) return;
     const amt = parseFloat(t.amount) || 0;
-    this._txAttachmentFiles=[];this.setState({ modal:'tx', txEditId:id, txName:t.name, txAmt:String(Math.abs(amt)).replace('.', ','), txType: amt >= 0 ? 'in' : 'out', txCat: t.category || 'Sonstiges', txInfo: t.info || '', txDate: String(t.date).slice(0, 10),txAttachments:[],txExistingAttachments:[] });
+    this._txAttachmentFiles=[];this.setState({ modal:'tx', txEditId:id, txName:t.name, txAmt:String(Math.abs(amt)).replace('.', ','), txType: amt >= 0 ? 'in' : 'out', txCat: t.category || 'Sonstiges', txFolder:t.folder_id?String(t.folder_id):'', txInfo: t.info || '', txDate: String(t.date).slice(0, 10),txAttachments:[],txExistingAttachments:[] });
     this.api('/transactions/'+id+'/attachments').then(rows=>this.setState({txExistingAttachments:Array.isArray(rows)?rows:[]})).catch(()=>{});
   };
   setTxInfo = (e) => this.setState({ txInfo: e.target.value });
@@ -7874,13 +7881,17 @@ class Component extends DCLogic {
   setTxName = (e) => this.setState({ txName: e.target.value });
   setTxAmt = (e) => this.setState({ txAmt: e.target.value });
   setTxCat = (e) => this.setState({ txCat: e.target.value });
+  setTxFolder = (e) => this.setState({txFolder:String(e.target.value||'')});
+  openFinanceFolder = () => this.setState({modal:'financeFolder',finFolderName:''});
+  setFinFolderName = (e) => this.setState({finFolderName:e.target.value});
+  saveFinanceFolder = async () => {const name=String(this.state.finFolderName||'').trim();if(!name){this._toast('Bitte einen Ordnernamen eingeben');return;}try{await this.api('/cloud/folders',{method:'POST',body:{name,parent_id:null}});this.setState({modal:'',finFolderName:''});await this.refresh();this._toast('Ordner in Finanzbuch und Cloud erstellt');}catch(e){this._toast(e.message);}};
   saveTx = async () => {
     const s = this.state;
     const amt = parseFloat((s.txAmt || '0').replace(',', '.')) || 0;
     if (!s.txName.trim() || amt <= 0) { this._toast('Bitte Name und Betrag ausfüllen'); return; }
     const body = {
       date: s.txDate || this._todayIso(), name: s.txName.trim(), category: s.txCat,
-      amount: s.txType === 'in' ? amt : -amt, info: s.txInfo.trim() || null,
+      amount: s.txType === 'in' ? amt : -amt, info: s.txInfo.trim() || null, folder_id:s.txFolder?Number(s.txFolder):null,
     };
     try {
       const saved = s.txEditId
@@ -7889,7 +7900,7 @@ class Component extends DCLogic {
       const txId = Number((saved && saved.id) || s.txEditId);
       const files = Array.isArray(this._txAttachmentFiles) ? this._txAttachmentFiles : [];
       for (const file of files) {
-        const fd = new FormData(); fd.append('file', file); fd.append('category', 'rechnung'); fd.append('transaction_id', String(txId));
+        const fd = new FormData(); fd.append('file', file); fd.append('category', 'rechnung'); fd.append('transaction_id', String(txId)); if(s.txFolder)fd.append('folder_id',String(s.txFolder));
         await this._upload('/cloud/upload', fd);
       }
       this._txAttachmentFiles=[];
@@ -9514,7 +9525,7 @@ class Component extends DCLogic {
     const inType = e => (s.txFilter === 'all' || (s.txFilter === 'in' ? e.amtN > 0 : e.amtN < 0));
     const matchText = e => (!q || e.name.toLowerCase().includes(q) || (e.cat || '').toLowerCase().includes(q) || (e.info || '').toLowerCase().includes(q));
     const txView = bookEntries.map(t => ({
-      id: t.id, iso: t.date, icon: this.CAT_ICONS[t.category] || 'receipt', name: t.name, cat: t.category, info: t.info || '', bank_connection_id:t.bank_connection_id,
+      id: t.id, iso: t.date, icon: this.CAT_ICONS[t.category] || 'receipt', name: t.name, cat: t.category, folder_id:Number(t.folder_id)||0, info: t.info || '', bank_connection_id:t.bank_connection_id,
       account:[t.bank_name,t.account_iban].filter(Boolean).join(' · ')||'Ohne Kontozuordnung',accountD:t.bank_connection_id||t.bank_name||t.account_iban?'flex':'none',
       infoD: (t.info && String(t.info).trim()) ? 'inline' : 'none',
       tag: t._income ? 'Auto' : (t.tag || ''), tagC: t._income ? 'var(--ink3)' : 'var(--acc)', amtN: t.amountN,
@@ -9556,15 +9567,19 @@ class Component extends DCLogic {
     }));
     const txAtCurrentMonth = selMonth >= curMonthStr;
     const txSearchActive = !!q;
+    const cloudFolderRows = Array.isArray(d.financeFolders) ? d.financeFolders : [];
+    const folderById = new Map(cloudFolderRows.map(f=>[Number(f.id),f]));
+    const folderLabel = f => {let parts=[f.name],p=folderById.get(Number(f.parent_id)),guard=0;while(p&&guard++<8){parts.unshift(p.name);p=folderById.get(Number(p.parent_id));}return parts.join(' / ');};
     const folderMap = {};
+    for(const f of cloudFolderRows) folderMap[String(f.id)]={id:f.id,name:folderLabel(f),items:[],total:0};
     for (const t of txView.filter(e => accountMatch(e) && !e._income)) {
-      const name = (t.cat || 'Sonstiges').trim() || 'Sonstiges';
-      if (!folderMap[name]) folderMap[name] = { name, items:[], total:0 };
-      folderMap[name].total += t.amtN;
-      folderMap[name].items.push({ id:t.id, name:t.name, date:this._ddmm(t.iso) + String(t.iso).slice(0,4), account:t.account,
+      const key=t.folder_id?String(t.folder_id):'none';
+      if (!folderMap[key]) folderMap[key] = { id:0,name:'Ohne Ordner',items:[],total:0 };
+      folderMap[key].total += t.amtN;
+      folderMap[key].items.push({ id:t.id, name:t.name, date:this._ddmm(t.iso) + String(t.iso).slice(0,4), account:t.account,
         attachments:t.attachments, attachD:t.attachments ? 'flex' : 'none', amt:t.amt, c:t.c });
     }
-    const bookFolders = Object.values(folderMap).sort((a,b)=>a.name.localeCompare(b.name,'de')).map(f=>({
+    const bookFolders = Object.values(folderMap).sort((a,b)=>(a.id?0:1)-(b.id?0:1)||a.name.localeCompare(b.name,'de')).map(f=>({
       ...f, countLabel:f.items.length + (f.items.length===1?' Verbuchung':' Verbuchungen'),
       sum:(f.total>=0?'+ € ':'− € ')+fmt(Math.abs(f.total)), c:f.total>=0?'var(--acc)':'var(--ink2)'
     }));
@@ -10580,6 +10595,7 @@ class Component extends DCLogic {
       bookSegTx: seg(s.bookTab === 'overview'), bookSegStg: seg(s.bookTab === 'staging'), bookSegBooked:seg(s.bookTab === 'booked'),
       bookTxBtnD: s.bookTab === 'overview' ? 'flex' : 'none', bookStgBtnD: s.bookTab === 'staging' ? 'flex' : 'none',
       bookFolders, hasBookFolders:bookFolders.length>0,
+      openFinanceFolder:this.openFinanceFolder,
       txAccount:String(s.txAccount||'all'),setTxAccount:this.setTxAccount,txAccountOptions,
       stagingCount: (s.staging || []).length, stagingBadgeD: (s.staging || []).length ? 'inline-flex' : 'none', hasStaging: (s.staging || []).some(r=>accountMatch(r)),
       stagingBookLabel: Object.keys(s.stagingSel || {}).length ? ('Einsortieren (' + Object.keys(s.stagingSel || {}).length + ')') : 'Alle einsortieren',
@@ -10790,7 +10806,7 @@ class Component extends DCLogic {
       cfIconBg: s.cfDanger ? 'rgba(248,113,113,.12)' : 'var(--acc-bg)', cfIconBd: s.cfDanger ? 'rgba(248,113,113,.32)' : 'var(--acc-bd)',
       cfIconC: s.cfDanger ? '#f87171' : 'var(--acc)', cfBtnBg: s.cfDanger ? '#f87171' : 'var(--acc)',
       cfConfirm: this.cfConfirm, cfCancel: this.cfCancel,
-      modFood: s.modal==='food', modTx: s.modal==='tx', modKi: s.modal==='ki', modAbo: s.modal==='abo', modAboInfo: s.modal==='aboInfo',
+      modFood: s.modal==='food', modTx: s.modal==='tx', modFinanceFolder:s.modal==='financeFolder', modKi: s.modal==='ki', modAbo: s.modal==='abo', modAboInfo: s.modal==='aboInfo',
       modExport: s.modal==='export', modGoal: s.modal==='goal',
       modAsset: s.modal==='asset', modLoan: s.modal==='loan', modBudget: s.modal==='budget',
       closeModal: this.closeModal, eatClick: this.eatClick,
@@ -10815,7 +10831,9 @@ class Component extends DCLogic {
       foodDbBusyD: s.foodDbBusy ? 'flex' : 'none',
       foodDbErrD: (!s.foodDbBusy && s.foodDbErr) ? 'flex' : 'none', foodDbErr: s.foodDbErr,
       segTxTypeIn: seg(s.txType==='in'), segTxTypeOut: seg(s.txType==='out'), setTxIn:this.setTxIn, setTxOut:this.setTxOut,
-      txName: s.txName, txAmt: s.txAmt, txCat: s.txCat,
+      txName: s.txName, txAmt: s.txAmt, txCat: s.txCat, txFolder:s.txFolder,
+      txFolderOptions:[{id:'',label:'Ohne Ordner'},...((d.financeFolders||[]).map(f=>({id:String(f.id),label:folderLabel(f)})))], setTxFolder:this.setTxFolder,
+      finFolderName:s.finFolderName,setFinFolderName:this.setFinFolderName,saveFinanceFolder:this.saveFinanceFolder,
       txCatOptions: s.txType === 'in' ? ['Einzahlung', 'Auszahlung', 'Sonstiges'] : ['Lebensmittel', 'Wohnen', 'Mobilität', 'Restaurant', 'Shopping', 'Sonstiges'],
       setTxName:this.setTxName, setTxAmt:this.setTxAmt, setTxCat:this.setTxCat, saveTx:this.saveTx,
       todayInput: String(now.getDate()).padStart(2, '0') + '.' + String(now.getMonth() + 1).padStart(2, '0') + '.' + now.getFullYear(),

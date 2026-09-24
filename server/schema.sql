@@ -128,8 +128,10 @@ CREATE TABLE IF NOT EXISTS transactions (
   bank_connection_id INT UNSIGNED NULL,
   bank_name     VARCHAR(120) NULL,
   account_iban  VARCHAR(40) NULL,
+  folder_id     INT UNSIGNED NULL,
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_tx_user_date (user_id, `date`),
+  KEY idx_tx_folder (user_id, folder_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
 
@@ -470,6 +472,10 @@ ALTER TABLE transactions
 ALTER TABLE cloud_files
   ADD COLUMN IF NOT EXISTS transaction_id INT UNSIGNED NULL,
   ADD INDEX IF NOT EXISTS idx_cfil_transaction (user_id, transaction_id);
+
+ALTER TABLE transactions
+  ADD COLUMN IF NOT EXISTS folder_id INT UNSIGNED NULL,
+  ADD INDEX IF NOT EXISTS idx_tx_folder (user_id, folder_id);
 
 -- Mehrere Bankverbindungen pro Nutzer werden mit
 -- server/scripts/migrate-bank-connections.sql migriert.

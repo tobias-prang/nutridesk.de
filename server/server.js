@@ -1024,6 +1024,7 @@ const RESOURCES = {
       tag: b.tag !== undefined ? vStr(b.tag, 'Tag', 40, { optional: true }) : (partial ? undefined : null),
       info: b.info !== undefined ? vStr(b.info, 'Verwendungszweck', 400, { optional: true }) : (partial ? undefined : null),
       planned: b.planned !== undefined ? vBool(b.planned) : (partial ? undefined : 0),
+      folder_id: b.folder_id !== undefined ? (b.folder_id === null || b.folder_id === '' ? null : vInt(b.folder_id, 'Ordner', 1, 4294967295)) : (partial ? undefined : null),
     }),
   },
   subscriptions: {
@@ -1163,6 +1164,7 @@ for (const [route, cfg] of Object.entries(RESOURCES)) {
     const [[cnt]] = await pool.execute(`SELECT COUNT(*) AS n FROM ${cfg.table} WHERE user_id = ?`, [req.uid]);
     if (cnt.n >= cap) throw bad('Limit erreicht: maximal ' + cap + ' Einträge in diesem Bereich.');
     const f = cfg.parse(req.body || {}, false);
+    if (cfg.table === 'transactions' && f.folder_id) { const [[fo]]=await pool.execute('SELECT id FROM cloud_folders WHERE id=? AND user_id=?',[f.folder_id,req.uid]); if(!fo) throw bad('Cloud-Ordner nicht gefunden'); }
     const keys = Object.keys(f).filter(k => f[k] !== undefined);
     const [r] = await pool.execute(
       `INSERT INTO ${cfg.table} (user_id, ${keys.join(', ')}) VALUES (?${', ?'.repeat(keys.length)})`,
@@ -1172,12 +1174,14 @@ for (const [route, cfg] of Object.entries(RESOURCES)) {
   }));
   app.put('/' + route + '/:id', auth, rwLimit, asyncRoute(async (req, res) => {
     const f = cfg.parse(req.body || {}, true);
+    if (cfg.table === 'transactions' && f.folder_id) { const [[fo]]=await pool.execute('SELECT id FROM cloud_folders WHERE id=? AND user_id=?',[f.folder_id,req.uid]); if(!fo) throw bad('Cloud-Ordner nicht gefunden'); }
     const keys = Object.keys(f).filter(k => f[k] !== undefined);
     if (!keys.length) throw bad('Keine Felder zum Aktualisieren');
     const [r] = await pool.execute(
       `UPDATE ${cfg.table} SET ${keys.map(k => k + ' = ?').join(', ')} WHERE id = ? AND user_id = ?`,
       [...keys.map(k => f[k]), req.params.id, req.uid]);
     if (!r.affectedRows) return res.status(404).json({ error: 'Nicht gefunden' });
+    if (cfg.table === 'transactions' && f.folder_id !== undefined) await pool.execute('UPDATE cloud_files SET folder_id=? WHERE user_id=? AND transaction_id=?',[f.folder_id,req.uid,req.params.id]);
     const [[row]] = await pool.execute(`SELECT * FROM ${cfg.table} WHERE id = ?`, [req.params.id]);
     res.json(row);
   }));
@@ -2273,6 +2277,7 @@ app.delete('/cloud/folders/:id', auth, asyncRoute(async (req, res) => {
   const [files] = await pool.query('SELECT stored_name FROM cloud_files WHERE user_id=? AND folder_id IN (?)', [req.uid, ids]);
   for (const f of files) { try { await fsp.unlink(safeCloudPath(req.uid, f.stored_name)); } catch (e) {} }
   await pool.query('DELETE FROM cloud_files WHERE user_id=? AND folder_id IN (?)', [req.uid, ids]);
+  await pool.query('UPDATE transactions SET folder_id=NULL WHERE user_id=? AND folder_id IN (?)', [req.uid, ids]);
   await pool.execute('DELETE FROM cloud_folders WHERE id=? AND user_id=?', [id, req.uid]);
   res.json({ ok: true });
 }));
@@ -2466,7 +2471,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
   await bookSubscriptions(uid).catch(() => {});
   const q = (sql, params = []) => pool.execute(sql, [uid, ...params]).then(([rows]) => rows);
   const [user, settings, weights, water, foodLog, dishes, plan, shopping,
-    transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, cooldowns] = await Promise.all([
+    transactions, financeFolders, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, cooldowns] = await Promise.all([
     q('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, totp_enabled, created_at FROM users WHERE id = ?').then(r => r[0]),
     q('SELECT * FROM user_settings WHERE user_id = ?').then(r => r[0]),
     q('SELECT id, `date`, kg FROM weights WHERE user_id = ? ORDER BY `date` ASC'),
@@ -2476,6 +2481,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
     q('SELECT * FROM meal_plan WHERE user_id = ? AND `date` BETWEEN DATE_SUB(CURDATE(), INTERVAL 45 DAY) AND DATE_ADD(CURDATE(), INTERVAL 60 DAY)'),
     q('SELECT * FROM shopping_items WHERE user_id = ? ORDER BY id ASC'),
     q("SELECT t.*,(SELECT COUNT(*) FROM cloud_files cf WHERE cf.user_id=t.user_id AND cf.transaction_id=t.id AND cf.scan_status IN ('clean','legacy_unverified')) AS attachment_count FROM transactions t WHERE t.user_id = ? ORDER BY t.`date` DESC, t.id DESC LIMIT 200000"),
+    q('SELECT id,name,parent_id FROM cloud_folders WHERE user_id=? ORDER BY parent_id IS NOT NULL,parent_id,name ASC'),
     q('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY `day` ASC'),
     q('SELECT * FROM loans WHERE user_id = ? ORDER BY id ASC'),
     q('SELECT * FROM goals WHERE user_id = ? ORDER BY id ASC'),
@@ -2505,7 +2511,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
     actualExpenses: getCurrentMonthExpenses({ transactions, month: currentMonth })
   };
   res.json({ user, settings: settingsSafe, weights, water, foodLog, dishes, plan, shopping: shoppingWeeks, shoppingWhole,
-    transactions, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns, financialSummary });
+    transactions, financeFolders, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns, financialSummary });
 }));
 
 // ---------- KI-Schicht entfernt: Analyse und Planung laufen systembasiert (siehe unten). ----------
@@ -3243,6 +3249,7 @@ app.get('/transactions/:id/attachments',auth,asyncRoute(async(req,res)=>{
   const id=vInt(req.params.id,'Buchung',1,4294967295);const [[tx]]=await pool.execute('SELECT id FROM transactions WHERE id=? AND user_id=?',[id,req.uid]);if(!tx)return res.status(404).json({error:'Buchung nicht gefunden'});
   const [rows]=await pool.execute("SELECT id,name,size,category,created_at FROM cloud_files WHERE user_id=? AND transaction_id=? AND scan_status IN ('clean','legacy_unverified') ORDER BY created_at DESC",[req.uid,id]);res.json(rows);
 }));
+
 
 // ---------- KI-Assistent: strukturierte Notizen ----------
 const assistantTags = (v) => (Array.isArray(v) ? v : String(v || '').split(','))
