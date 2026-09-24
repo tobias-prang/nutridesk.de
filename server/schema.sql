@@ -433,6 +433,9 @@ ALTER TABLE bank_connections
   ADD COLUMN IF NOT EXISTS tan_media VARCHAR(160) NULL,
   ADD COLUMN IF NOT EXISTS client_version VARCHAR(40) NULL;
 
+-- Mehrere Bankverbindungen pro Nutzer werden mit
+-- server/scripts/migrate-bank-connections.sql migriert.
+
 -- Bilder in strukturierten Notizen. Die Dateien liegen ausserhalb des Webroots
 -- unter STORAGE_ROOT/note-images/{user_id}; Downloads sind immer authentifiziert.
 CREATE TABLE IF NOT EXISTS assistant_note_images (

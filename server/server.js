@@ -81,10 +81,16 @@ const asyncRoute = (fn) => (req, res, next) => fn(req, res, next).catch(next);
 // Öffentlicher Changelog aus GitHub-Releases. Der kurze Cache schützt die GitHub-API
 // vor unnötigen Aufrufen; bei einem temporären GitHub-Ausfall wird der letzte Stand geliefert.
 const CHANGELOG_REPO = process.env.GITHUB_REPOSITORY || 'tobias-prang/nutridesk.de';
-const CHANGELOG_FALLBACK = [{v:'1.0.4',title:'NutriDesk Web-App',date:'2026-07-18',changes:[
-  {t:'new',text:'Bot-Fähigkeiten, Einkaufsliste und Neuigkeiten erweitert'},
-  {t:'fix',text:'Lebensmittelbilder und Finanz-Routing verbessert'},
-]}];
+const CHANGELOG_FALLBACK = [
+  {v:'1-beta.1',title:'Bankverbindungen & System-Fixes',date:'2026-09-24',changes:[
+    {t:'new',text:'Bis zu drei getrennte FinTS-Bankverbindungen pro Konto'},
+    {t:'fix',text:'pushTAN-Freigaben werden automatisch geprüft und Abrufzeiten sofort aktualisiert'},
+    {t:'fix',text:'Der Changelog lädt direkt beim Öffnen des System-Bereichs'},
+  ]},
+  {v:'1-beta',title:'NutriDesk v1-beta veröffentlicht',date:'2026-09-24',changes:[
+    {t:'new',text:'NutriDesk v1-beta veröffentlicht'},
+  ]},
+];
 let changelogCache = { at: 0, entries: CHANGELOG_FALLBACK };
 app.get('/api/changelog', asyncRoute(async (_req, res) => {
   if (Date.now() - changelogCache.at < 15 * 60 * 1000 && changelogCache.entries.length) {
@@ -1499,17 +1505,27 @@ async function saveModernConnection(uid, meta, client) {
   const accounts=(info && info.upd && info.upd.bankAccounts)||[];
   if(!accounts.length)throw new Error('Die Bank hat keine abrufbaren Konten übermittelt');
   const first=accounts[0]||{},method=client.config.selectedTanMethod;
-  await pool.execute(
-    'INSERT INTO bank_connections (user_id,blz,fints_url,login,pin_enc,bank_name,account_iban,banking_info,tan_method,tan_media,client_version) VALUES (?,?,?,?,?,?,?,?,?,?,?) '+
-    'ON DUPLICATE KEY UPDATE blz=VALUES(blz),fints_url=VALUES(fints_url),login=VALUES(login),pin_enc=VALUES(pin_enc),bank_name=VALUES(bank_name),account_iban=VALUES(account_iban),banking_info=VALUES(banking_info),tan_method=VALUES(tan_method),tan_media=VALUES(tan_media),client_version=VALUES(client_version)',
-    [uid,meta.blz,meta.url,meta.login,encPin(meta.pin),info.bpd&&info.bpd.bankName||null,first.iban||first.accountNumber||null,JSON.stringify(info),method&&method.id||null,client.config.tanMediaName||null,'lib-fints/1.5.2']);
-  return accounts;
+  const [[existing]]=await pool.execute('SELECT id FROM bank_connections WHERE user_id=? AND blz=? AND login=? LIMIT 1',[uid,meta.blz,meta.login]);
+  if(!existing){
+    const [[countRow]]=await pool.execute('SELECT COUNT(*) AS n FROM bank_connections WHERE user_id=?',[uid]);
+    if(Number(countRow.n)>=3)throw bad('Du kannst maximal drei Bankverbindungen speichern.');
+  }
+  const values=[meta.url,encPin(meta.pin),info.bpd&&info.bpd.bankName||null,first.iban||first.accountNumber||null,JSON.stringify(info),method&&method.id||null,client.config.tanMediaName||null,'lib-fints/1.5.2'];
+  let connectionId;
+  if(existing){
+    await pool.execute('UPDATE bank_connections SET fints_url=?,pin_enc=?,bank_name=?,account_iban=?,banking_info=?,tan_method=?,tan_media=?,client_version=? WHERE id=? AND user_id=?',[...values,existing.id,uid]);
+    connectionId=existing.id;
+  }else{
+    const [inserted]=await pool.execute('INSERT INTO bank_connections (user_id,blz,fints_url,login,pin_enc,bank_name,account_iban,banking_info,tan_method,tan_media,client_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)',[uid,meta.blz,meta.url,meta.login,values[1],values[2],values[3],values[4],values[5],values[6],values[7]]);
+    connectionId=inserted.insertId;
+  }
+  return {accounts,connectionId};
 }
 
 app.get('/bank', auth, asyncRoute(async (req, res) => {
-  const [[c]] = await pool.execute('SELECT blz, login, bank_name, account_iban, last_sync FROM bank_connections WHERE user_id = ?', [req.uid]);
+  const [rows] = await pool.execute('SELECT id, blz, login, bank_name, account_iban, last_sync FROM bank_connections WHERE user_id = ? ORDER BY created_at, id', [req.uid]);
   let available=true;try{await loadFints();}catch(_){available=false;}
-  res.json({ connected: !!c, available, protocol:'FinTS 3.0', bank: c ? { blz: c.blz, login: c.login, bank_name: c.bank_name, account_iban: c.account_iban, last_sync: c.last_sync } : null });
+  res.json({ connected: rows.length>0, available, protocol:'FinTS 3.0', banks:rows, bank:rows[0]||null, maxConnections:3 });
 }));
 
 // Bank-Suche: Nutzer findet seine Bank per Name oder BLZ, ohne die FinTS-URL zu kennen.
@@ -1590,9 +1606,9 @@ app.post('/bank/connect', auth, rateLimitUser('bank-connect', 6, 600000), asyncR
       if(response.requiresTan){const token=putPendingFints(req.uid,{kind:'connect',client,meta:{blz,url,login,pin},tanReference:response.tanReference});return res.json(tanPayload(token,response,method));}
       if(!config.tanMediaName&&method.activeTanMedia&&method.activeTanMedia.length)client.selectTanMedia(method.activeTanMedia[0]);
     }
-    const accounts=await saveModernConnection(req.uid,{blz,url,login,pin},client);
+    const saved=await saveModernConnection(req.uid,{blz,url,login,pin},client);
     logEvent('info','bank_connect','Bankkonto per FinTS 3.0 verknüpft ('+blz+')',{uid:req.uid,ip:reqIp(req)});
-    res.json({ok:true,accountCount:accounts.length});
+    res.json({ok:true,accountCount:saved.accounts.length,connectionId:saved.connectionId});
   } catch(e) {
     logEvent('warning','bank_connect_failed','FinTS-Verbindung abgelehnt ('+blz+'): '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});
     throw bad(friendlyFintsError(e,'Die Verbindung'));
@@ -1605,15 +1621,18 @@ app.post('/bank/connect/tan', auth, rateLimitUser('bank-connect-tan', 360, 60000
   const tan=req.body.tan?vStr(req.body.tan,'TAN',40):undefined;
   try{const response=await pending.client.synchronizeWithTan(pending.tanReference,tan);requireFintsSuccess(response,'Die Freigabe');
     if(response.requiresTan){pending.tanReference=response.tanReference;pending.expires=Date.now()+10*60*1000;return res.json(tanPayload(token,response,pending.client.config.selectedTanMethod));}
-    pendingFints.delete(token);const accounts=await saveModernConnection(req.uid,pending.meta,pending.client);
-    logEvent('info','bank_connect','Bankkonto nach TAN/App-Freigabe verknüpft ('+pending.meta.blz+')',{uid:req.uid,ip:reqIp(req)});res.json({ok:true,accountCount:accounts.length});
+    pendingFints.delete(token);const saved=await saveModernConnection(req.uid,pending.meta,pending.client);
+    logEvent('info','bank_connect','Bankkonto nach TAN/App-Freigabe verknüpft ('+pending.meta.blz+')',{uid:req.uid,ip:reqIp(req)});res.json({ok:true,accountCount:saved.accounts.length,connectionId:saved.connectionId});
   }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
 
 app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(async (req, res) => {
   // Bis zu zehn Jahre anfragen. Die Bank liefert davon den Zeitraum, den sie per FinTS bereitstellt.
   const days = vInt(req.body.days, 'Zeitraum', 1, 3650, { optional: true }) || 3650;
-  const [[c]] = await pool.execute('SELECT * FROM bank_connections WHERE user_id = ?', [req.uid]);
+  const connectionId=vInt(req.body.connection_id,'Bankverbindung',1,2147483647,{optional:true});
+  const [[c]] = connectionId
+    ? await pool.execute('SELECT * FROM bank_connections WHERE id=? AND user_id=?',[connectionId,req.uid])
+    : await pool.execute('SELECT * FROM bank_connections WHERE user_id=? ORDER BY created_at,id LIMIT 1',[req.uid]);
   if (!c) throw bad('Keine Bankverbindung. Bitte zuerst in den Kontoeinstellungen verknüpfen.');
   let pin;
   try { pin = decPin(c.pin_enc); } catch (e) { throw bad('Gespeicherte Zugangsdaten sind unlesbar, bitte neu verknüpfen.'); }
@@ -1626,8 +1645,8 @@ app.post('/bank/sync', auth, rateLimitUser('bank-sync', 12, 600000), asyncRoute(
     const client=new FinTSClient(config),accounts=(config.bankingInformation.upd&&config.bankingInformation.upd.bankAccounts)||[];
     const to=new Date(),from=new Date();from.setDate(from.getDate()-days);
     const out=await continueStatementFetch(client,accounts,from,to);
-    if(out.pending){const token=putPendingFints(req.uid,{kind:'sync',client,connectionId:c.user_id,rows:out.rows,...out.pending});return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod));}
-    const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE user_id=?',[JSON.stringify(config.bankingInformation),req.uid]);
+    if(out.pending){const token=putPendingFints(req.uid,{kind:'sync',client,connectionId:c.id,rows:out.rows,...out.pending});return res.json(tanPayload(token,out.pending.response,config.selectedTanMethod));}
+    const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE id=? AND user_id=?',[JSON.stringify(config.bankingInformation),c.id,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
   }catch(e){logEvent('warning','bank_sync_failed','FinTS-Abruf fehlgeschlagen: '+String(e.message||e).slice(0,300),{uid:req.uid,ip:reqIp(req)});throw bad(friendlyFintsError(e,'Der Bank-Abruf'));}
 }));
@@ -1641,13 +1660,15 @@ app.post('/bank/sync/tan', auth, rateLimitUser('bank-sync-tan', 360, 600000), as
     pending.rows.push(...normalizeModernStatements(response.statements));
     const out=await continueStatementFetch(pending.client,pending.accounts,pending.from,pending.to,pending.accountIndex+1,pending.rows);
     if(out.pending){Object.assign(pending,out.pending,{rows:out.rows,expires:Date.now()+10*60*1000});return res.json(tanPayload(token,out.pending.response,pending.client.config.selectedTanMethod));}
-    pendingFints.delete(token);const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE user_id=?',[JSON.stringify(pending.client.config.bankingInformation),req.uid]);
+    pendingFints.delete(token);const result=await stageRows(req.uid,out.rows,'bank');await pool.execute('UPDATE bank_connections SET last_sync=NOW(),banking_info=? WHERE id=? AND user_id=?',[JSON.stringify(pending.client.config.bankingInformation),pending.connectionId,req.uid]);
     res.json({ok:true,fetched:out.rows.length,added:result.added,skipped:result.skipped});
   }catch(e){throw bad(friendlyFintsError(e,'Die Freigabe'));}
 }));
 
-app.delete('/bank', auth, asyncRoute(async (req, res) => {
-  await pool.execute('DELETE FROM bank_connections WHERE user_id = ?', [req.uid]);
+app.delete('/bank/:id', auth, asyncRoute(async (req, res) => {
+  const id=vInt(req.params.id,'Bankverbindung',1,2147483647);
+  const [result]=await pool.execute('DELETE FROM bank_connections WHERE id=? AND user_id=?',[id,req.uid]);
+  if(!result.affectedRows)throw new HttpError(404,'Bankverbindung nicht gefunden');
   res.json({ ok: true });
 }));
 

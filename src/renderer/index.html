@@ -1909,7 +1909,7 @@
           <div onclick="{{ sHelp }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stHelp.c }};background:{{ stHelp.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="life-buoy" style="width:17px;height:17px;"></i>Hilfecenter</div>
           <div onclick="{{ sNotif }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stNotif.c }};background:{{ stNotif.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="bell" style="width:17px;height:17px;"></i>Benachrichtigungen</div>
           <div onclick="{{ sGemein }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stGemein.c }};background:{{ stGemein.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="users-round" style="width:17px;height:17px;"></i>Gemeinschaft</div>
-          <div onclick="{{ sLinks }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stLinks.c }};background:{{ stLinks.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="link-2" style="width:17px;height:17px;"></i>Verknüpfungen</div>
+          <div onclick="{{ sLinks }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stLinks.c }};background:{{ stLinks.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="landmark" style="width:17px;height:17px;"></i>Bankverbindungen</div>
           <!-- Support-Tab entfernt: Hilfe und Tickets laufen jetzt ueber den KI-Assistenten -->
           <div onclick="{{ sSystem }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stSystem.c }};background:{{ stSystem.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="settings-2" style="width:17px;height:17px;"></i>System</div>
           <div style="height:1px;background:var(--line2);margin:4px 8px;"></div>
@@ -2336,11 +2336,18 @@
 
           <sc-if value="{{ showLinks }}">
           <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:26px;">
-            <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Verknüpfungen</div>
-            <div style="font-size:12.5px;color:var(--ink3);margin-bottom:20px;line-height:1.5;">Verbinde dein Bankkonto, um Umsätze automatisch ins Finanzbuch zu holen. Weitere Verknüpfungen folgen.</div>
+            <div style="font-size:16px;font-weight:700;margin-bottom:4px;">Bankverbindungen</div>
+            <div style="font-size:12.5px;color:var(--ink3);margin-bottom:20px;line-height:1.5;">Verbinde bis zu drei Bankzugänge und rufe die Umsätze jedes Kontos getrennt ab.</div>
             <div id="nd-links-slot" style="display:flex;flex-direction:column;gap:12px;">
+              <sc-for list="{{ bankConnectionsView }}" as="bc" hint-placeholder-count="0">
+                <div style="background:var(--bg2);border:1px solid var(--line3);border-radius:16px;padding:19px 20px;">
+                  <div style="display:flex;align-items:center;gap:10px;margin-bottom:15px;"><div style="width:34px;height:34px;border-radius:10px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;"><i data-lucide="landmark" style="width:17px;height:17px;color:var(--acc);"></i></div><div style="min-width:0;"><div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ bc.name }}</div><div style="font-size:11px;color:var(--ink3);">FinTS 3.0 · verbunden</div></div><span style="margin-left:auto;font-size:9.5px;font-weight:700;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-bd);padding:2px 7px;border-radius:6px;">AKTIV</span></div>
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:9px;margin-bottom:15px;"><div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:var(--mut);margin-bottom:4px;">ANMELDENAME</div><div style="font:600 12px 'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;">{{ bc.login }}</div></div><div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:var(--mut);margin-bottom:4px;">KONTO</div><div style="font:600 12px 'JetBrains Mono',monospace;overflow:hidden;text-overflow:ellipsis;">{{ bc.iban }}</div></div><div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:10px;padding:10px 12px;"><div style="font-size:10px;color:var(--mut);margin-bottom:4px;">ZULETZT ABGERUFEN</div><div style="font:600 12px 'JetBrains Mono',monospace;">{{ bc.lastSync }}</div></div></div>
+                  <div style="display:flex;gap:9px;justify-content:flex-end;"><div onclick="{{ disconnectBank }}" data-id="{{ bc.id }}" style="display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);font-size:12.5px;font-weight:600;cursor:pointer;"><i data-lucide="unlink" style="width:14px;height:14px;"></i>Trennen</div><div onclick="{{ openBankSync }}" data-id="{{ bc.id }}" style="display:flex;align-items:center;gap:7px;padding:9px 15px;border-radius:10px;background:var(--acc);color:#0f1117;font-size:12.5px;font-weight:700;cursor:pointer;"><i data-lucide="download" style="width:14px;height:14px;"></i>Umsätze abrufen</div></div>
+                </div>
+              </sc-for>
               <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:26px;">
-                <div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;"><i data-lucide="landmark" style="width:18px;height:18px;color:var(--acc);"></i><span style="font-size:16px;font-weight:700;">Bank verknüpfen</span><span style="display:{{ bankBadgeD }};align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:.05em;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-bd);padding:1px 7px;border-radius:5px;"><i data-lucide="check" style="width:10px;height:10px;"></i>VERBUNDEN</span></div>
+                <div style="display:flex;align-items:center;gap:9px;margin-bottom:4px;"><i data-lucide="circle-plus" style="width:18px;height:18px;color:var(--acc);"></i><span style="font-size:16px;font-weight:700;">Bankkonto hinzufügen</span><span style="margin-left:auto;font:600 10px 'JetBrains Mono',monospace;color:var(--ink3);">{{ bankCountLabel }}</span></div>
                 <div style="font-size:12.5px;color:var(--ink3);margin-bottom:20px;line-height:1.5;">Per FinTS/HBCI. Danach holst du deine Umsätze im Finanzbuch mit einem Klick. Deine Zugangsdaten werden verschlüsselt auf deinem Server gespeichert.</div>
                 <div style="display:{{ bankFormD }};">
                   <div style="margin-bottom:14px;position:relative;">
@@ -2375,18 +2382,7 @@
                     <div onclick="{{ connectBank }}" style="display:flex;align-items:center;gap:8px;padding:11px 20px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="link" style="width:16px;height:16px;"></i>{{ bankConnectBtnLabel }}</div>
                   </div>
                 </div>
-                <div style="display:{{ bankConnD }};">
-                  <div style="display:flex;flex-direction:column;gap:10px;background:var(--bg2);border:1px solid var(--line3);border-radius:12px;padding:16px;margin-bottom:16px;">
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span style="font-size:12px;color:var(--ink3);">Bank</span><span style="font-size:13px;font-weight:600;">{{ bankNameLabel }}</span></div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span style="font-size:12px;color:var(--ink3);">Anmeldename</span><span style="font-size:13px;font-weight:600;font-family:'JetBrains Mono',monospace;">{{ bankLoginLabel }}</span></div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span style="font-size:12px;color:var(--ink3);">Konto</span><span style="font-size:12.5px;font-weight:600;font-family:'JetBrains Mono',monospace;">{{ bankIbanLabel }}</span></div>
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;"><span style="font-size:12px;color:var(--ink3);">Zuletzt abgerufen</span><span style="font-size:12.5px;color:var(--ink2);font-family:'JetBrains Mono',monospace;">{{ bankLastSyncLabel }}</span></div>
-                  </div>
-                  <div style="display:flex;gap:10px;justify-content:flex-end;">
-                    <div onclick="{{ disconnectBank }}" style="display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13px;cursor:pointer;" style-hover="background:var(--chip);color:#f87171;"><i data-lucide="unlink" style="width:15px;height:15px;"></i>Trennen</div>
-                    <div onclick="{{ openBankSync }}" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="download" style="width:15px;height:15px;"></i>Umsätze abrufen</div>
-                  </div>
-                </div>
+                <div style="display:{{ bankLimitD }};padding:14px;border-radius:11px;background:var(--bg2);border:1px solid var(--line3);font-size:12.5px;color:var(--ink3);">Du hast das Limit von drei Bankverbindungen erreicht.</div>
               </div>
             </div>
           </div>
@@ -5248,7 +5244,7 @@ class Component extends DCLogic {
       netMode:'monthly', netBrutto:'3500', netWeeklyHours:'40', netFrom:'', netTo:'', netTaxClass:'I', netState:'Rheinland-Pfalz', netChurch:false, netChildless:true,
       txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txQ:'', txFilter:'all',
       bookTab:'tx', bookAnalysisOpen:false, staging:[], stagingSel:{}, txEditId:0, txInfo:'', txDate:'', txMonth:'',
-      bankStatus:null, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
+      bankStatus:null, bankConnectionId:0, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
       kiPrefs:{ veggie:false, protein:true, cheap:false, fast:false, vegan:false, lowcarb:false, lactosefree:false, glutenfree:false, mealprep:false }, kiBudget:'50', kiBudgetType:'woche', kiPersons:1, kiDays:30, kiMeals:{ fruh:true, mittag:true, abend:true, snack:true }, kiWish:'',
       kiStep:'form', kiQs:[], kiQBusy:false, kiFree:'', kiStartTs:0, kiSummary:null,
       kiNotes:{sections:[],notes:[],quickNotes:[]},kiNotesQ:'',kiNotesSection:'all',kiNoteOpen:0,kiNotesPdfBusy:false,kinId:0,kinSection:'',kinTitle:'',kinContent:'',kinTags:'',kinRelations:[],kinRelQ:'',kinNewImages:[],
@@ -7182,7 +7178,7 @@ class Component extends DCLogic {
   sAccount = () => this.setState({ setTab:'account' });
   sLinks = () => this.setState({ setTab:'links' });
   sDev = () => this.setState({ setTab:'dev' });
-  sSystem = () => this.setState({ setTab:'system', sysTab:'changelog' });
+  sSystem = () => { this.setState({ setTab:'system', sysTab:'changelog' }); this.loadChangelog(); };
   sysChangelog = () => { this.setState({ sysTab:'changelog' }); if (!this._clogLoaded) this.loadChangelog(); };
   sysExport = () => this.setState({ sysTab:'export' });
   setAcUser = (e) => this.setState({ acUser: e.target.value });
@@ -7305,9 +7301,10 @@ class Component extends DCLogic {
     this._saveNotifPrefs({ ...p, types: { ...p.types, [c]: p.types[c] === false } });
   };
   loadChangelog = async () => {
-    this.setState({ clogBusy: true });
+    this.setState({ clogBusy: true, clogErr: false });
     try {
-      const resp = await fetch('https://nutridesk.de/api/changelog');
+      const resp = await fetch('/api/changelog?ts=' + Date.now(), { cache:'no-store' });
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
       const data = await resp.json();
       this._clogLoaded = true;
       this.setState({ changelog: (data && data.entries) || [], clogBusy: false });
@@ -8123,8 +8120,8 @@ class Component extends DCLogic {
     if(r&&r.requiresTan){const decoupled=!!r.decoupled;this.setState({bankBusy:false,modal:'bankTan',bankTanToken:r.tanToken,bankTanChallenge:decoupled?'Authentifizierung noch ausstehend':(r.challenge||'Bitte Bankauftrag bestätigen'),bankTanCode:'',bankTanDecoupled:decoupled,bankTanAction:action},()=>{if(decoupled)this._scheduleBankTanPoll(r.pollIntervalMs);});return false;}
     this._clearBankTanPoll();
     this.setState({bankBusy:false,bankPin:'',modal:'',bookTab:action==='sync'?'staging':this.state.bookTab});
-    if(action==='sync'){this._toast((r.added||0)+' neue Umsätze geladen'+(r.skipped?', '+r.skipped+' schon bekannt':''));this.loadStaging();}
-    else{this._toast('Bank sicher per FinTS 3.0 verbunden');this.loadBank();}
+    if(action==='sync'){this._toast((r.added||0)+' neue Umsätze geladen'+(r.skipped?', '+r.skipped+' schon bekannt':''));await Promise.all([this.loadStaging(),this.loadBank()]);}
+    else{this._toast('Bank sicher per FinTS 3.0 verbunden');await this.loadBank();this.setState({bankBlz:'',bankLogin:'',bankPin:'',bankSearch:'',bankBankName:'',bankResults:[]});}
     return true;
   };
   connectBank = async () => {
@@ -8137,18 +8134,19 @@ class Component extends DCLogic {
       await this._handleBankResult(r,'connect');
     } catch (e) { this.setState({ bankBusy: false }); this._toast(e.message); }
   };
-  disconnectBank = async () => {
+  disconnectBank = async (e) => {
+    const id=Number(e&&e.currentTarget&&e.currentTarget.dataset.id)||0;if(!id)return;
     if (!(await this.askConfirm({ title: 'Bank trennen', message: 'Die Bankverbindung und die verschlüsselt gespeicherten Zugangsdaten werden entfernt.', confirmLabel: 'Trennen' }))) return;
-    try { await this.api('/bank', { method: 'DELETE' }); this._toast('Bank getrennt'); this.loadBank(); }
+    try { await this.api('/bank/'+id, { method: 'DELETE' }); this._toast('Bank getrennt'); await this.loadBank(); }
     catch (e) { this._toast(e.message); }
   };
-  openBankSync = () => this.setState({ modal: 'bankSync', bankSyncDays: '3650' });
+  openBankSync = (e) => this.setState({ modal: 'bankSync', bankSyncDays: '3650', bankConnectionId:Number(e&&e.currentTarget&&e.currentTarget.dataset.id)||0 });
   setBankSyncDays = (e) => this.setState({ bankSyncDays: e.target.value });
   runBankSync = async () => {
     if (this.state.bankBusy) return;
     this.setState({ bankBusy: true });
     try {
-      const r = await this.api('/bank/sync', { method: 'POST', body: { days: parseInt(this.state.bankSyncDays) || 3650 } });
+      const r = await this.api('/bank/sync', { method: 'POST', body: { days: parseInt(this.state.bankSyncDays) || 3650, connection_id:this.state.bankConnectionId } });
       await this._handleBankResult(r,'sync');
     } catch (e) { this.setState({ bankBusy: false }); this._toast(e.message); }
   };
@@ -10565,12 +10563,9 @@ class Component extends DCLogic {
       toggleStagingSel: this.toggleStagingSel, stagingSelectAll: this.stagingSelectAll, bookStaging: this.bookStaging, delStaging: this.delStaging, clearStaging: this.clearStaging,
       bankConnected: !!(s.bankStatus && s.bankStatus.connected), bankAvailable: !(s.bankStatus) || !!(s.bankStatus && s.bankStatus.available),
       bankBtnD: (s.bankStatus && s.bankStatus.connected && s.bookTab === 'staging') ? 'flex' : 'none',
-      bankFormD: (s.bankStatus && s.bankStatus.connected) ? 'none' : 'block', bankConnD: (s.bankStatus && s.bankStatus.connected) ? 'block' : 'none',
-      bankBadgeD: (s.bankStatus && s.bankStatus.connected) ? 'inline-flex' : 'none',
-      bankNameLabel: (s.bankStatus && s.bankStatus.bank && (s.bankStatus.bank.bank_name || ('BLZ ' + s.bankStatus.bank.blz))) || '',
-      bankLoginLabel: (s.bankStatus && s.bankStatus.bank && s.bankStatus.bank.login) || '',
-      bankIbanLabel: (s.bankStatus && s.bankStatus.bank && s.bankStatus.bank.account_iban) || '–',
-      bankLastSyncLabel: (() => { const ls = s.bankStatus && s.bankStatus.bank && s.bankStatus.bank.last_sync; if (!ls) return 'noch nie'; const d = String(ls); return d.slice(8, 10) + '.' + d.slice(5, 7) + '.' + d.slice(0, 4) + ' ' + d.slice(11, 16); })(),
+      bankFormD: ((s.bankStatus&&s.bankStatus.banks)||[]).length<3?'block':'none',bankLimitD:((s.bankStatus&&s.bankStatus.banks)||[]).length>=3?'block':'none',
+      bankCountLabel:((s.bankStatus&&s.bankStatus.banks)||[]).length+' / 3',
+      bankConnectionsView:((s.bankStatus&&s.bankStatus.banks)||[]).map(b=>({id:b.id,name:b.bank_name||('BLZ '+b.blz),login:b.login||'–',iban:b.account_iban||'–',lastSync:(()=>{if(!b.last_sync)return'noch nie';const d=String(b.last_sync);return d.slice(8,10)+'.'+d.slice(5,7)+'.'+d.slice(0,4)+' '+d.slice(11,16);})()})),
       bankBlz: s.bankBlz, bankUrl: s.bankUrl, bankLogin: s.bankLogin, bankPin: s.bankPin, bankTanMedia: s.bankTanMedia,
       bankSearch: s.bankSearch, setBankSearch: this.setBankSearch, pickBank: this.pickBank,
       bankResultsD: (s.bankResults && s.bankResults.length) ? 'block' : 'none',
