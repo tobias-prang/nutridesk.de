@@ -3090,7 +3090,7 @@
         <sc-if value="{{ kiIsNotes }}">
         <div style="flex:1 1 auto;min-width:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);overflow:hidden;">
           <div style="flex:0 0 auto;padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-            <div style="flex:1 1 280px;display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--line3);border-radius:11px;padding:9px 12px;"><i data-lucide="search" style="width:15px;height:15px;color:var(--mut);"></i><input value="{{ kiNotesQ }}" oninput="{{ setKiNotesQ }}" onchange="{{ setKiNotesQ }}" placeholder="Notizen, Inhalte oder Tags durchsuchen …" style="flex:1;background:transparent;border:0;outline:0;color:var(--ink);font-size:13px;min-width:0;"></div>
+            <div style="flex:1 1 280px;display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--line3);border-radius:11px;padding:9px 12px;"><i data-lucide="search" style="width:15px;height:15px;color:var(--mut);"></i><input oninput="{{ setKiNotesQ }}" autocomplete="off" spellcheck="false" placeholder="Notizen, Inhalte oder Tags durchsuchen …" style="flex:1;background:transparent;border:0;outline:0;color:var(--ink);font-size:13px;min-width:0;"></div>
             <div onclick="{{ newKiNoteSection }}" title="Neuer Bereich" style="width:38px;height:38px;border-radius:10px;border:1px solid var(--line3);display:flex;align-items:center;justify-content:center;color:var(--ink3);cursor:pointer;"><i data-lucide="folder-plus" style="width:16px;height:16px;"></i></div><div onclick="{{ openKiNoteNew }}" style="display:flex;align-items:center;gap:7px;padding:10px 14px;border-radius:10px;background:var(--acc);color:#0f1117;font-size:12.5px;font-weight:700;cursor:pointer;"><i data-lucide="plus" style="width:15px;height:15px;"></i>Neue Notiz</div>
           </div>
           <div style="flex:0 0 auto;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;gap:7px;overflow-x:auto;">
@@ -5551,7 +5551,7 @@ class Component extends DCLogic {
       if (window.nutridesk.getAutostart) window.nutridesk.getAutostart().then(on => this.setState({ autostart: !!on })).catch(() => {});
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearTimeout(this._kiNotesSearchT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); this._syncUrlRoute(); }
   _routeForState = () => {
     const s=this.state;
@@ -7399,7 +7399,7 @@ class Component extends DCLogic {
   kiShowChat = () => { this.setState({ kiView:'chat', kiTicketId:0, kiTicket:null }); this._loadKiSessions(); };
   kiShowTickets = () => { this.setState({ kiView:'tickets', kiTicketId:0, kiTicket:null }); this._loadKiTickets(); };
   _loadKiNotes = async () => { try{const old=this.state.kiNotes&&this.state.kiNotes.notes||[];for(const n of old)for(const im of(n.images||[]))if(im.src&&im.src.startsWith('blob:'))URL.revokeObjectURL(im.src);const data=await this.api('/assistant-notes');for(const n of(data.notes||[])){for(const im of(n.images||[])){try{const blob=await this._download(im.url);im.src=URL.createObjectURL(blob);}catch(_){im.src='';}}}this.setState({kiNotes:data||{sections:[],notes:[],quickNotes:[]}});}catch(e){this._toast(e.message);} };
-  setKiNotesQ = (e) => this.setState({kiNotesQ:e.target.value,kiNoteOpen:0});
+  setKiNotesQ = (e) => { const value=e.target.value; clearTimeout(this._kiNotesSearchT); this._kiNotesSearchT=setTimeout(()=>this.setState({kiNotesQ:value,kiNoteOpen:0}),100); };
   pickKiNoteSection = (e) => this.setState({kiNotesSection:e.currentTarget.dataset.id||'all',kiNoteOpen:0});
   openKiNote = (e) => this.setState({kiNoteOpen:Number(e.currentTarget.dataset.id)||0,modal:'kiNoteView'});
   openKiImage = (e) => {e.stopPropagation();const id=Number(e.currentTarget.dataset.id),notes=(this.state.kiNotes&&this.state.kiNotes.notes)||[];let image=null;for(const note of notes){image=(note.images||[]).find(x=>Number(x.id)===id);if(image)break;}if(image&&image.src)this.setState({kiImageOpen:true,kiImageSrc:image.src,kiImageAlt:image.alt_text||image.name||'Notizbild',kiImageCaption:image.caption||image.alt_text||image.name||''});};
