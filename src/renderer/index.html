@@ -1445,6 +1445,7 @@
               </div>
             </sc-for>
           </div>
+          <sc-if value="{{ stagingHasMore }}"><div onclick="{{ stagingLoadMore }}" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;padding:10px 14px;border-radius:10px;border:1px solid var(--line3);color:var(--ink2);font-size:12.5px;font-weight:650;cursor:pointer;" style-hover="background:var(--chip);border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="chevrons-down" style="width:15px;height:15px;"></i>{{ stagingMoreLabel }}</div></sc-if>
           <sc-if value="{{ !hasStaging }}">
             <div onclick="{{ pickCsv }}" style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:46px 20px;text-align:center;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);">
               <div style="width:52px;height:52px;border-radius:15px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;"><i data-lucide="upload" style="width:24px;height:24px;color:var(--acc);"></i></div>
@@ -5260,7 +5261,7 @@ class Component extends DCLogic {
       sgMode:'dates', sgAmount:'1500', sgFrom:'', sgTo:'', sgMonths:'12',
       netMode:'monthly', netBrutto:'3500', netWeeklyHours:'40', netFrom:'', netTo:'', netTaxClass:'I', netState:'Rheinland-Pfalz', netChurch:false, netChildless:true,
       txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txFolder:'', finFolderName:'', finFolderReturn:'', txQ:'', txFilter:'all', txAccount:'all',
-      bookTab:'overview', bookAnalysisOpen:false, bookFolderClosed:{}, staging:[], stagingSel:{}, sortFolder:'', sortPendingIds:[], txEditId:0, txInfo:'', txDate:'', txMonth:'', txAttachments:[], txExistingAttachments:[],
+      bookTab:'overview', bookAnalysisOpen:false, bookFolderClosed:{}, staging:[], stagingSel:{}, stagingVisibleLimit:100, sortFolder:'', sortPendingIds:[], txEditId:0, txInfo:'', txDate:'', txMonth:'', txAttachments:[], txExistingAttachments:[],
       bankStatus:null, bankConnectionId:0, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSyncProgress:1, bankSyncFound:0, bankSyncRange:1, bankSyncRanges:10, bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
       kiPrefs:{ veggie:false, protein:true, cheap:false, fast:false, vegan:false, lowcarb:false, lactosefree:false, glutenfree:false, mealprep:false }, kiBudget:'50', kiBudgetType:'woche', kiPersons:1, kiDays:30, kiMeals:{ fruh:true, mittag:true, abend:true, snack:true }, kiWish:'',
       kiStep:'form', kiQs:[], kiQBusy:false, kiFree:'', kiStartTs:0, kiSummary:null,
@@ -7886,7 +7887,7 @@ class Component extends DCLogic {
   };
 
   setTxQ = (e) => this.setState({ txQ: e.target.value });
-  setTxAccount = (e) => this.setState({ txAccount: String(e.target.value || 'all') });
+  setTxAccount = (e) => this.setState({ txAccount:String(e.target.value||'all'), stagingVisibleLimit:100 });
   txFilterAll = () => this.setState({ txFilter:'all' });
   txFilterIn = () => this.setState({ txFilter:'in' });
   txFilterOut = () => this.setState({ txFilter:'out' });
@@ -8038,12 +8039,13 @@ class Component extends DCLogic {
 
   // ---- Finanzbuch: Reiter + nicht gebuchte Transaktionen (CSV/Bank) ----
   fBookTx = () => this.setState({ bookTab: 'overview' });
-  fBookStaging = () => { this.setState({ bookTab: 'staging' }); this.loadStaging(); };
+  fBookStaging = () => { this.setState({ bookTab:'staging', stagingVisibleLimit:100 }); this.loadStaging(); };
   fBookBooked = () => this.setState({ bookTab: 'booked' });
   loadStaging = async () => {
-    try { const staging = await this.api('/staging'); this.setState({ staging }); }
+    try { const staging = await this.api('/staging'); this.setState({ staging, stagingVisibleLimit:100 }); }
     catch (e) {}
   };
+  stagingLoadMore = () => this.setState({stagingVisibleLimit:Math.min((this.state.staging||[]).length,Number(this.state.stagingVisibleLimit||100)+100)});
   pickCsv = () => { const el = document.getElementById('nd-csv-input'); if (el) el.click(); };
   onCsvFile = (e) => {
     const f = e.currentTarget.files && e.currentTarget.files[0];
@@ -10627,15 +10629,17 @@ class Component extends DCLogic {
       txAccount:String(s.txAccount||'all'),setTxAccount:this.setTxAccount,txAccountOptions,
       stagingCount: (s.staging || []).length, stagingBadgeD: (s.staging || []).length ? 'inline-flex' : 'none', hasStaging: (s.staging || []).some(r=>accountMatch(r)),
       stagingBookLabel: Object.keys(s.stagingSel || {}).length ? ('Einsortieren (' + Object.keys(s.stagingSel || {}).length + ')') : 'Alle einsortieren',
-      stagingView: (s.staging || []).filter(r=>accountMatch(r)).map(r => {
+      stagingView: (s.staging || []).filter(r=>accountMatch(r)).slice(0,Number(s.stagingVisibleLimit||100)).map(r => {
         const amtN = parseFloat(r.amount) || 0; const seld = !!(s.stagingSel || {})[r.id];
         return { id: r.id, d: this._ddmm(String(r.date).slice(0, 10)), name: r.name, info: r.info || '',
           account:[r.bank_name,r.account_iban].filter(Boolean).join(' · ')||'Ohne Kontozuordnung',accountD:r.bank_connection_id||r.bank_name||r.account_iban?'flex':'none',
           amt: (amtN >= 0 ? '+ € ' : '− € ') + fmt(Math.abs(amtN)), c: amtN >= 0 ? 'var(--acc)' : 'var(--ink2)',
           boxBg: seld ? 'var(--acc)' : 'transparent', boxBd: seld ? 'var(--acc)' : 'var(--line3)', boxColor: seld ? '#0f1117' : 'transparent' };
       }),
+      stagingHasMore:(s.staging||[]).filter(r=>accountMatch(r)).length>Number(s.stagingVisibleLimit||100),
+      stagingMoreLabel:'Weitere '+Math.min(100,Math.max(0,(s.staging||[]).filter(r=>accountMatch(r)).length-Number(s.stagingVisibleLimit||100)))+' anzeigen',
       fBookTx: this.fBookTx, fBookStaging: this.fBookStaging, fBookBooked:this.fBookBooked, pickCsv: this.pickCsv, onCsvFile: this.onCsvFile,
-      toggleStagingSel: this.toggleStagingSel, stagingSelectAll: this.stagingSelectAll, bookStaging: this.bookStaging, delStaging: this.delStaging, clearStaging: this.clearStaging,
+      toggleStagingSel:this.toggleStagingSel, stagingSelectAll:this.stagingSelectAll, stagingLoadMore:this.stagingLoadMore, bookStaging:this.bookStaging, delStaging:this.delStaging, clearStaging:this.clearStaging,
       bankConnected: !!(s.bankStatus && s.bankStatus.connected), bankAvailable: !(s.bankStatus) || !!(s.bankStatus && s.bankStatus.available),
       bankBtnD: (s.bankStatus && s.bankStatus.connected && s.bookTab === 'staging') ? 'flex' : 'none',
       bankFormD: ((s.bankStatus&&s.bankStatus.banks)||[]).length<3?'block':'none',bankLimitD:((s.bankStatus&&s.bankStatus.banks)||[]).length>=3?'block':'none',
