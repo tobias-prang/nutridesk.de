@@ -2987,6 +2987,17 @@ function computeInsights(d) {
       goalNear.rate > 0 ? `Halte die Rate von ${fmtEur(goalNear.rate)} bei.` : 'Lege eine feste Monatsrate fest, damit der Zieltermin planbar wird.',
       months ? `Bei gleicher Rate voraussichtlich noch ${months} Monat${months === 1 ? '' : 'e'}.` : 'Mit einer festen Rate kann NutriDesk den Zielzeitpunkt berechnen.');
   }
+  const datedGoal = d.goals.find(g => g.target > g.saved && g.targetDate);
+  if (datedGoal) {
+    const now = new Date(); now.setHours(0, 0, 0, 0);
+    const end = new Date(String(datedGoal.targetDate).slice(0, 10) + 'T00:00:00');
+    const monthsLeft = Math.max(1, Math.ceil((end - now) / (30.4375 * 86400000)));
+    const needed = Math.max(0, datedGoal.target - datedGoal.saved) / monthsLeft;
+    if (end > now && needed > datedGoal.rate * 1.1) add('finanzen', 'warn', 79, `Sparziel-Tempo reicht nicht: ${datedGoal.name}`,
+      `Bis zum Zieltermin bleiben etwa ${monthsLeft} Monate. Dafür wären rund ${fmtEur(needed)} monatlich nötig, aktuell sind ${fmtEur(datedGoal.rate)} geplant.`,
+      `Erhöhe die Rate um ${fmtEur(needed - datedGoal.rate)}, verschiebe den Termin oder reduziere den Zielbetrag.`,
+      `Mit ${fmtEur(needed)} pro Monat bleibt der geplante Termin erreichbar.`);
+  }
   // FINANZEN: hohe Abo-Last (nur falls kein Doppel-Abo gemeldet)
   if (d.subMonthly >= 40 && !out.some(i => i.title === 'Mögliches Doppel-Abo'))
     add('finanzen', 'info', 58, 'Deine Abos summieren sich',

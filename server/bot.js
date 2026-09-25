@@ -184,7 +184,7 @@ module.exports = function registerBot(app, deps) {
   // ---------- Nutzer-Einstellungen ----------
   async function getSettings(uid) {
     const [[s]] = await pool.execute(
-      'SELECT assistant, bot_tone, share_chats, allow_location, home_city, home_lat, home_lon, cloud_tts_enabled, cloud_tts_provider, cloud_tts_privacy_version FROM user_settings WHERE user_id=?', [uid]);
+      'SELECT s.assistant, s.bot_tone, s.share_chats, s.allow_location, s.home_city, s.home_lat, s.home_lon, s.cloud_tts_enabled, s.cloud_tts_provider, s.cloud_tts_privacy_version, COALESCE(NULLIF(u.first_name,\'\'), NULLIF(SUBSTRING_INDEX(u.name,\' \',1),\'\'), NULLIF(u.username,\'\')) AS first_name FROM user_settings s JOIN users u ON u.id=s.user_id WHERE s.user_id=?', [uid]);
     return s || {};
   }
 
@@ -1085,7 +1085,8 @@ module.exports = function registerBot(app, deps) {
     // Frage, wurde aber komplett von der Begruessung verschluckt, weil es mit "hey" anfaengt.
     const nurGruss = /^(hi+|hallo|hey+|moin|servus|gruess dich|guten (morgen|tag|abend)|na|yo|halloechen|hei|hallo zusammen)([ ,!.]+(du|anja|conrad|leute|zusammen|nochmal|wieder))*[ ,!.]*$/.test(n);
     if (nurGruss) {
-      return { intent: 'greet', reply: `Hallo! Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Ich helfe dir beim Tracken, mit Lebensmitteln und eigenen Rezepten, bei deinen Finanzen, Terminen und Notizen. Was brauchst du?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Lebensmittel suchen', send: 'Wie viele Kalorien hat eine Banane?' }] };
+      const first = String(settings.first_name || '').trim().split(/\s+/)[0];
+      return { intent: 'greet', reply: `Hey${first ? ' ' + first : ''}! Schön, dass du da bist. Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Wie geht es dir heute, und wobei kann ich dir helfen?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Lebensmittel suchen', send: 'Wie viele Kalorien hat eine Banane?' }] };
     }
 
     // "ich wiege 80 kg" fiel durch, obwohl der Bot Gewicht selbst als eintragbar bewirbt.

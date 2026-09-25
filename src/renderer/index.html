@@ -7411,7 +7411,8 @@ class Component extends DCLogic {
     if (!this.state.kiSession) {
       const sid = 'ki' + Math.random().toString(36).slice(2, 12);
       const name = this.state.assistant === 'man' ? 'Conrad' : 'Anja';
-      this.setState({ kiSession: sid, kiMsgs: [{ role:'bot', text: 'Hallo, ich bin ' + name + '. Ich helfe dir beim Tracken, mit Lebensmitteln und eigenen Rezepten, bei Finanzen, Terminen und Notizen. Was brauchst du?' }], kiQuicks: [{ label:'Kalorien heute', send:'Wie viele Kalorien habe ich heute?' }, { label:'Ausgabe eintragen', send:'Ich moechte eine Ausgabe eintragen' }, { label:'Lebensmittel suchen', send:'Wie viele Kalorien hat eine Banane?' }] });
+      const first = String(this.state.acFirst || this.state.uname || '').trim().split(/\s+/)[0];
+      this.setState({ kiSession: sid, kiMsgs: [{ role:'bot', text: 'Hey' + (first ? ' ' + first : '') + '! Schön, dass du da bist. Ich bin ' + name + '. Wie geht es dir heute, und wobei kann ich dir helfen?' }], kiQuicks: [{ label:'Kalorien heute', send:'Wie viele Kalorien habe ich heute?' }, { label:'Ausgabe eintragen', send:'Ich moechte eine Ausgabe eintragen' }, { label:'Lebensmittel suchen', send:'Wie viele Kalorien hat eine Banane?' }] });
     }
     this._loadKiTickets();
   };
@@ -8729,7 +8730,7 @@ class Component extends DCLogic {
     this._bookBusy = false;
   };
   pickAccent = (e) => { const accent = e.currentTarget.dataset.accent; this.setState({ accent }); this._saveSettings({ accent }); };
-  pickAssistant = (e) => { const assistant = e.currentTarget.dataset.assistant,name=assistant==='man'?'Conrad':'Anja';const msgs=(this.state.kiMsgs||[]).map((m,i)=>i===0&&m.role==='bot'&&/^Hallo, ich bin (Anja|Conrad)\./.test(m.text||'')?{...m,text:'Hallo, ich bin '+name+'. Ich helfe dir beim Tracken, mit Lebensmitteln und eigenen Rezepten, bei Finanzen, Terminen und Notizen. Was brauchst du?'}:m);this.setState({ assistant,kiMsgs:msgs }); this._saveSettings({ assistant }); };
+  pickAssistant = (e) => { const assistant=e.currentTarget.dataset.assistant,name=assistant==='man'?'Conrad':'Anja',first=String(this.state.acFirst||this.state.uname||'').trim().split(/\s+/)[0];const msgs=(this.state.kiMsgs||[]).map((m,i)=>i===0&&m.role==='bot'&&/^(Hallo, ich bin|Hey\b)/.test(m.text||'')?{...m,text:'Hey'+(first?' '+first:'')+'! Schön, dass du da bist. Ich bin '+name+'. Wie geht es dir heute, und wobei kann ich dir helfen?'}:m);this.setState({ assistant,kiMsgs:msgs }); this._saveSettings({ assistant }); };
   pickTone = (e) => { const bot_tone = e.currentTarget.dataset.tone; this.setState({ botTone: bot_tone }); this._saveSettings({ bot_tone }); };
   toggleShareChats = () => { const v = !this.state.shareChats; this.setState({ shareChats: v }); this._saveSettings({ share_chats: v ? 1 : 0 }); };
   toggleLocation = () => {
