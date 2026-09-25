@@ -1450,6 +1450,8 @@ app.get('/staging', auth, asyncRoute(async (req, res) => {
 
 app.post('/staging/book', auth, rateLimitUser('staging-book', 30, 60000), asyncRoute(async (req, res) => {
   const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
+  const folderId=req.body.folder_id? vInt(req.body.folder_id,'Ordner',1,4294967295):null;
+  if(folderId){const [[folder]]=await pool.execute('SELECT id FROM cloud_folders WHERE id=? AND user_id=?',[folderId,req.uid]);if(!folder)throw bad('Cloud-Ordner nicht gefunden');}
   if (!ids.length) throw bad('Keine Auswahl');
   if (ids.length > 5000) throw bad('Zu viele auf einmal');
   const ph = ids.map(() => '?').join(',');
@@ -1457,8 +1459,8 @@ app.post('/staging/book', auth, rateLimitUser('staging-book', 30, 60000), asyncR
   if (!rows.length) return res.json({ booked: 0 });
   const [[cnt]] = await pool.execute('SELECT COUNT(*) AS n FROM transactions WHERE user_id = ?', [req.uid]);
   if (cnt.n + rows.length > 200000) throw bad('Transaktions-Limit erreicht.');
-  const vals = rows.map(r => [req.uid, r.date, r.name, r.category || (parseFloat(r.amount) >= 0 ? 'Einzahlung' : 'Sonstiges'), r.amount, r.info || null, r.source==='bank'?'Bank':'CSV', 0, r.bank_connection_id||null, r.bank_name||null, r.account_iban||null]);
-  await pool.query('INSERT INTO transactions (user_id, `date`, name, category, amount, info, tag, planned, bank_connection_id, bank_name, account_iban) VALUES ?', [vals]);
+  const vals = rows.map(r => [req.uid, r.date, r.name, r.category || (parseFloat(r.amount) >= 0 ? 'Einzahlung' : 'Sonstiges'), r.amount, r.info || null, r.source==='bank'?'Bank':'CSV', 0, r.bank_connection_id||null, r.bank_name||null, r.account_iban||null,folderId]);
+  await pool.query('INSERT INTO transactions (user_id, `date`, name, category, amount, info, tag, planned, bank_connection_id, bank_name, account_iban,folder_id) VALUES ?', [vals]);
   await pool.execute(`DELETE FROM staging_transactions WHERE user_id = ? AND id IN (${ph})`, [req.uid, ...ids]);
   res.json({ booked: rows.length });
 }));
@@ -2226,7 +2228,7 @@ app.get('/cloud', auth, asyncRoute(async (req, res) => {
   let folders = [];
   if (!searching) {
     [folders] = await pool.execute(
-      'SELECT id, name, created_at FROM cloud_folders WHERE user_id = ? AND ' + (folderId ? 'parent_id = ?' : 'parent_id IS NULL') + ' ORDER BY name ASC',
+      'SELECT cf.id,cf.name,cf.created_at,(SELECT COUNT(*) FROM cloud_files x WHERE x.user_id=cf.user_id AND x.folder_id=cf.id AND x.scan_status IN (\'clean\',\'legacy_unverified\')) AS file_count,(SELECT COUNT(*) FROM transactions t WHERE t.user_id=cf.user_id AND t.folder_id=cf.id) AS transaction_count FROM cloud_folders cf WHERE cf.user_id = ? AND ' + (folderId ? 'cf.parent_id = ?' : 'cf.parent_id IS NULL') + ' ORDER BY cf.name ASC',
       folderId ? [req.uid, folderId] : [req.uid]);
   }
   const where = ['user_id = ?', "scan_status IN ('clean','legacy_unverified')"]; const params = [req.uid];

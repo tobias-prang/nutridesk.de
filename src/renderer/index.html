@@ -2628,7 +2628,7 @@
         <sc-for list="{{ clFolders }}" as="fo" hint-placeholder-count="3">
           <div onclick="{{ openFolder }}" data-id="{{ fo.id }}" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:14px;box-shadow:var(--cardsh);padding:16px 18px;cursor:pointer;display:flex;align-items:center;gap:13px;" style-hover="border-color:var(--acc-bd);">
             <div style="width:40px;height:40px;border-radius:11px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><i data-lucide="folder" style="width:20px;height:20px;color:var(--acc);"></i></div>
-            <span style="flex:1 1 auto;min-width:0;font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ fo.name }}</span>
+            <div style="flex:1 1 auto;min-width:0;"><div style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ fo.name }}</div><div style="font-size:10.5px;color:var(--mut);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ fo.meta }}</div></div>
             <div onclick="{{ delFolder }}" data-id="{{ fo.id }}" title="Ordner löschen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></div>
           </div>
         </sc-for>
@@ -4284,6 +4284,8 @@
     </div>
   </sc-if>
 
+  <sc-if value="{{ modSortStaging }}"><div onclick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(5,7,11,.82);backdrop-filter:blur(8px);z-index:110;display:flex;align-items:center;justify-content:center;padding:24px;"><div onclick="{{ eatClick }}" role="dialog" style="width:500px;max-width:100%;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);"><div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:5px;"><span style="display:flex;align-items:center;gap:9px;font-size:17px;font-weight:700;"><i data-lucide="folder-input" style="width:18px;height:18px;color:var(--acc);"></i>Umsätze einsortieren</span><div onclick="{{ closeModal }}" style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:10px;border:1px solid var(--line3);background:var(--bg2);color:var(--ink3);cursor:pointer;" style-hover="border-color:var(--acc-bd);color:var(--acc);"><i data-lucide="corner-down-left" style="width:13px;height:13px;"></i><span style="font:600 10.5px 'JetBrains Mono',monospace;letter-spacing:.16em;">ESC</span></div></div><div style="font-size:12.5px;color:var(--ink3);line-height:1.55;margin-bottom:20px;">{{ sortCountLabel }} werden in das Finanzbuch übernommen. Wähle den gemeinsamen Cloud- und Finanzordner.</div><span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Zielordner</span><div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line3);border-radius:11px;padding:0 13px;"><i data-lucide="folder" style="width:16px;height:16px;color:var(--acc);"></i><select data-dc-bind-value="{{ sortFolder }}" onchange="{{ setSortFolder }}" style="width:100%;background:transparent;border:none;padding:12px 0;color:var(--ink);font-size:14px;font-family:'Space Grotesk',sans-serif;outline:none;cursor:pointer;"><sc-for list="{{ txFolderOptions }}" as="sf" hint-placeholder-count="4"><option value="{{ sf.id }}">{{ sf.label }}</option></sc-for></select></div><div style="display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 12px;border-radius:10px;background:var(--acc-bg);border:1px solid var(--acc-bd);font-size:11.5px;color:var(--ink2);"><i data-lucide="cloud" style="width:14px;height:14px;color:var(--acc);"></i>Zugehörige Rechnungen erscheinen später automatisch in diesem Cloud-Ordner.</div><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;"><div onclick="{{ closeModal }}" style="padding:10px 16px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:var(--chip);">Abbrechen</div><div onclick="{{ confirmBookStaging }}" style="display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="opacity:.9;"><i data-lucide="folder-input" style="width:16px;height:16px;"></i>Jetzt einsortieren</div></div></div></div></sc-if>
+
   <sc-if value="{{ modTotp }}">
   <div onclick="{{ closeModal }}" style="position:fixed;inset:0;background:rgba(5,7,11,.82);z-index:120;display:flex;align-items:center;justify-content:center;padding:24px;"><div onclick="{{ eatClick }}" role="dialog" style="width:520px;max-width:100%;max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line3);border-radius:20px;padding:24px;box-shadow:var(--modalsh);"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;"><div style="font-size:18px;font-weight:750;">{{ totpModalTitle }}</div><div onclick="{{ closeModal }}" style="width:34px;height:34px;border-radius:9px;border:1px solid var(--line3);display:flex;align-items:center;justify-content:center;cursor:pointer;"><i data-lucide="x" style="width:15px;height:15px;"></i></div></div><div style="font-size:12.5px;color:var(--ink3);line-height:1.55;margin-bottom:18px;">{{ totpModalHint }}</div>
     <sc-if value="{{ totpNeedsPassword }}"><label style="display:block;font-size:11px;color:var(--ink3);font-weight:700;margin-bottom:14px;">KONTOPASSWORT<input type="password" value="{{ totpPassword }}" oninput="{{ setTotpPassword }}" style="display:block;width:100%;box-sizing:border-box;margin-top:7px;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;color:var(--ink);"></label></sc-if>
@@ -5258,7 +5260,7 @@ class Component extends DCLogic {
       sgMode:'dates', sgAmount:'1500', sgFrom:'', sgTo:'', sgMonths:'12',
       netMode:'monthly', netBrutto:'3500', netWeeklyHours:'40', netFrom:'', netTo:'', netTaxClass:'I', netState:'Rheinland-Pfalz', netChurch:false, netChildless:true,
       txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txFolder:'', finFolderName:'', txQ:'', txFilter:'all', txAccount:'all',
-      bookTab:'overview', bookAnalysisOpen:false, bookFolderClosed:{}, staging:[], stagingSel:{}, txEditId:0, txInfo:'', txDate:'', txMonth:'', txAttachments:[], txExistingAttachments:[],
+      bookTab:'overview', bookAnalysisOpen:false, bookFolderClosed:{}, staging:[], stagingSel:{}, sortFolder:'', sortPendingIds:[], txEditId:0, txInfo:'', txDate:'', txMonth:'', txAttachments:[], txExistingAttachments:[],
       bankStatus:null, bankConnectionId:0, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSyncProgress:1, bankSyncFound:0, bankSyncRange:1, bankSyncRanges:10, bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
       kiPrefs:{ veggie:false, protein:true, cheap:false, fast:false, vegan:false, lowcarb:false, lactosefree:false, glutenfree:false, mealprep:false }, kiBudget:'50', kiBudgetType:'woche', kiPersons:1, kiDays:30, kiMeals:{ fruh:true, mittag:true, abend:true, snack:true }, kiWish:'',
       kiStep:'form', kiQs:[], kiQBusy:false, kiFree:'', kiStartTs:0, kiSummary:null,
@@ -8123,11 +8125,17 @@ class Component extends DCLogic {
     let ids = Object.keys(sel).map(Number);
     if (!ids.length) {const account=String(this.state.txAccount||'all'),visible=r=>account==='all'||(account==='none'?!Number(r.bank_connection_id):String(r.bank_connection_id)===account);ids=(this.state.staging||[]).filter(visible).map(r=>r.id);}
     if (!ids.length) { this._toast('Nichts zum Einsortieren'); return; }
+    this.setState({ modal:'sortStaging', sortPendingIds:ids, sortFolder:'' });
+  };
+  setSortFolder = (e) => this.setState({sortFolder:String(e.target.value||'')});
+  confirmBookStaging = async () => {
+    const ids = this.state.sortPendingIds || [];
+    if (!ids.length) { this._toast('Nichts zum Einsortieren'); return; }
     try {
-      const r = await this.api('/staging/book', { method: 'POST', body: { ids } });
+      const r = await this.api('/staging/book', { method:'POST', body:{ ids, folder_id:this.state.sortFolder ? Number(this.state.sortFolder) : null } });
       this._toast(r.booked + ' einsortiert');
-      this.setState({ stagingSel: {}, bookTab:'booked' });
-      this.loadStaging(); this.refresh();
+      this.setState({ modal:'', stagingSel:{}, sortPendingIds:[], sortFolder:'', bookTab:'booked' });
+      await Promise.all([this.loadStaging(), this.refresh()]);
     } catch (e) { this._toast(e.message); }
   };
   delStaging = async (e) => {
@@ -10046,7 +10054,10 @@ class Component extends DCLogic {
       clUploading: s.clUploading, clUpBtnD: s.clUploading ? 'none' : 'flex', clUpBusyD: s.clUploading ? 'flex' : 'none',
       clAtRoot: !s.clFolder, clRootC: s.clFolder ? 'var(--ink3)' : 'var(--acc)',
       clCrumbs: (s.clCrumbs || []).map(c => ({ id: c.id, name: c.name })),
-      clFolders: (s.clFolders || []).map(f => ({ id: f.id, name: f.name })),
+      clFolders: (s.clFolders || []).map(f => ({
+        id:f.id, name:f.name,
+        meta:(Number(f.file_count)||0) + ' ' + ((Number(f.file_count)||0)===1?'Anhang':'Anhänge') + ' · ' + (Number(f.transaction_count)||0) + ' ' + ((Number(f.transaction_count)||0)===1?'Verbuchung':'Verbuchungen')
+      })),
       clCats: [
         { key:'garantie', label:'Garantie', icon:'shield-check' }, { key:'vertrag', label:'Vertrag', icon:'file-signature' },
         { key:'rechnung', label:'Rechnung', icon:'receipt' }, { key:'versicherung', label:'Versicherung', icon:'umbrella' },
@@ -10060,7 +10071,7 @@ class Component extends DCLogic {
           id: f.id, name: f.name, icon: ic, sizeLabel: this._fmtBytes(f.size),
           catLabel: cat.l, catC: cat.c, dateLabel: f.created_at ? this._ddmm(String(f.created_at).slice(0, 10)) + String(f.created_at).slice(0, 4) : '',
           tagsLabel: (f.tags && f.tags.length) ? f.tags.join(' · ') : '', tagsD: (f.tags && f.tags.length) ? 'block' : 'none',
-          linkD: f.transaction_id ? 'flex' : 'none', linkLabel: f.transaction_id ? ('Verbuchung: ' + (f.transaction_name || ('#' + f.transaction_id)) + (f.transaction_date ? ' · ' + this._ddmm(String(f.transaction_date).slice(0,10)) + String(f.transaction_date).slice(0,4) : '')) : '',
+          linkD: f.transaction_id ? 'flex' : 'none', linkLabel: f.transaction_id ? ('Anhang zu: ' + (f.transaction_name || ('Verbuchung #' + f.transaction_id)) + (f.transaction_date ? ' · ' + this._ddmm(String(f.transaction_date).slice(0,10)) + String(f.transaction_date).slice(0,4) : '')) : '',
         };
       }),
       hasCloudItems: (s.clFolders || []).length > 0 || (s.clFiles || []).length > 0,
@@ -10821,7 +10832,7 @@ class Component extends DCLogic {
       cfIconBg: s.cfDanger ? 'rgba(248,113,113,.12)' : 'var(--acc-bg)', cfIconBd: s.cfDanger ? 'rgba(248,113,113,.32)' : 'var(--acc-bd)',
       cfIconC: s.cfDanger ? '#f87171' : 'var(--acc)', cfBtnBg: s.cfDanger ? '#f87171' : 'var(--acc)',
       cfConfirm: this.cfConfirm, cfCancel: this.cfCancel,
-      modFood: s.modal==='food', modTx: s.modal==='tx', modFinanceFolder:s.modal==='financeFolder', modKi: s.modal==='ki', modAbo: s.modal==='abo', modAboInfo: s.modal==='aboInfo',
+      modFood: s.modal==='food', modTx: s.modal==='tx', modFinanceFolder:s.modal==='financeFolder', modSortStaging:s.modal==='sortStaging', modKi: s.modal==='ki', modAbo: s.modal==='abo', modAboInfo: s.modal==='aboInfo',
       modExport: s.modal==='export', modGoal: s.modal==='goal',
       modAsset: s.modal==='asset', modLoan: s.modal==='loan', modBudget: s.modal==='budget',
       closeModal: this.closeModal, eatClick: this.eatClick,
@@ -10848,6 +10859,7 @@ class Component extends DCLogic {
       segTxTypeIn: seg(s.txType==='in'), segTxTypeOut: seg(s.txType==='out'), setTxIn:this.setTxIn, setTxOut:this.setTxOut,
       txName: s.txName, txAmt: s.txAmt, txCat: s.txCat, txFolder:s.txFolder,
       txFolderOptions:[{id:'',label:'Ohne Ordner'},...((d.financeFolders||[]).map(f=>({id:String(f.id),label:folderLabel(f)})))], setTxFolder:this.setTxFolder,
+      sortFolder:s.sortFolder, setSortFolder:this.setSortFolder, sortCountLabel:(s.sortPendingIds||[]).length + ((s.sortPendingIds||[]).length===1?' Umsatz':' Umsätze'), confirmBookStaging:this.confirmBookStaging,
       finFolderName:s.finFolderName,setFinFolderName:this.setFinFolderName,finFolderKey:this.finFolderKey,saveFinanceFolder:this.saveFinanceFolder,
       txCatOptions: s.txType === 'in' ? ['Einzahlung', 'Auszahlung', 'Sonstiges'] : ['Lebensmittel', 'Wohnen', 'Mobilität', 'Restaurant', 'Shopping', 'Sonstiges'],
       setTxName:this.setTxName, setTxAmt:this.setTxAmt, setTxCat:this.setTxCat, saveTx:this.saveTx,
