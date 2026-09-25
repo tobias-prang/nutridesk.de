@@ -18,7 +18,7 @@ chmod 0640 "$dkim_dir/nutridesk.de.key"
 
 cat > "$macro_file" <<'EOF'
 DKIM_DOMAIN = nutridesk.de
-DKIM_SELECTOR = mail
+DKIM_SELECTOR = nd20260925
 DKIM_PRIVATE_KEY = /etc/exim4/dkim/nutridesk.de.key
 DKIM_CANON = relaxed
 DKIM_STRICT = 0
@@ -28,7 +28,7 @@ chmod 0644 "$macro_file"
 cat > "$split_macro_file" <<'EOF'
 disable_ipv6 = true
 DKIM_DOMAIN = nutridesk.de
-DKIM_SELECTOR = mail
+DKIM_SELECTOR = nd20260925
 DKIM_PRIVATE_KEY = /etc/exim4/dkim/nutridesk.de.key
 DKIM_CANON = relaxed
 DKIM_STRICT = 0
