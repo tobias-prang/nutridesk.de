@@ -3335,7 +3335,7 @@ const assistantRelationIds = (v) => [...new Set((Array.isArray(v) ? v : []).map(
 app.get('/assistant-notes', auth, asyncRoute(async (req, res) => {
   const [sections, notes, relations, quickNotes, images] = await Promise.all([
     pool.execute('SELECT id,external_id,title,icon,sort_order FROM assistant_note_sections WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
-    pool.execute('SELECT id,section_id,external_id,title,content,tags_json,search_aliases_json,sort_order,updated_at FROM assistant_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,section_id,external_id,title,content,tags_json,search_aliases_json,pinned,sort_order,updated_at FROM assistant_notes WHERE user_id=? ORDER BY pinned DESC,sort_order,id', [req.uid]).then(x => x[0]),
     pool.execute('SELECT note_id,related_id FROM assistant_note_relations WHERE user_id=?', [req.uid]).then(x => x[0]),
     pool.execute('SELECT id,text,sort_order FROM assistant_quick_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
     pool.execute('SELECT id,note_id,name,alt_text,caption,size,mime,created_at FROM assistant_note_images WHERE user_id=? ORDER BY id', [req.uid]).then(x=>x[0]),
@@ -3526,15 +3526,22 @@ async function saveAssistantRelations(conn, uid, noteId, ids) {
 }
 
 app.post('/assistant-notes', auth, asyncRoute(async (req,res)=>{
-  const sectionId=vInt(req.body.section_id,'Bereich',1,4294967295),title=vStr(req.body.title,'Titel',180),content=vStr(req.body.content,'Inhalt',50000,{optional:true})||'',tags=assistantTags(req.body.tags),relations=assistantRelationIds(req.body.related_ids);
+  const sectionId=vInt(req.body.section_id,'Bereich',1,4294967295),title=vStr(req.body.title,'Titel',180),content=vStr(req.body.content,'Inhalt',50000,{optional:true})||'',tags=assistantTags(req.body.tags),relations=assistantRelationIds(req.body.related_ids),pinned=vBool(req.body.pinned);
   const [[section]]=await pool.execute('SELECT id FROM assistant_note_sections WHERE id=? AND user_id=?',[sectionId,req.uid]); if(!section) throw bad('Bereich nicht gefunden');
-  const conn=await pool.getConnection();try{await conn.beginTransaction();const [[m]]=await conn.execute('SELECT COALESCE(MAX(sort_order),-1)+1 AS n FROM assistant_notes WHERE user_id=? AND section_id=?',[req.uid,sectionId]);const [r]=await conn.execute('INSERT INTO assistant_notes (user_id,section_id,title,content,tags_json,sort_order) VALUES (?,?,?,?,?,?)',[req.uid,sectionId,title,content,JSON.stringify(tags),m.n]);await saveAssistantRelations(conn,req.uid,r.insertId,relations);await conn.commit();res.json({id:r.insertId});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
+  const conn=await pool.getConnection();try{await conn.beginTransaction();const [[m]]=await conn.execute('SELECT COALESCE(MAX(sort_order),-1)+1 AS n FROM assistant_notes WHERE user_id=? AND section_id=?',[req.uid,sectionId]);const [r]=await conn.execute('INSERT INTO assistant_notes (user_id,section_id,title,content,tags_json,pinned,sort_order) VALUES (?,?,?,?,?,?,?)',[req.uid,sectionId,title,content,JSON.stringify(tags),pinned,m.n]);await saveAssistantRelations(conn,req.uid,r.insertId,relations);await conn.commit();res.json({id:r.insertId});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
 }));
 
 app.put('/assistant-notes/:id', auth, asyncRoute(async (req,res)=>{
-  const id=vInt(req.params.id,'Notiz',1,4294967295),sectionId=vInt(req.body.section_id,'Bereich',1,4294967295),title=vStr(req.body.title,'Titel',180),content=vStr(req.body.content,'Inhalt',50000,{optional:true})||'',tags=assistantTags(req.body.tags),relations=assistantRelationIds(req.body.related_ids);
+  const id=vInt(req.params.id,'Notiz',1,4294967295),sectionId=vInt(req.body.section_id,'Bereich',1,4294967295),title=vStr(req.body.title,'Titel',180),content=vStr(req.body.content,'Inhalt',50000,{optional:true})||'',tags=assistantTags(req.body.tags),relations=assistantRelationIds(req.body.related_ids),pinned=vBool(req.body.pinned);
   const [[section]]=await pool.execute('SELECT id FROM assistant_note_sections WHERE id=? AND user_id=?',[sectionId,req.uid]);if(!section)throw bad('Bereich nicht gefunden');
-  const conn=await pool.getConnection();try{await conn.beginTransaction();const [r]=await conn.execute('UPDATE assistant_notes SET section_id=?,title=?,content=?,tags_json=? WHERE id=? AND user_id=?',[sectionId,title,content,JSON.stringify(tags),id,req.uid]);if(!r.affectedRows)throw new HttpError(404,'Notiz nicht gefunden');await saveAssistantRelations(conn,req.uid,id,relations);await conn.commit();res.json({ok:true});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
+  const conn=await pool.getConnection();try{await conn.beginTransaction();const [r]=await conn.execute('UPDATE assistant_notes SET section_id=?,title=?,content=?,tags_json=?,pinned=? WHERE id=? AND user_id=?',[sectionId,title,content,JSON.stringify(tags),pinned,id,req.uid]);if(!r.affectedRows)throw new HttpError(404,'Notiz nicht gefunden');await saveAssistantRelations(conn,req.uid,id,relations);await conn.commit();res.json({ok:true});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
+}));
+
+app.put('/assistant-notes/:id/pin', auth, asyncRoute(async (req,res)=>{
+  const id=vInt(req.params.id,'Notiz',1,4294967295),pinned=vBool(req.body.pinned);
+  const [r]=await pool.execute('UPDATE assistant_notes SET pinned=? WHERE id=? AND user_id=?',[pinned,id,req.uid]);
+  if(!r.affectedRows)throw new HttpError(404,'Notiz nicht gefunden');
+  res.json({ok:true,pinned});
 }));
 
 app.put('/assistant-notes/:id/relations', auth, asyncRoute(async (req,res)=>{
