@@ -5,6 +5,7 @@ stamp=$(date +%Y%m%d-%H%M%S)
 macro_file=/etc/exim4/exim4.conf.localmacros
 split_macro_file=/etc/exim4/conf.d/main/000_localmacros
 dkim_dir=/etc/exim4/dkim
+hubbed_hosts=/etc/exim4/hubbed_hosts
 
 if [ -f "$macro_file" ]; then
   cp -a "$macro_file" "$macro_file.bak-$stamp"
@@ -34,6 +35,12 @@ DKIM_CANON = relaxed
 DKIM_STRICT = 0
 EOF
 chmod 0644 "$split_macro_file"
+
+# Gmail's primary MX can retain stale reverse-DNS data for several hours after
+# a PTR correction. alt1 is an official Gmail MX and already validates the
+# current forward/reverse DNS pair, so route Gmail there deterministically.
+printf '%s\n' 'gmail.com: alt1.gmail-smtp-in.l.google.com' > "$hubbed_hosts"
+chmod 0644 "$hubbed_hosts"
 
 update-exim4.conf
 exim4 -bV >/dev/null
