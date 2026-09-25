@@ -3537,6 +3537,15 @@ app.put('/assistant-notes/:id', auth, asyncRoute(async (req,res)=>{
   const conn=await pool.getConnection();try{await conn.beginTransaction();const [r]=await conn.execute('UPDATE assistant_notes SET section_id=?,title=?,content=?,tags_json=? WHERE id=? AND user_id=?',[sectionId,title,content,JSON.stringify(tags),id,req.uid]);if(!r.affectedRows)throw new HttpError(404,'Notiz nicht gefunden');await saveAssistantRelations(conn,req.uid,id,relations);await conn.commit();res.json({ok:true});}catch(e){await conn.rollback();throw e;}finally{conn.release();}
 }));
 
+app.put('/assistant-notes/:id/relations', auth, asyncRoute(async (req,res)=>{
+  const id=vInt(req.params.id,'Notiz',1,4294967295),relations=assistantRelationIds(req.body.related_ids);
+  const [[note]]=await pool.execute('SELECT id FROM assistant_notes WHERE id=? AND user_id=?',[id,req.uid]);
+  if(!note)throw new HttpError(404,'Notiz nicht gefunden');
+  const conn=await pool.getConnection();
+  try{await conn.beginTransaction();await saveAssistantRelations(conn,req.uid,id,relations);await conn.commit();res.json({ok:true,count:relations.length});}
+  catch(e){await conn.rollback();throw e;}finally{conn.release();}
+}));
+
 app.delete('/assistant-notes/:id', auth, asyncRoute(async (req,res)=>{
   const id=vInt(req.params.id,'Notiz',1,4294967295);const [imgs]=await pool.execute('SELECT stored_name FROM assistant_note_images WHERE note_id=? AND user_id=?',[id,req.uid]);const [r]=await pool.execute('DELETE FROM assistant_notes WHERE id=? AND user_id=?',[id,req.uid]);if(!r.affectedRows)return res.status(404).json({error:'Notiz nicht gefunden'});for(const im of imgs)await fsp.unlink(safeNoteImagePath(req.uid,im.stored_name)).catch(()=>{});res.json({ok:true});
 }));
