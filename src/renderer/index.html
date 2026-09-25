@@ -5551,7 +5551,7 @@ class Component extends DCLogic {
       if (window.nutridesk.getAutostart) window.nutridesk.getAutostart().then(on => this.setState({ autostart: !!on })).catch(() => {});
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearTimeout(this._kiNotesSearchT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); this._syncUrlRoute(); }
   _routeForState = () => {
     const s=this.state;
@@ -7399,7 +7399,7 @@ class Component extends DCLogic {
   kiShowChat = () => { this.setState({ kiView:'chat', kiTicketId:0, kiTicket:null }); this._loadKiSessions(); };
   kiShowTickets = () => { this.setState({ kiView:'tickets', kiTicketId:0, kiTicket:null }); this._loadKiTickets(); };
   _loadKiNotes = async () => { try{const old=this.state.kiNotes&&this.state.kiNotes.notes||[];for(const n of old)for(const im of(n.images||[]))if(im.src&&im.src.startsWith('blob:'))URL.revokeObjectURL(im.src);const data=await this.api('/assistant-notes');for(const n of(data.notes||[])){for(const im of(n.images||[])){try{const blob=await this._download(im.url);im.src=URL.createObjectURL(blob);}catch(_){im.src='';}}}this.setState({kiNotes:data||{sections:[],notes:[],quickNotes:[]}});}catch(e){this._toast(e.message);} };
-  setKiNotesQ = (e) => {const value=e.target.value;clearTimeout(this._kiNotesSearchT);this._kiNotesSearchT=setTimeout(()=>{this._kiNotesSearchT=null;this.setState({kiNotesQ:value,kiNoteOpen:0});},140);};
+  setKiNotesQ = (e) => this.setState({kiNotesQ:e.target.value,kiNoteOpen:0});
   pickKiNoteSection = (e) => this.setState({kiNotesSection:e.currentTarget.dataset.id||'all',kiNoteOpen:0});
   openKiNote = (e) => this.setState({kiNoteOpen:Number(e.currentTarget.dataset.id)||0,modal:'kiNoteView'});
   openKiImage = (e) => {e.stopPropagation();const id=Number(e.currentTarget.dataset.id),notes=(this.state.kiNotes&&this.state.kiNotes.notes)||[];let image=null;for(const note of notes){image=(note.images||[]).find(x=>Number(x.id)===id);if(image)break;}if(image&&image.src)this.setState({kiImageOpen:true,kiImageSrc:image.src,kiImageAlt:image.alt_text||image.name||'Notizbild',kiImageCaption:image.caption||image.alt_text||image.name||''});};
