@@ -5551,7 +5551,7 @@ class Component extends DCLogic {
       if (window.nutridesk.getAutostart) window.nutridesk.getAutostart().then(on => this.setState({ autostart: !!on })).catch(() => {});
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearTimeout(this._kiNotesSearchT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); this._syncUrlRoute(); }
   _routeForState = () => {
     const s=this.state;
@@ -7399,7 +7399,7 @@ class Component extends DCLogic {
   kiShowChat = () => { this.setState({ kiView:'chat', kiTicketId:0, kiTicket:null }); this._loadKiSessions(); };
   kiShowTickets = () => { this.setState({ kiView:'tickets', kiTicketId:0, kiTicket:null }); this._loadKiTickets(); };
   _loadKiNotes = async () => { try{const old=this.state.kiNotes&&this.state.kiNotes.notes||[];for(const n of old)for(const im of(n.images||[]))if(im.src&&im.src.startsWith('blob:'))URL.revokeObjectURL(im.src);const data=await this.api('/assistant-notes');for(const n of(data.notes||[])){for(const im of(n.images||[])){try{const blob=await this._download(im.url);im.src=URL.createObjectURL(blob);}catch(_){im.src='';}}}this.setState({kiNotes:data||{sections:[],notes:[],quickNotes:[]}});}catch(e){this._toast(e.message);} };
-  setKiNotesQ = (e) => this.setState({kiNotesQ:e.target.value,kiNoteOpen:0});
+  setKiNotesQ = (e) => {const value=e.target.value;clearTimeout(this._kiNotesSearchT);this._kiNotesSearchT=setTimeout(()=>{this._kiNotesSearchT=null;this.setState({kiNotesQ:value,kiNoteOpen:0});},140);};
   pickKiNoteSection = (e) => this.setState({kiNotesSection:e.currentTarget.dataset.id||'all',kiNoteOpen:0});
   openKiNote = (e) => this.setState({kiNoteOpen:Number(e.currentTarget.dataset.id)||0,modal:'kiNoteView'});
   openKiImage = (e) => {e.stopPropagation();const id=Number(e.currentTarget.dataset.id),notes=(this.state.kiNotes&&this.state.kiNotes.notes)||[];let image=null;for(const note of notes){image=(note.images||[]).find(x=>Number(x.id)===id);if(image)break;}if(image&&image.src)this.setState({kiImageOpen:true,kiImageSrc:image.src,kiImageAlt:image.alt_text||image.name||'Notizbild',kiImageCaption:image.caption||image.alt_text||image.name||''});};
@@ -10009,7 +10009,8 @@ class Component extends DCLogic {
     const kiNotesData=s.kiNotes||{sections:[],notes:[],quickNotes:[]},kiAllNotes=kiNotesData.notes||[],kiSections=kiNotesData.sections||[],kiSectionMap=new Map(kiSections.map(x=>[Number(x.id),x])),kiNoteMap=new Map(kiAllNotes.map(x=>[Number(x.id),x]));
     const normalizeNoteSearch=v=>String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9äöüß]+/g,' ').trim();
     const kiNQ=normalizeNoteSearch(s.kiNotesQ),kiNTokens=kiNQ.split(/\s+/).filter(Boolean),kiNS=String(s.kiNotesSection||'all');
-    const kiSearchRows=kiAllNotes.map(n=>{const sec=kiSectionMap.get(Number(n.section_id))||{};const title=normalizeNoteSearch(n.title),aliases=normalizeNoteSearch((n.search_aliases||[]).join(' ')),tags=normalizeNoteSearch((n.tags||[]).join(' ')),content=normalizeNoteSearch(n.content),section=normalizeNoteSearch(sec.title),hay=[title,aliases,tags,section,content].join(' ');const score=kiNTokens.reduce((sum,t)=>sum+(title.includes(t)?12:aliases.includes(t)?9:tags.includes(t)?7:section.includes(t)?4:content.includes(t)?2:0),0);return{n,hay,score};});
+    if(this._kiSearchSource!==kiAllNotes){this._kiSearchSource=kiAllNotes;this._kiSearchRows=kiAllNotes.map(n=>{const sec=kiSectionMap.get(Number(n.section_id))||{};const title=normalizeNoteSearch(n.title),aliases=normalizeNoteSearch((n.search_aliases||[]).join(' ')),tags=normalizeNoteSearch((n.tags||[]).join(' ')),content=normalizeNoteSearch(n.content),section=normalizeNoteSearch(sec.title);return{n,title,aliases,tags,content,section,hay:[title,aliases,tags,section,content].join(' ')}});}
+    const kiSearchRows=(this._kiSearchRows||[]).map(x=>({...x,score:kiNTokens.reduce((sum,t)=>sum+(x.title.includes(t)?12:x.aliases.includes(t)?9:x.tags.includes(t)?7:x.section.includes(t)?4:x.content.includes(t)?2:0)}));
     const kiFilteredNotes=kiSearchRows.filter(x=>(kiNS==='all'||String(x.n.section_id)===kiNS)&&kiNTokens.every(t=>x.hay.includes(t))).sort((a,b)=>b.score-a.score||Number(a.n.sort_order||0)-Number(b.n.sort_order||0)).map(x=>x.n);
     const kiNotesView=kiFilteredNotes.map(n=>{const sec=kiSectionMap.get(Number(n.section_id))||{};return{id:n.id,title:n.title,section:sec.title||'Allgemein',icon:sec.icon||'notebook-tabs',excerpt:String(n.content||'').slice(0,260),tags:(n.tags||[]).slice(0,3),relatedLabel:(n.related_ids||[]).length?((n.related_ids||[]).length+' verknüpft'):'',bd:Number(s.kiNoteOpen)===Number(n.id)?'var(--acc-bd)':'var(--line3)'};});
     const kiNoteDetail=kiNoteMap.get(Number(s.kiNoteOpen))||null,kiNoteDetailSec=kiNoteDetail?kiSectionMap.get(Number(kiNoteDetail.section_id)):null;
