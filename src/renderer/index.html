@@ -3020,7 +3020,7 @@
           <div id="nd-ki-stage" style="position:relative;flex:1 1 auto;min-height:0;width:100%;"></div>
           <div style="flex:0 0 auto;padding:12px 14px;border-top:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px;">
             <div style="display:flex;flex-direction:column;min-width:0;"><span style="font-size:14.5px;font-weight:700;">{{ kiAsstName }}</span><span style="font-size:11.5px;color:var(--ink3);">dein Assistent</span></div>
-            <div onclick="{{ kiToggleMute }}" title="Stimme an/aus" style="width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;background:{{ kiMuteBg }};color:{{ kiMuteC }};" style-hover="opacity:.85;"><i data-lucide="{{ kiMuteIcon }}" style="width:18px;height:18px;"></i></div>
+            <div style="display:flex;align-items:center;gap:8px;min-width:0;"><div title="Lautstärke" style="display:flex;align-items:center;width:92px;"><input type="range" min="0" max="100" value="{{ kiVolumePct }}" oninput="{{ kiSetVolume }}" aria-label="Lautstärke der Assistentenstimme" style="width:100%;accent-color:var(--acc);cursor:pointer;"></div><div onclick="{{ kiToggleMute }}" title="Stimme stumm/an" style="width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;background:{{ kiMuteBg }};color:{{ kiMuteC }};" style-hover="opacity:.85;"><i data-lucide="{{ kiMuteIcon }}" style="width:18px;height:18px;"></i></div></div>
           </div>
         </div>
         </sc-if>
@@ -5362,7 +5362,7 @@ class Component extends DCLogic {
       scanStatus:'idle', scanErr:'', scanResult:null, scanManual:'',
       insights:[], insBusy:false, insErr:'', insUntil:'', savUntil:'', aiAvail:true,
       botMsgs:[], botUnread:0, botBusy:false,
-      kiMsgs:[], kiInput:'', kiSending:false, kiSession:'', kiMuted:false, kiView:'chat', kiQuicks:[], kiTickets:[], kiTicketId:0, kiTicket:null, kiTReply:'', kiSessions:[],
+      kiMsgs:[], kiInput:'', kiSending:false, kiSession:'', kiMuted:false, kiVolume:0.8, kiView:'chat', kiQuicks:[], kiTickets:[], kiTicketId:0, kiTicket:null, kiTReply:'', kiSessions:[],
       aiCfg:null, aiProvSel:'gemini', aiModelInput:'', aiKeyInput:'', aiBusy:false, aiTest:null,
 
 
@@ -5550,6 +5550,7 @@ class Component extends DCLogic {
 
   componentDidMount() {
     this._lucide(); this._applyAccent();
+    try { const raw=localStorage.getItem('nutridesk.voiceVolume'),v=Number(raw); if(raw!==null&&Number.isFinite(v))this.setState({kiVolume:Math.max(0,Math.min(1,v))}); } catch(e) {}
     this._routePop = () => this._applyUrlRoute();
     window.addEventListener('popstate', this._routePop);
     this._key = (e) => {
@@ -7410,9 +7411,7 @@ class Component extends DCLogic {
   _kiInit = () => {
     if (!this.state.kiSession) {
       const sid = 'ki' + Math.random().toString(36).slice(2, 12);
-      const name = this.state.assistant === 'man' ? 'Conrad' : 'Anja';
-      const first = String(this.state.acFirst || this.state.uname || '').trim().split(/\s+/)[0];
-      this.setState({ kiSession: sid, kiMsgs: [{ role:'bot', text: 'Hey' + (first ? ' ' + first : '') + '! Schön, dass du da bist. Ich bin ' + name + '. Wie geht es dir heute, und wobei kann ich dir helfen?' }], kiQuicks: [{ label:'Kalorien heute', send:'Wie viele Kalorien habe ich heute?' }, { label:'Ausgabe eintragen', send:'Ich moechte eine Ausgabe eintragen' }, { label:'Lebensmittel suchen', send:'Wie viele Kalorien hat eine Banane?' }] });
+      this.setState({ kiSession: sid, kiMsgs: [this._kiGreeting()], kiQuicks: [{ label:'Kalorien heute', send:'Wie viele Kalorien habe ich heute?' }, { label:'Ausgabe eintragen', send:'Ich moechte eine Ausgabe eintragen' }, { label:'Lebensmittel suchen', send:'Wie viele Kalorien hat eine Banane?' }] });
     }
     this._loadKiTickets();
   };
@@ -7459,9 +7458,11 @@ class Component extends DCLogic {
   saveKiNote = async () => {const s=this.state,title=(s.kinTitle||'').trim();if(!title){this._toast('Bitte einen Titel eingeben');return;}try{const body={section_id:Number(s.kinSection),title,content:s.kinContent||'',tags:String(s.kinTags||'').split(',').map(x=>x.trim()).filter(Boolean),related_ids:s.kinRelations||[]};const r=await this.api('/assistant-notes'+(s.kinId?'/'+s.kinId:''),{method:s.kinId?'PUT':'POST',body}),id=s.kinId||r.id;let uploaded=0;for(const file of(this._kinFiles||[])){const fd=new FormData();fd.append('file',file,file.name);await this._upload('/assistant-notes/'+id+'/images',fd);uploaded++;}this._kinFiles=[];this.setState({modal:'',kiNoteOpen:id,kinNewImages:[]});await this._loadKiNotes();this._toast('Notiz gespeichert'+(uploaded?' · '+uploaded+' Bild'+(uploaded===1?'':'er'):'') );}catch(e){this._toast(e.message);} };
   deleteKiNote = async () => {const id=Number(this.state.kinId);if(!id)return;if(!(await this.askConfirm({title:'Notiz löschen',message:'Die Notiz und ihre Verknüpfungen werden gelöscht.',confirmLabel:'Löschen'})))return;try{await this.api('/assistant-notes/'+id,{method:'DELETE'});this.setState({modal:'',kiNoteOpen:0});await this._loadKiNotes();this._toast('Notiz gelöscht');}catch(e){this._toast(e.message);} };
   _loadKiSessions = async () => { try { const s = await this.api('/bot/sessions'); this.setState({ kiSessions: Array.isArray(s) ? s : [] }); } catch (e) {} };
-  kiNewChat = () => { if ((this.state.kiSessions || []).length >= 5) { this._toast('Maximal 5 Chats. Lösche einen, um einen neuen zu starten.'); return; } this.setState({ kiView:'chat', kiSession:'', kiMsgs:[], kiQuicks:[], kiTicketId:0, kiTicket:null }); };
+  _kiGreeting = () => { const name=this.state.assistant==='man'?'Conrad':'Anja',first=String(this.state.acFirst||this.state.uname||'').trim().split(/\s+/)[0];return{role:'bot',text:'Hey'+(first?' '+first:'')+'! Schön, dass du da bist. Ich bin '+name+'. Wie geht es dir heute, und wobei kann ich dir helfen?'}; };
+  _kiResetGreeting = () => { const sid='ki'+Math.random().toString(36).slice(2,12);this.setState({kiView:'chat',kiSession:sid,kiMsgs:[this._kiGreeting()],kiQuicks:[{label:'Kalorien heute',send:'Wie viele Kalorien habe ich heute?'},{label:'Ausgabe eintragen',send:'Ich moechte eine Ausgabe eintragen'},{label:'Lebensmittel suchen',send:'Wie viele Kalorien hat eine Banane?'}],kiTicketId:0,kiTicket:null}); };
+  kiNewChat = () => { if ((this.state.kiSessions || []).length >= 5) { this._toast('Maximal 5 Chats. Lösche einen, um einen neuen zu starten.'); return; } this._kiResetGreeting(); };
   kiSwitchSession = async (e) => { const sid = e.currentTarget.dataset.sid; if (!sid || sid === this.state.kiSession) { this.setState({ kiView:'chat' }); return; } try { const h = await this.api('/bot/history/' + sid); const msgs = (h || []).map(m => ({ role: m.role === 'user' ? 'user' : 'bot', text: m.text, message_id: null })); this.setState({ kiView:'chat', kiSession: sid, kiMsgs: msgs, kiQuicks: [], kiTicketId: 0 }); this._kiScroll(); } catch (er) {} };
-  kiDeleteSession = async (e) => { const sid = e.currentTarget.dataset.sid; if (!sid) return; try { await this.api('/bot/sessions/' + sid, { method:'DELETE' }); const wasCur = sid === this.state.kiSession; await this._loadKiSessions(); if (wasCur) this.setState({ kiSession:'', kiMsgs:[], kiQuicks:[] }); } catch (er) {} };
+  kiDeleteSession = async (e) => { e.stopPropagation(); const sid = e.currentTarget.dataset.sid; if (!sid) return; try { await this.api('/bot/sessions/' + sid, { method:'DELETE' }); const wasCur = sid === this.state.kiSession; await this._loadKiSessions(); if (wasCur) this._kiResetGreeting(); } catch (er) {} };
   kiToggleMute = () => { const turningOn = !this.state.ttsRead; this.toggleTts(); if (turningOn) this._ensureCloudVoice(); };
   _ensureCloudVoice = async () => {
     if (this.state.cloudTts) return;
@@ -7511,9 +7512,10 @@ class Component extends DCLogic {
         const audioBuf = await actx.decodeAudioData(buf.slice(0));
         const src = actx.createBufferSource(); src.buffer = audioBuf;
         const analyser = actx.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = 0.35;
-        src.connect(analyser); analyser.connect(actx.destination);
+        const gain = actx.createGain(); gain.gain.value = this.state.ttsRead ? this.state.kiVolume : 0;
+        src.connect(analyser); analyser.connect(gain); gain.connect(actx.destination);
         const data = new Uint8Array(analyser.fftSize);
-        this._ttsSrc = src;
+        this._ttsSrc = src; this._ttsGain = gain;
         const tick = () => {
           analyser.getByteTimeDomainData(data);
           let sum = 0; for (let i = 0; i < data.length; i++) { const v = (data[i] - 128) / 128; sum += v * v; }
@@ -7525,7 +7527,7 @@ class Component extends DCLogic {
         src.start(0); tick();
       } catch (werr) {
         const url = URL.createObjectURL(new Blob([buf], { type:'audio/mpeg' }));
-        const a = new Audio(url); this._ttsAudio = a;
+        const a = new Audio(url); this._ttsAudio = a; a.volume=this.state.kiVolume; a.muted=!this.state.ttsRead;
         a.onplay = () => { if (window.NDVtuber) window.NDVtuber.fakeTalk(600000); };
         const stop = () => { if (window.NDVtuber) window.NDVtuber.setTalk(0); try { URL.revokeObjectURL(url); } catch (e) {} };
         a.onended = stop; a.onerror = stop;
@@ -7535,12 +7537,13 @@ class Component extends DCLogic {
   };
   _kiStopVoice = () => {
     try { if (this._ttsRaf) { cancelAnimationFrame(this._ttsRaf); this._ttsRaf = 0; } } catch (e) {}
-    try { if (this._ttsSrc) { this._ttsSrc.onended = null; this._ttsSrc.stop(); this._ttsSrc = null; } } catch (e) {}
+    try { if (this._ttsSrc) { this._ttsSrc.onended = null; this._ttsSrc.stop(); this._ttsSrc = null; this._ttsGain=null; } } catch (e) {}
     try { if (this._ttsAudio) { this._ttsAudio.pause(); this._ttsAudio = null; } } catch (e) {}
     if (window.NDVtuber) window.NDVtuber.setTalk(0);
   };
-  // Master-Schalter fuer ElevenLabs. Beim Ausschalten laufende Ausgabe stoppen.
-  toggleTts = () => this.setState(s => { const v = !s.ttsRead; if (!v) this._kiStopVoice(); this._saveSettings({ tts_read: v ? 1 : 0 }); return { ttsRead: v }; });
+  // Stummschalten stoppt die Zeitachse nicht: beim Entstummen läuft die aktuelle Stimme weiter.
+  toggleTts = () => { const v=!this.state.ttsRead;try{if(this._ttsGain)this._ttsGain.gain.setTargetAtTime(v?this.state.kiVolume:0,this._actx.currentTime,.015);if(this._ttsAudio)this._ttsAudio.muted=!v;}catch(e){}this.setState({ttsRead:v});this._saveSettings({tts_read:v?1:0}); };
+  kiSetVolume = (e) => { const v=Math.max(0,Math.min(1,Number(e.target.value)/100));try{localStorage.setItem('nutridesk.voiceVolume',String(v));if(this._ttsGain)this._ttsGain.gain.setTargetAtTime(this.state.ttsRead?v:0,this._actx.currentTime,.015);if(this._ttsAudio)this._ttsAudio.volume=v;}catch(x){}this.setState({kiVolume:v}); };
   // SEC-003C: Cloud-Stimme (ElevenLabs) an/aus. Aktivieren = ausdrueckliche Einwilligung (serverseitig protokolliert).
   toggleCloudTts = async () => {
     const enable = !this.state.cloudTts;
@@ -10068,7 +10071,7 @@ class Component extends DCLogic {
       kiNewChat: this.kiNewChat, kiSwitchSession: this.kiSwitchSession, kiDeleteSession: this.kiDeleteSession,
       kiSessionsView: (s.kiSessions || []).map(se => ({ sid: se.session_id, title: (se.title || 'Neuer Chat').slice(0, 22), active: se.session_id === s.kiSession, bg: se.session_id === s.kiSession ? 'var(--acc-bg)' : 'var(--bg2)', bd: se.session_id === s.kiSession ? 'var(--acc-bd)' : 'var(--line3)', col: se.session_id === s.kiSession ? 'var(--acc)' : 'var(--ink2)' })),
       kiHasSessions: (s.kiSessions || []).length > 0, kiNoSessions: (s.kiSessions || []).length === 0, kiNewD: (s.kiSessions || []).length >= 5 ? 'none' : 'flex',
-      kiToggleMute: this.kiToggleMute, kiMuteIcon: s.ttsRead ? 'volume-2' : 'volume-x',
+      kiToggleMute: this.kiToggleMute, kiSetVolume:this.kiSetVolume,kiVolumePct:String(Math.round((s.kiVolume==null ? .8 : s.kiVolume)*100)), kiMuteIcon: s.ttsRead ? 'volume-2' : 'volume-x',
       kiMuteBg: s.ttsRead ? 'var(--acc-bg)' : 'var(--chip)', kiMuteC: s.ttsRead ? 'var(--acc)' : 'var(--ink3)',
       kiSpeak: this.kiSpeak,
       kiMsgsView, kiSending: s.kiSending, kiInput: s.kiInput,
