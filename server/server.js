@@ -2862,17 +2862,20 @@ function subBase(name) {
 // Sammelt die Rohdaten aller Module als strukturierte Zahlen (nicht als Text).
 async function gatherInsightData(uid) {
   const q = (sql) => pool.execute(sql, [uid]).then(([r]) => r);
-  const [subs, cats, months, loans, goals, budgets, food7, appts, todos, sett] = await Promise.all([
+  const [subs, cats, months, periods, loans, goals, budgets, food7, water7, weights, appts, todos, sett] = await Promise.all([
     q('SELECT name, price, cycle, cancel_date, resume_date FROM subscriptions WHERE user_id = ?'),
     q("SELECT category, ROUND(SUM(-amount),2) AS spent FROM transactions WHERE user_id = ? AND planned = 0 AND amount < 0 AND `date` >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY category ORDER BY spent DESC LIMIT 8"),
     q("SELECT DATE_FORMAT(`date`, '%Y-%m') AS ym, ROUND(SUM(GREATEST(amount,0)),2) AS ein, ROUND(SUM(GREATEST(-amount,0)),2) AS aus FROM transactions WHERE user_id = ? AND planned = 0 AND `date` >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) GROUP BY ym ORDER BY ym"),
+    q("SELECT CASE WHEN `date` >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 'recent' ELSE 'previous' END AS period, ROUND(SUM(GREATEST(amount,0)),2) AS ein, ROUND(SUM(GREATEST(-amount,0)),2) AS aus FROM transactions WHERE user_id = ? AND planned = 0 AND `date` >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) GROUP BY period"),
     q('SELECT name, balance, rate, interest FROM loans WHERE user_id = ?'),
-    q('SELECT name, saved, target FROM goals WHERE user_id = ?'),
+    q('SELECT name, saved, target, rate, auto_save, start_date, target_date FROM goals WHERE user_id = ?'),
     q('SELECT category, limit_amount FROM budgets WHERE user_id = ?'),
-    q("SELECT COUNT(*) AS days, ROUND(AVG(d.kcal), 0) AS avgk FROM (SELECT `date`, SUM(kcal) AS kcal FROM food_log WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY `date`) d"),
+    q("SELECT COUNT(*) AS days, ROUND(AVG(d.kcal), 0) AS avgk, ROUND(AVG(d.protein),0) AS avgp FROM (SELECT `date`, SUM(kcal) AS kcal, SUM(COALESCE(protein,0)) AS protein FROM food_log WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY `date`) d"),
+    q("SELECT COUNT(*) AS days, ROUND(AVG(glasses),1) AS avg_glasses FROM water_log WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) AND glasses > 0"),
+    q("SELECT `date`, kg FROM weights WHERE user_id = ? AND `date` >= DATE_SUB(CURDATE(), INTERVAL 45 DAY) ORDER BY `date`"),
     q("SELECT title, DATEDIFF(`date`, CURDATE()) AS din FROM appointments WHERE user_id = ? AND `date` >= CURDATE() AND `date` <= DATE_ADD(CURDATE(), INTERVAL 21 DAY) ORDER BY `date`, `time` LIMIT 20"),
     q('SELECT COUNT(*) AS open FROM todos WHERE user_id = ? AND done = 0'),
-    q('SELECT ziel_typ, target_weight FROM user_settings WHERE user_id = ?'),
+    q('SELECT ziel_typ, target_weight, water_goal_ml FROM user_settings WHERE user_id = ?'),
   ]);
   const dn = new Date();
   const today = dn.getFullYear() + '-' + String(dn.getMonth() + 1).padStart(2, '0') + '-' + String(dn.getDate()).padStart(2, '0');
@@ -2886,10 +2889,13 @@ async function gatherInsightData(uid) {
     activeSubs, subMonthly,
     cats: cats.map(c => ({ category: c.category, spent: Number(c.spent) || 0 })),
     months: months.map(m => ({ ym: m.ym, ein: Number(m.ein) || 0, aus: Number(m.aus) || 0 })),
+    periods: Object.fromEntries(periods.map(p => [p.period, { ein: Number(p.ein) || 0, aus: Number(p.aus) || 0 }])),
     loans: loans.map(l => ({ name: l.name, balance: Number(l.balance) || 0, rate: Number(l.rate) || 0, interest: Number(l.interest) || 0 })),
-    goals: goals.map(g => ({ name: g.name, saved: Number(g.saved) || 0, target: Number(g.target) || 0, pct: g.target > 0 ? g.saved / g.target : 0 })),
+    goals: goals.map(g => ({ name: g.name, saved: Number(g.saved) || 0, target: Number(g.target) || 0, rate: Number(g.rate) || 0, autoSave: !!g.auto_save, startDate: g.start_date, targetDate: g.target_date, pct: g.target > 0 ? g.saved / g.target : 0 })),
     budgets: budgets.map(b => ({ category: b.category, limit: Number(b.limit_amount) || 0 })),
-    food: { days: food7[0].days || 0, avgk: food7[0].avgk || 0 },
+    food: { days: Number(food7[0].days) || 0, avgk: Number(food7[0].avgk) || 0, avgp: Number(food7[0].avgp) || 0 },
+    water: { days: Number(water7[0].days) || 0, avgGlasses: Number(water7[0].avg_glasses) || 0, goalMl: sett[0] ? (Number(sett[0].water_goal_ml) || 0) : 0 },
+    weights: weights.map(w => ({ date: w.date, kg: Number(w.kg) || 0 })),
     zielTyp: zt < 0 ? -1 : zt > 0 ? 1 : 0,
     todosOpen: todos[0].open || 0,
     appts: appts.map(a => ({ title: a.title, din: a.din })),
@@ -2897,10 +2903,15 @@ async function gatherInsightData(uid) {
   };
 }
 
-// Regelwerk: erzeugt aus den Rohdaten modulübergreifende Erkenntnisse (max. 8).
+// Regelwerk: bewertet Daten modulübergreifend, erklärt den Befund und nennt eine
+// konkrete nächste Handlung. Der Score verhindert, dass nette Hinweise wichtige
+// Warnungen verdrängen.
 function computeInsights(d) {
   const out = [];
-  const add = (category, tone, title, text) => out.push({ category, tone, title, text });
+  const add = (category, tone, score, title, finding, recommendation, impact = '') => out.push({
+    category, tone, score, title,
+    text: `Erkannt: ${finding}\n\nEmpfehlung: ${recommendation}${impact ? `\n\nMöglicher Effekt: ${impact}` : ''}`,
+  });
 
   // FINANZEN: Doppel-Abos (gleicher Namensstamm, z.B. zwei Netflix)
   const byBase = {};
@@ -2909,59 +2920,104 @@ function computeInsights(d) {
     const g = byBase[k];
     if (g.length >= 2) {
       const sum = g.reduce((a, s) => a + s.monthly, 0);
-      add('finanzen', 'warn', 'Mögliches Doppel-Abo',
-        `Du hast ${g.length} aktive Abos die zu "${g[0].name}" passen (${g.map(s => s.name).join(', ')}), zusammen ${fmtEur(sum)}/Monat. Prüf, ob du wirklich beide brauchst.`);
+      add('finanzen', 'warn', 88, 'Mögliches Doppel-Abo',
+        `${g.length} aktive Abos passen zu „${g[0].name}“ (${g.map(s => s.name).join(', ')}) und kosten zusammen ${fmtEur(sum)} pro Monat.`,
+        'Prüfe die Leistungen nebeneinander und kündige den doppelten oder seltener genutzten Vertrag.',
+        `Bis zu ${fmtEur(sum * 12)} weniger Fixkosten pro Jahr.`);
     }
   }
   // FINANZEN: teuerster Kredit
   const loanHi = d.loans.filter(l => l.interest >= 0.05).sort((a, b) => b.interest - a.interest)[0];
-  if (loanHi) add('finanzen', 'warn', 'Teurer Kredit läuft',
-    `${loanHi.name}: noch ${fmtEur(loanHi.balance)} Restschuld bei ${(loanHi.interest * 100).toFixed(1)}% Zins. Eine Sondertilgung spart dir hier am meisten.`);
-  // FINANZEN: Monatsbilanz
-  if (d.months.length) {
-    const m = d.months[d.months.length - 1];
-    const diff = m.ein - m.aus;
-    if (m.aus > m.ein && m.aus > 0) add('finanzen', diff < -200 ? 'bad' : 'warn', 'Mehr ausgegeben als eingenommen',
-      `Im Zeitraum ${m.ym} stehen ${fmtEur(m.ein)} Einnahmen ${fmtEur(m.aus)} Ausgaben gegenüber, ein Minus von ${fmtEur(-diff)}.`);
-    else if (diff > 50) add('finanzen', 'good', 'Überschuss diesen Monat',
-      `In ${m.ym} bleibt dir ein Plus von ${fmtEur(diff)}. Leg es direkt auf ein Sparziel, dann ist es weg vom Girokonto.`);
+  if (loanHi) add('finanzen', 'warn', 84, 'Teurer Kredit läuft',
+    `${loanHi.name} hat ${fmtEur(loanHi.balance)} Restschuld bei ${(loanHi.interest * 100).toFixed(1)} % Zins.`,
+    'Priorisiere freie Beträge für diesen Kredit und prüfe, ob kostenfreie Sondertilgungen möglich sind.',
+    `Aktuell fallen rechnerisch rund ${fmtEur(loanHi.balance * loanHi.interest / 12)} Zinsen pro Monat an.`);
+
+  // FINANZEN: rollierende 30 Tage sind aussagekräftiger als ein angebrochener Kalendermonat.
+  const recent = d.periods.recent || { ein: 0, aus: 0 };
+  const previous = d.periods.previous || { ein: 0, aus: 0 };
+  const balance = recent.ein - recent.aus;
+  if (recent.aus > recent.ein && recent.aus > 0) add('finanzen', balance < -200 ? 'bad' : 'warn', 96, 'Ausgaben liegen über den Einnahmen',
+    `In den letzten 30 Tagen kamen ${fmtEur(recent.ein)} herein und ${fmtEur(recent.aus)} gingen heraus. Das ergibt ${fmtEur(balance)}.`,
+    'Öffne die Transaktionsübersicht, prüfe zuerst den größten Ausgabenposten und setze dort ein realistisches Monatsbudget.',
+    `${fmtEur(-balance)} müssen ausgeglichen werden, damit der Monat nicht negativ endet.`);
+  else if (recent.ein > 0 && balance > 0) {
+    const rate = Math.round(balance / recent.ein * 100);
+    add('finanzen', rate >= 20 ? 'good' : 'info', rate >= 20 ? 45 : 62, `Sparquote: ${rate} %`,
+      `Von ${fmtEur(recent.ein)} Einnahmen blieben in den letzten 30 Tagen ${fmtEur(balance)} übrig.`,
+      rate < 10 ? 'Versuche zunächst 10 % direkt nach dem Geldeingang auf ein Sparziel zu verschieben.' : 'Automatisiere einen Teil des Überschusses über ein Sparziel, bevor er ausgegeben wird.',
+      rate < 10 ? `Für 10 % Sparquote fehlen ${fmtEur(recent.ein * 0.1 - balance)}.` : `${fmtEur(balance * 12)} hochgerechnet pro Jahr.`);
+  }
+  if (previous.aus > 0 && recent.aus > previous.aus * 1.15) {
+    const delta = recent.aus - previous.aus;
+    add('finanzen', 'warn', 78, 'Ausgaben deutlich gestiegen',
+      `Die Ausgaben der letzten 30 Tage sind gegenüber den 30 Tagen davor um ${Math.round((recent.aus / previous.aus - 1) * 100)} % bzw. ${fmtEur(delta)} gestiegen.`,
+      'Vergleiche die größten Kategorien und kontrolliere, ob einmalige Käufe oder dauerhaft höhere Kosten dahinterstecken.',
+      `Schon die Rückkehr zum vorherigen Niveau spart ${fmtEur(delta)} pro Monat.`);
+  }
+  const loanRates = d.loans.reduce((a, l) => a + l.rate, 0);
+  if (recent.ein > 0 && d.subMonthly + loanRates > 0) {
+    const fixed = d.subMonthly + loanRates;
+    const ratio = Math.round(fixed / recent.ein * 100);
+    if (ratio >= 30) add('finanzen', ratio >= 45 ? 'bad' : 'warn', ratio >= 45 ? 92 : 80, 'Hohe feste Monatsbelastung',
+      `Kreditraten und Abos binden zusammen ${fmtEur(fixed)} bzw. ${ratio} % deiner Einnahmen der letzten 30 Tage.`,
+      'Prüfe zuerst kündbare Abos und danach, ob teure Kredite schneller abgelöst werden können.',
+      'Weniger Fixkosten erhöhen jeden Monat deinen frei verfügbaren Betrag.');
   }
   // FINANZEN: Budget überzogen
   for (const b of d.budgets) {
     if (b.limit <= 0) continue;
     const c = d.cats.find(x => normName(x.category) === normName(b.category));
-    if (c && c.spent > b.limit) add('finanzen', 'warn', `Budget überzogen: ${b.category}`,
-      `Du hast in 30 Tagen ${fmtEur(c.spent)} für ${b.category} ausgegeben, dein Budget liegt bei ${fmtEur(b.limit)}.`);
+    if (c && c.spent > b.limit) add('finanzen', 'warn', 86, `Budget überzogen: ${b.category}`,
+      `${fmtEur(c.spent)} in 30 Tagen liegen ${fmtEur(c.spent - b.limit)} über deinem Budget von ${fmtEur(b.limit)}.`,
+      `Reduziere ${b.category} für den Rest des Zeitraums oder passe das Budget an, wenn es dauerhaft unrealistisch ist.`,
+      `Zurück am Limit bleiben ${fmtEur(c.spent - b.limit)} mehr übrig.`);
   }
   // FINANZEN: Sparziel erreicht / fast erreicht
   const goalsSorted = d.goals.slice().sort((a, b) => b.pct - a.pct);
   const goalDone = goalsSorted.find(g => g.target > 0 && g.pct >= 1);
-  if (goalDone) add('finanzen', 'good', `Sparziel erreicht: ${goalDone.name}`,
-    `Stark, ${goalDone.name} ist mit ${fmtEur(goalDone.saved)} voll finanziert. Zeit, das Geld einzusetzen oder ein neues Ziel zu setzen.`);
+  if (goalDone) add('finanzen', 'good', 35, `Sparziel erreicht: ${goalDone.name}`,
+    `${goalDone.name} ist mit ${fmtEur(goalDone.saved)} vollständig finanziert.`, 'Schließe das Ziel ab oder leite die bisherige Rate direkt auf dein nächstes Ziel um.');
   const goalNear = goalsSorted.find(g => g.target > 0 && g.pct >= 0.8 && g.pct < 1);
-  if (goalNear) add('finanzen', 'info', `Fast am Ziel: ${goalNear.name}`,
-    `${goalNear.name} steht bei ${Math.round(goalNear.pct * 100)}% (${fmtEur(goalNear.saved)} von ${fmtEur(goalNear.target)}). Nur noch ${fmtEur(goalNear.target - goalNear.saved)} fehlen.`);
+  if (goalNear) {
+    const missing = Math.max(0, goalNear.target - goalNear.saved);
+    const months = goalNear.rate > 0 ? Math.ceil(missing / goalNear.rate) : 0;
+    add('finanzen', 'info', 52, `Fast am Ziel: ${goalNear.name}`,
+      `${Math.round(goalNear.pct * 100)} % sind erreicht; ${fmtEur(missing)} fehlen noch.`,
+      goalNear.rate > 0 ? `Halte die Rate von ${fmtEur(goalNear.rate)} bei.` : 'Lege eine feste Monatsrate fest, damit der Zieltermin planbar wird.',
+      months ? `Bei gleicher Rate voraussichtlich noch ${months} Monat${months === 1 ? '' : 'e'}.` : 'Mit einer festen Rate kann NutriDesk den Zielzeitpunkt berechnen.');
+  }
   // FINANZEN: hohe Abo-Last (nur falls kein Doppel-Abo gemeldet)
   if (d.subMonthly >= 40 && !out.some(i => i.title === 'Mögliches Doppel-Abo'))
-    add('finanzen', 'info', 'Deine Abos summieren sich',
-      `${d.activeSubs.length} aktive Abos kosten dich ${fmtEur(d.subMonthly)}/Monat, also ${fmtEur(d.subMonthly * 12)}/Jahr.`);
+    add('finanzen', 'info', 58, 'Deine Abos summieren sich',
+      `${d.activeSubs.length} aktive Abos kosten ${fmtEur(d.subMonthly)} pro Monat.`, 'Markiere bei jedem Abo, ob du es in den letzten 30 Tagen wirklich genutzt hast.', `${fmtEur(d.subMonthly * 12)} pro Jahr.`);
   // FINANZEN: größter Posten (nur wenn sonst noch kein Finanz-Insight)
   if (d.cats.length && !out.some(i => i.category === 'finanzen')) {
     const top = d.cats[0];
-    add('finanzen', 'info', `Größter Ausgabenposten: ${top.category}`,
-      `${top.category} war in den letzten 30 Tagen mit ${fmtEur(top.spent)} dein größter Posten.`);
+    add('finanzen', 'info', 55, `Größter Ausgabenposten: ${top.category}`,
+      `${top.category} war in den letzten 30 Tagen mit ${fmtEur(top.spent)} dein größter Posten.`, 'Prüfe die Einzelbuchungen dieser Kategorie und setze bei wiederkehrenden Ausgaben ein Budget.', `10 % weniger wären ${fmtEur(top.spent * 0.1)} pro Monat.`);
   }
 
   // ERNÄHRUNG
   if (d.zielTyp < 0 && d.food.days === 0)
-    add('ernaehrung', 'warn', 'Kein Tracking bei Abnehmziel',
-      'Dein Ziel ist Abnehmen, aber in den letzten 7 Tagen hast du nichts getrackt. Ohne Tracking fehlt dir der Überblick über die Kalorien.');
+    add('ernaehrung', 'warn', 82, 'Kein Tracking bei Abnehmziel',
+      'Für dein Abnehmziel gibt es in den letzten 7 Tagen keine Ernährungseinträge.', 'Tracke zunächst drei normale Tage vollständig. Das liefert eine bessere Grundlage als einzelne perfekte Tage.');
   else if (d.food.days >= 6)
-    add('ernaehrung', 'good', 'Starkes Ess-Tracking',
-      `Du hast an ${d.food.days} der letzten 7 Tage getrackt (Ø ${d.food.avgk} kcal/Tag). Weiter so, so bleibt dein Ziel realistisch.`);
+    add('ernaehrung', 'good', 32, 'Starkes Ess-Tracking',
+      `${d.food.days} von 7 Tagen sind erfasst, im Schnitt ${d.food.avgk} kcal und ${d.food.avgp} g Protein pro Tracking-Tag.`, 'Behalte die Regelmäßigkeit bei und bewerte den Trend über mehrere Wochen statt einzelner Tage.');
   else if (d.food.days >= 1 && d.food.days <= 3)
-    add('ernaehrung', 'info', 'Tracking noch lückenhaft',
-      `Du hast nur an ${d.food.days} von 7 Tagen getrackt. Ein paar Tage mehr geben ein deutlich klareres Bild.`);
+    add('ernaehrung', 'info', 60, 'Tracking noch lückenhaft',
+      `Nur ${d.food.days} von 7 Tagen sind erfasst. Dadurch sind Durchschnitt und Trend noch unsicher.`, 'Erfasse mindestens vier weitere vollständige Tage, einschließlich eines Wochenendtages.');
+  if (d.water.goalMl > 0 && d.water.days > 0) {
+    const avgMl = d.water.avgGlasses * 250;
+    if (avgMl < d.water.goalMl * 0.7) add('ernaehrung', 'warn', 70, 'Trinkziel häufig verfehlt',
+      `An ${d.water.days} erfassten Tagen lag dein Schnitt bei etwa ${Math.round(avgMl)} ml gegenüber ${d.water.goalMl} ml Ziel.`, 'Verteile feste Trinkpunkte auf Morgen, Mittag und Abend und trage sie direkt ein.', `Im Schnitt fehlen rund ${Math.round(d.water.goalMl - avgMl)} ml pro erfasstem Tag.`);
+  }
+  if (d.weights.length >= 2) {
+    const first = d.weights[0], last = d.weights[d.weights.length - 1], delta = last.kg - first.kg;
+    if ((d.zielTyp < 0 && delta > 0.8) || (d.zielTyp > 0 && delta < -0.8)) add('ernaehrung', 'warn', 76, 'Gewichtstrend läuft gegen dein Ziel',
+      `Zwischen deinen letzten ${d.weights.length} Messungen hat sich das Gewicht um ${delta > 0 ? '+' : ''}${delta.toFixed(1).replace('.', ',')} kg verändert.`, 'Prüfe zuerst die Vollständigkeit deiner Einträge und passe danach Kalorienziel oder Aktivität nur in kleinen Schritten an.');
+  }
 
   // LEBEN: gleiche Termine mehrfach
   const byTitle = {};
@@ -2969,30 +3025,30 @@ function computeInsights(d) {
   for (const k of Object.keys(byTitle)) {
     if (byTitle[k].length >= 2) {
       const g = byTitle[k];
-      add('leben', 'info', `Mehrere Termine: ${g[0].title}`,
-        `Du hast ${g.length} anstehende Termine namens "${g[0].title}". Prüf, ob sich das zusammenlegen lässt.`);
+      add('leben', 'info', 50, `Mehrere Termine: ${g[0].title}`,
+        `${g.length} anstehende Termine tragen denselben Namen.`, 'Prüfe, ob es echte Wiederholungen oder versehentliche Duplikate sind.');
       break;
     }
   }
   // LEBEN: volle Woche
   const soon = d.appts.filter(a => a.din >= 0 && a.din <= 7).length;
-  if (soon >= 3) add('leben', 'info', 'Volle Woche',
-    `In den nächsten 7 Tagen stehen ${soon} Termine an. Plan dir genug Puffer dazwischen ein.`);
+  if (soon >= 3) add('leben', 'info', 48, 'Volle Woche',
+    `In den nächsten 7 Tagen stehen ${soon} Termine an.`, 'Plane vor und nach wichtigen Terminen Puffer und blockiere mindestens einen freien Zeitraum.');
   // LEBEN: viele offene Aufgaben
-  if (d.todosOpen >= 8) add('leben', 'warn', `${d.todosOpen} offene Aufgaben`,
-    `Deine To-do-Liste ist auf ${d.todosOpen} offene Punkte gewachsen. Nimm dir die 3 wichtigsten zuerst vor.`);
+  if (d.todosOpen >= 8) add('leben', 'warn', 68, `${d.todosOpen} offene Aufgaben`,
+    `Deine To-do-Liste enthält ${d.todosOpen} offene Punkte.`, 'Wähle heute drei Prioritäten und lösche oder verschiebe Aufgaben, die nicht mehr relevant sind.');
 
   // CLOUD
   if (d.cloudQuota > 0) {
     const ratio = d.cloudUsed / d.cloudQuota;
-    if (d.cloudUsed === 0) add('cloud', 'info', 'Cloud-Speicher ungenutzt',
-      `Du hast ${(d.cloudQuota / 1073741824).toFixed(0)} GB Cloud frei, aber noch keine Datei abgelegt. Leg wichtige Dokumente dort ab, dann hast du sie überall.`);
-    else if (ratio >= 0.85) add('cloud', 'warn', 'Cloud fast voll',
-      `Dein Cloud-Speicher ist zu ${Math.round(ratio * 100)}% belegt. Räum ein paar große Dateien weg oder erweitere den Platz.`);
+    if (d.cloudUsed === 0) add('cloud', 'info', 25, 'Cloud-Speicher ungenutzt',
+      `${(d.cloudQuota / 1073741824).toFixed(0)} GB stehen bereit, bisher ist keine reguläre Cloud-Datei gespeichert.`, 'Lege wichtige Dokumente strukturiert ab; Finanzanhänge bleiben getrennt und zählen nicht hier hinein.');
+    else if (ratio >= 0.85) add('cloud', 'warn', 74, 'Cloud fast voll',
+      `${Math.round(ratio * 100)} % deines Cloud-Speichers sind belegt.`, 'Sortiere nach Dateigröße, entferne unnötige Duplikate oder erweitere den Speicher.');
   }
 
-  out.sort((a, b) => TONE_RANK[a.tone] - TONE_RANK[b.tone]);
-  return out.slice(0, 8);
+  out.sort((a, b) => b.score - a.score || TONE_RANK[a.tone] - TONE_RANK[b.tone]);
+  return out.slice(0, 10);
 }
 
 // Regelwerk: konkrete Spartipps mit bezifferter monatlicher Ersparnis (max. 5).

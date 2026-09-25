@@ -3007,7 +3007,7 @@
             <sc-for list="{{ insightsView }}" as="ins" hint-placeholder-count="4">
               <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:19px;display:flex;align-items:flex-start;gap:14px;min-height:145px;box-sizing:border-box;">
                 <div style="width:42px;height:42px;border-radius:13px;background:var(--chip);border:1px solid var(--line3);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><i data-lucide="{{ ins.icon }}" style="width:19px;height:19px;color:{{ ins.color }};"></i></div>
-                <div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;"><span style="font-size:15px;font-weight:700;color:var(--ink);">{{ ins.title }}</span><span style="font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:{{ ins.color }};background:var(--chip);border:1px solid var(--line3);padding:3px 7px;border-radius:6px;">{{ ins.catLabel }}</span></div><div style="font-size:13px;color:var(--ink2);line-height:1.65;white-space:normal;overflow-wrap:anywhere;">{{ ins.text }}</div></div>
+                <div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:9px;"><span style="font-size:15px;font-weight:700;color:var(--ink);">{{ ins.title }}</span><span style="font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:{{ ins.color }};background:var(--chip);border:1px solid var(--line3);padding:3px 7px;border-radius:6px;">{{ ins.catLabel }}</span><span style="font-size:10px;font-weight:750;color:{{ ins.color }};">{{ ins.priorityLabel }}</span></div><div style="font-size:13px;color:var(--ink2);line-height:1.65;white-space:pre-line;overflow-wrap:anywhere;">{{ ins.text }}</div></div>
               </div>
             </sc-for>
           </div>
@@ -10110,6 +10110,7 @@ class Component extends DCLogic {
       insightsView: (s.insights || []).map(i => ({
         icon: i.icon || 'sparkles', color: i.color || '#60a5fa',
         title: i.title, text: i.text,
+        priorityLabel: i.color === '#f87171' ? 'Hohe Priorität' : (i.color === '#fbbf24' ? 'Prüfen' : (i.color === '#34d399' ? 'Läuft gut' : 'Hinweis')),
         catLabel: ({ finanzen: 'Finanzen', ernaehrung: 'Ernährung', leben: 'Leben', cloud: 'Cloud', allgemein: 'Allgemein' })[i.category] || 'Allgemein',
       })),
       openBot: this.openBot, modBot: s.modal === 'bot',
