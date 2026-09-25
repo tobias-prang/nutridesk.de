@@ -46,10 +46,15 @@
       h('input', { type: props.type || 'text', value: props.value, onChange: props.onChange, placeholder: props.placeholder || '', style: inputStyle }));
   }
   function Modal(props) {
-    return h('div', { style: { position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }, onClick: props.onClose },
-      h('div', { style: Object.assign({}, box, { width: '100%', maxWidth: props.wide ? '640px' : '440px', maxHeight: '86vh', overflow: 'auto', padding: '24px' }), onClick: function (e) { e.stopPropagation(); } },
-        h('div', { style: { fontSize: '17px', fontWeight: 700, marginBottom: '18px' } }, props.title), props.children));
+    return h('div', { style: { position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(3,5,10,.76)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px' }, onClick: props.onClose },
+      h('div', { style: Object.assign({}, box, { width: '100%', maxWidth: props.wide ? '760px' : '560px', maxHeight: '90vh', overflow: 'auto', padding: 0, borderRadius: '20px' }), onClick: function (e) { e.stopPropagation(); } },
+        h('div', { style: { display:'flex',alignItems:'flex-start',gap:'14px',padding:'22px 24px 18px',borderBottom:'1px solid var(--line3)',background:'linear-gradient(135deg,var(--acc-bg),transparent 62%)' } },
+          h('div',{style:{width:'42px',height:'42px',borderRadius:'13px',display:'flex',alignItems:'center',justifyContent:'center',background:'var(--acc-bg)',border:'1px solid var(--acc-bd)',color:'var(--acc)',fontSize:'20px',fontWeight:800}},props.icon||'N'),
+          h('div',{style:{flex:1,minWidth:0}},h('div', { style: { fontSize: '18px', fontWeight: 750 } }, props.title),props.subtitle?h('div',{style:{fontSize:'12.5px',color:'var(--ink3)',marginTop:'5px',lineHeight:1.45}},props.subtitle):null),
+          h('button',{type:'button','aria-label':'Schließen',onClick:props.onClose,style:{width:'36px',height:'36px',borderRadius:'10px',border:'1px solid var(--line3)',background:'var(--chip)',color:'var(--ink2)',cursor:'pointer',fontSize:'20px',lineHeight:1}},'×')),
+        h('div',{style:{padding:'22px 24px 24px'}},props.children)));
   }
+  function Section(props){return h('div',{style:{background:'var(--bg2)',border:'1px solid var(--line3)',borderRadius:'14px',padding:'16px',marginBottom:'14px'}},props.title?h('div',{style:{fontSize:'11px',fontWeight:700,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--ink3)',marginBottom:'13px'}},props.title):null,props.children);}
   function useDebounced(fn, ms) { var t = useRef(0); return function (arg) { clearTimeout(t.current); t.current = setTimeout(function () { fn(arg); }, ms); }; }
 
   var TABS = [
@@ -71,21 +76,22 @@
     useEffect(function () { load(); }, []);
     function set(k, v) { setModal(function (m) { var n = Object.assign({}, m); n[k] = v; return n; }); }
     function openNew() { if(!storage || !storage.mail_ready){toast('E-Mail-Versand ist noch nicht konfiguriert. Bitte zuerst SMTP in der Server-.env hinterlegen.');return;} setModal({ mode: 'new', email: '', firstName: '', lastName:'', username:'', admin: false }); }
-    function openEdit(u) { setModal({ mode: 'edit', id: u.id, name: u.name, email: u.email, admin: !!u.admin, password: '', quotaGb: String(Math.round((u.cloud_quota || 2147483648) / 1073741824 * 10) / 10) }); }
+    function openEdit(u) { setModal({ mode: 'edit', id: u.id, name: u.name, email: u.email, username:u.username||'', admin: !!u.admin, password: '', quotaGb: String(Math.round((u.cloud_quota || 2147483648) / 1073741824 * 10) / 10) }); }
     function saveNew() {
       var m = modal; if (!m.email.trim() || !m.firstName.trim() || !m.lastName.trim() || !m.username.trim()) { toast('Bitte alle Angaben ausfüllen'); return; }
       setBusy(true); api('/admin/users', { method: 'POST', body: { email: m.email.trim(), first_name:m.firstName.trim(),last_name:m.lastName.trim(),username:m.username.trim(), admin: m.admin ? 1 : 0 } })
         .then(function () { toast('Nutzer angelegt und Zugangsdaten versendet'); setModal(null); load(); }).catch(function (e) { toast(e.message); }).then(function () { setBusy(false); });
     }
     function saveEdit() {
-      var m = modal; if (!m.name.trim() || !m.email.trim()) { toast('Bitte Name und E-Mail ausfüllen'); return; }
-      setBusy(true); api('/admin/users/' + m.id, { method: 'PUT', body: { name: m.name.trim(), email: m.email.trim(), admin: m.admin ? 1 : 0 } })
+      var m = modal; if (!m.name.trim() || !m.email.trim() || !m.username.trim()) { toast('Bitte Name, E-Mail und Benutzername ausfüllen'); return; }
+      setBusy(true); api('/admin/users/' + m.id, { method: 'PUT', body: { name: m.name.trim(), email: m.email.trim(), username:m.username.trim(), admin: m.admin ? 1 : 0 } })
         .then(function () { toast('Nutzer aktualisiert'); setModal(null); load(); }).catch(function (e) { toast(e.message); }).then(function () { setBusy(false); });
     }
     function saveQuota() { var gb = parseFloat((modal.quotaGb || '0').replace(',', '.')); if (!(gb >= 0)) { toast('Ungültiger Wert'); return; } api('/admin/users/' + modal.id + '/quota', { method: 'PUT', body: { quota_gb: gb } }).then(function () { toast('Speicher: ' + gb + ' GB'); load(); }).catch(function (e) { toast(e.message); }); }
     function resetCd() { api('/admin/users/' + modal.id + '/cooldown', { method: 'DELETE' }).then(function () { toast('Cooldown zurückgesetzt'); }).catch(function (e) { toast(e.message); }); }
     function del() { if(!window.confirm('Diesen Nutzer und alle zugehörigen Daten wirklich löschen?'))return;api('/admin/users/' + modal.id, { method: 'DELETE' }).then(function () { toast('Nutzer gelöscht'); setModal(null); load(); }).catch(function (e) { toast(e.message); }); }
-    function sendPassword(){if(!storage || !storage.mail_ready){toast('E-Mail-Versand ist noch nicht konfiguriert.');return;}if(!window.confirm('Ein neues Passwort erzeugen und per E-Mail senden? Alle bestehenden Sitzungen werden beendet.'))return;setBusy(true);api('/admin/users/'+modal.id+'/send-password',{method:'POST',body:{}}).then(function(){toast('Neues Passwort wurde versendet');}).catch(function(e){toast(e.message);}).then(function(){setBusy(false);});}
+    function askPassword(){if(!storage || !storage.mail_ready){toast('E-Mail-Versand ist noch nicht konfiguriert.');return;}set('confirmPassword',true);}
+    function sendPassword(){var id=modal.id;setBusy(true);api('/admin/users/'+id+'/send-password',{method:'POST',body:{}}).then(function(){toast('Neues Passwort wurde im NutriDesk-Design versendet');setModal(null);load();}).catch(function(e){toast(e.message);}).then(function(){setBusy(false);});}
     var rows = users.map(function (u) {
       return h('div', { key: u.id, style: { display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 0', borderBottom: '1px solid var(--chip)' } },
         h('div', { style: { width: '40px', height: '40px', borderRadius: '12px', background: 'var(--chip)', display: 'flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto', fontWeight: 700, color: 'var(--ink3)' } }, (u.name || '?').slice(0, 1).toUpperCase()),
@@ -96,20 +102,26 @@
         h('div', { onClick: function () { openEdit(u); }, style: btnGhost }, 'Bearbeiten'));
     });
     var modalEl = null;
-    if (modal && modal.mode === 'new') modalEl = h(Modal, { title: 'Nutzer anlegen', onClose: function () { setModal(null); } },
-      h(Field, { label: 'E-Mail', value: modal.email, onChange: function (e) { set('email', e.target.value); } }),
+    if (modal && modal.mode === 'new') modalEl = h(Modal, { wide:true,icon:'+',title: 'Nutzer anlegen',subtitle:'Konto erstellen und die Zugangsdaten automatisch per E-Mail versenden.', onClose: function () { setModal(null); } },
+      h(Section,{title:'Kontodaten'},h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'0 14px'}},
       h(Field, { label: 'Vorname', value: modal.firstName, onChange: function (e) { set('firstName', e.target.value); } }),
       h(Field, { label: 'Nachname', value: modal.lastName, onChange: function (e) { set('lastName', e.target.value); } }),
-      h(Field, { label: 'Benutzername', value: modal.username, onChange: function (e) { set('username', e.target.value); }, placeholder:'z.B. max.mustermann' }),
+      h(Field, { label: 'E-Mail', value: modal.email, onChange: function (e) { set('email', e.target.value); } }),
+      h(Field, { label: 'Benutzername', value: modal.username, onChange: function (e) { set('username', e.target.value); }, placeholder:'z.B. max.mustermann' }))),
       h('div',{style:{fontSize:'12px',color:'var(--ink3)',lineHeight:1.5,margin:'-3px 0 14px'}},'Ein sicheres Passwort wird automatisch erzeugt und von noreply@nutridesk.de per E-Mail versendet.'),
       h('label', { style: { display: 'flex', alignItems: 'center', gap: '9px', margin: '4px 0 18px', cursor: 'pointer', fontSize: '13.5px' } }, h('input', { type: 'checkbox', checked: modal.admin, onChange: function (e) { set('admin', e.target.checked); } }), 'Administrator'),
       h('div', { style: { display: 'flex', gap: '10px', justifyContent: 'flex-end' } }, h('div', { onClick: function () { setModal(null); }, style: btnGhost }, 'Abbrechen'), h('div', { onClick: busy ? null : saveNew, style: Object.assign({}, btnPrimary, busy ? { opacity: .6 } : {}) }, busy ? 'Speichert …' : 'Anlegen')));
-    else if (modal && modal.mode === 'edit') modalEl = h(Modal, { title: 'Nutzer bearbeiten', onClose: function () { setModal(null); } },
+    else if (modal && modal.mode === 'edit' && modal.confirmPassword) modalEl=h(Modal,{icon:'!',title:'Neues Passwort versenden',subtitle:'Das alte Passwort und alle bestehenden Sitzungen werden dadurch ungültig.',onClose:function(){set('confirmPassword',false);}},
+      h('div',{style:{padding:'14px 16px',borderRadius:'13px',background:'rgba(251,191,36,.09)',border:'1px solid rgba(251,191,36,.3)',color:'var(--ink2)',fontSize:'13px',lineHeight:1.55,marginBottom:'18px'}},'Für @'+modal.username+' wird ein sicheres Passwort erzeugt und an '+modal.email+' gesendet. Die E-Mail enthält Benutzername, Passwort und den direkten Anmeldelink im NutriDesk-Design.'),
+      h('div',{style:{display:'flex',justifyContent:'flex-end',gap:'10px'}},h('button',{type:'button',onClick:function(){set('confirmPassword',false);},style:btnGhost},'Abbrechen'),h('button',{type:'button',onClick:busy?null:sendPassword,style:Object.assign({},btnPrimary,busy?{opacity:.6}:null)},busy?'Wird versendet …':'Passwort erzeugen & senden')));
+    else if (modal && modal.mode === 'edit') modalEl = h(Modal, { wide:true,icon:'N',title: 'Nutzer bearbeiten',subtitle:'Profildaten, Berechtigungen, Speicher und Zugang verwalten.', onClose: function () { setModal(null); } },
+      h(Section,{title:'Kontodaten'},h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:'0 14px'}},
       h(Field, { label: 'Name', value: modal.name, onChange: function (e) { set('name', e.target.value); } }),
-      h(Field, { label: 'E-Mail', value: modal.email, onChange: function (e) { set('email', e.target.value); } }),
+      h(Field, { label: 'Benutzername', value: modal.username, onChange: function (e) { set('username', e.target.value); },placeholder:'3–32 Zeichen' }),
+      h(Field, { label: 'E-Mail', value: modal.email, onChange: function (e) { set('email', e.target.value); } }))),
       h('label', { style: { display: 'flex', alignItems: 'center', gap: '9px', margin: '4px 0 14px', cursor: 'pointer', fontSize: '13.5px' } }, h('input', { type: 'checkbox', checked: modal.admin, onChange: function (e) { set('admin', e.target.checked); } }), 'Administrator'),
       h('div', { style: { display: 'flex', alignItems: 'flex-end', gap: '8px', marginBottom: '16px' } }, h('div', { style: { flex: 1 } }, h(Field, { label: 'Speicher (GB)', value: modal.quotaGb, onChange: function (e) { set('quotaGb', e.target.value); } })), h('div', { onClick: saveQuota, style: Object.assign({}, btnGhost, { marginBottom: '14px' }) }, 'Setzen')),
-      h('div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' } }, h('div', { onClick: resetCd, style: btnGhost }, 'Cooldown reset'), h('div',{onClick:sendPassword,style:btnGhost},'Neues Passwort schicken'),h('div', { onClick: del, style: btnDanger }, 'Löschen'), h('div', { style: { flex: 1 } }), h('div', { onClick: function () { setModal(null); }, style: btnGhost }, 'Abbrechen'), h('div', { onClick: saveEdit, style: btnPrimary }, 'Speichern')));
+      h('div', { style: { display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' } }, h('div', { onClick: resetCd, style: btnGhost }, 'Cooldown zurücksetzen'), h('div',{onClick:askPassword,style:btnGhost},'Neues Passwort schicken'),h('div', { onClick: del, style: btnDanger }, 'Löschen'), h('div', { style: { flex: 1 } }), h('div', { onClick: function () { setModal(null); }, style: btnGhost }, 'Abbrechen'), h('div', { onClick:busy?null:saveEdit, style:Object.assign({},btnPrimary,busy?{opacity:.6}:null) }, busy?'Speichert …':'Speichern')));
     return h('div', null,
       h('div', { style: { display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' } },
         head('Nutzerverwaltung', loading ? 'Lädt …' : users.length + ' Konten · ' + (storage&&storage.mail_ready?'E-Mail aktiv über '+(storage.mail_transport||'SMTP'):'E-Mail-Versand noch nicht konfiguriert')),

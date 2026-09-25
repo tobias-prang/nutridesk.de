@@ -5673,7 +5673,7 @@ class Component extends DCLogic {
     const sc = document.createElement('script');
     // Admin ist ein lazy geladenes Bundle. Die Versionskennung verhindert,
     // dass nach einem Deployment noch tagelang das alte immutable Bundle läuft.
-    sc.src = 'assets/admin.js?v=20260924-1';
+    sc.src = 'assets/admin.js?v=20260925-2';
     sc.onload = () => { this._adminLoading = false; this.setState({ _adminReady: true }); };
     sc.onerror = () => { this._adminLoading = false; this._toast('Admin-Modul konnte nicht geladen werden'); };
     document.head.appendChild(sc);

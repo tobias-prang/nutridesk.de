@@ -575,18 +575,20 @@ app.put('/admin/users/:id', auth, requireAdmin, asyncRoute(async (req, res) => {
   const name = vStr(req.body.name, 'Name', 80);
   const email = vStr(req.body.email, 'E-Mail', 190).toLowerCase();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw bad('E-Mail-Adresse ist ungültig');
+  const username = vStr(req.body.username, 'Benutzername', 32).toLowerCase().replace(/^@/,'');
+  if (!/^[a-z0-9_.]{3,32}$/.test(username)) throw bad('Benutzername: 3-32 Zeichen, nur a-z, 0-9, _ und .');
   const isAdmin = vBool(req.body.admin);
   const [[beforeAdminEdit]] = await pool.execute('SELECT developer FROM users WHERE id=?',[id]);
   const isDev = req.body.developer === undefined ? !!(beforeAdminEdit && beforeAdminEdit.developer) : !!vBool(req.body.developer);
   if (id === req.uid && !isAdmin) throw bad('Du kannst dir den Admin-Status nicht selbst entziehen');
   try {
-    const [r] = await pool.execute('UPDATE users SET name = ?, email = ?, admin = ?, developer = ? WHERE id = ?', [name, email, isAdmin, isDev, id]);
+    const [r] = await pool.execute('UPDATE users SET name = ?, email = ?, username = ?, admin = ?, developer = ? WHERE id = ?', [name, email, username, isAdmin, isDev, id]);
     if (!r.affectedRows) return res.status(404).json({ error: 'Nutzer nicht gefunden' });
   } catch (e) {
-    if (e.code === 'ER_DUP_ENTRY') throw bad('Diese E-Mail ist schon vergeben');
+    if (e.code === 'ER_DUP_ENTRY') throw bad(String(e.message||'').includes('username') ? 'Dieser Benutzername ist schon vergeben' : 'Diese E-Mail ist schon vergeben');
     throw e;
   }
-  logEvent('info', 'admin_user_update', 'Nutzer #' + id + ' aktualisiert: ' + email + (isAdmin ? ' (Admin)' : '') + (isDev ? ' (Dev)' : ''), { uid: req.uid, email, ip: req.ip });
+  logEvent('info', 'admin_user_update', 'Nutzer #' + id + ' aktualisiert: @' + username + ' · ' + email + (isAdmin ? ' (Admin)' : '') + (isDev ? ' (Dev)' : ''), { uid: req.uid, email, ip: reqIp(req) });
   res.json({ ok: true });
 }));
 
