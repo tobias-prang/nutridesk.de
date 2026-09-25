@@ -614,6 +614,34 @@
     .nd-main [style*="max-width:1200px"][style*="gap:18px"]{flex-wrap:wrap;overflow:auto!important}
     .nd-community{height:calc(100vh - 66px)!important}.nd-community>div:first-child{overflow-x:auto;white-space:nowrap;padding:8px 10px!important}.nd-community-talk{flex-direction:column!important;overflow:auto!important}.nd-community-talk>div:first-child{width:100%!important;max-height:180px;flex:0 0 auto!important;border-right:0!important;border-bottom:1px solid var(--chip)}.nd-community-members{width:100%!important;max-height:190px;flex:0 0 auto!important;border-left:0!important;border-top:1px solid var(--chip)!important;box-sizing:border-box}
     [role="dialog"]{flex-direction:column!important;overflow:auto!important}[role="dialog"]>[style*="flex:0 0 38%"]{flex:0 0 230px!important;min-height:230px!important}[role="dialog"]>[style*="padding:70px"]{padding:24px 20px!important}
+    .nd-main [data-screen-label]>[style*="display:flex"][style*="justify-content:space-between"]{flex-wrap:wrap!important}
+    .nd-main [data-screen-label] [style*="width:230px"][style*="flex:0 0 auto"],.nd-main [data-screen-label] [style*="width:200px"][style*="flex:0 0 auto"]{width:100%!important;flex:1 1 100%!important}
+    .nd-main [data-screen-label] [style*="min-width:220px"]{min-width:0!important}
+    .nd-main [data-screen-label] select{max-width:100%!important}
+    .nd-main input,.nd-main select,.nd-main textarea,.nd-auth-shell input{font-size:16px!important}
+    .nd-main [style*="grid-template-columns:1.2fr 1fr 1fr 1fr 1.2fr"]{grid-template-columns:1.2fr 1fr 1fr 1fr 1.2fr!important;min-width:560px}
+    .nd-main [style*="grid-template-columns:82px repeat(7"]{grid-template-columns:70px repeat(7,minmax(92px,1fr))!important;min-width:780px}
+    .nd-main [data-screen-label="Ernährungsplan"] [style*="overflow-x:auto"],.nd-main [data-screen-label="Kredite"] [style*="overflow-x:auto"]{-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+    .nd-staging-row{display:grid!important;grid-template-columns:20px 42px minmax(0,1fr) auto 28px;gap:8px!important;align-items:center!important}
+    .nd-staging-row .nd-staging-date{width:auto!important}
+    .nd-staging-row .nd-staging-amount{width:auto!important;white-space:nowrap;font-size:12px!important}
+    .nd-staging-row .nd-staging-account{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .nd-auth-shell{padding:18px 14px calc(22px + env(safe-area-inset-bottom))!important;align-items:flex-start!important;overflow:auto}
+    .nd-auth-shell>div{width:100%!important;margin:auto 0}
+    .nd-auth-card{padding:20px 17px!important;border-radius:16px!important}
+    .nd-auth-footer{text-align:center;line-height:1.45;padding:0 12px}
+    [role="dialog"]{width:100%!important;max-width:100%!important;max-height:calc(100dvh - 92px)!important;border-radius:16px!important}
+    [role="dialog"] [style*="justify-content:flex-end"]{flex-wrap:wrap!important}
+    [role="dialog"] [style*="justify-content:flex-end"]>[style*="padding:"]{flex:1 1 auto!important;justify-content:center!important;text-align:center}
+    .nd-sidebar{padding-bottom:calc(8px + env(safe-area-inset-bottom))!important;height:calc(66px + env(safe-area-inset-bottom))!important}
+    .nd-main{padding-bottom:calc(66px + env(safe-area-inset-bottom))!important}
+  }
+  @media(max-width:390px){
+    .nd-main [data-screen-label]{padding-left:10px!important;padding-right:10px!important}
+    .nd-main [data-screen-label] [style*="padding:20px 22px"],.nd-main [data-screen-label] [style*="padding:22px 24px"]{padding:16px 14px!important}
+    .nd-staging-row{grid-template-columns:20px 38px minmax(0,1fr) auto!important}
+    .nd-staging-row .nd-staging-remove{display:none!important}
+    .nd-auth-card{padding:18px 14px!important}
   }
 </style>
 </helmet>
@@ -1432,16 +1460,16 @@
           </div>
           <div style="display:flex;flex-direction:column;">
             <sc-for list="{{ stagingView }}" as="sg" hint-placeholder-count="8">
-              <div style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--chip);">
+              <div class="nd-staging-row" style="display:flex;align-items:center;gap:12px;padding:10px 4px;border-bottom:1px solid var(--chip);">
                 <div onclick="{{ toggleStagingSel }}" data-id="{{ sg.id }}" style="width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;cursor:pointer;background:{{ sg.boxBg }};border:1px solid {{ sg.boxBd }};color:{{ sg.boxColor }};"><i data-lucide="check" style="width:13px;height:13px;"></i></div>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mut);width:52px;flex:0 0 auto;">{{ sg.d }}</span>
+                <span class="nd-staging-date" style="font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--mut);width:52px;flex:0 0 auto;">{{ sg.d }}</span>
                 <div style="flex:1 1 auto;min-width:0;">
                   <div style="font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ sg.name }}</div>
                   <div style="font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ sg.info }}</div>
-                  <div style="display:{{ sg.accountD }};align-items:center;gap:5px;margin-top:3px;font-size:10.5px;color:var(--ink3);"><i data-lucide="landmark" style="width:11px;height:11px;color:var(--acc);"></i>Konto: {{ sg.account }}</div>
+                  <div class="nd-staging-account" style="display:{{ sg.accountD }};align-items:center;gap:5px;margin-top:3px;font-size:10.5px;color:var(--ink3);"><i data-lucide="landmark" style="width:11px;height:11px;color:var(--acc);"></i>Konto: {{ sg.account }}</div>
                 </div>
-                <span style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;width:110px;text-align:right;flex:0 0 auto;color:{{ sg.c }};">{{ sg.amt }}</span>
-                <div onclick="{{ delStaging }}" data-id="{{ sg.id }}" title="Verwerfen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="x" style="width:15px;height:15px;"></i></div>
+                <span class="nd-staging-amount" style="font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;width:110px;text-align:right;flex:0 0 auto;color:{{ sg.c }};">{{ sg.amt }}</span>
+                <div class="nd-staging-remove" onclick="{{ delStaging }}" data-id="{{ sg.id }}" title="Verwerfen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="x" style="width:15px;height:15px;"></i></div>
               </div>
             </sc-for>
           </div>
@@ -4985,14 +5013,14 @@
 
   
   <sc-if value="{{ authShow }}">
-  <div style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:30px;min-height:100vh;">
+  <div class="nd-auth-shell" style="flex:1 1 auto;display:flex;align-items:center;justify-content:center;padding:30px;min-height:100vh;">
     <div style="width:420px;max-width:100%;">
       <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:24px;">
         <div style="width:64px;height:64px;display:flex;align-items:center;justify-content:center;margin-bottom:14px;"><img src="assets/icon.png" alt="NutriDesk" style="width:64px;height:64px;object-fit:contain;"></div>
         <div style="font-size:24px;font-weight:700;letter-spacing:-.01em;">NutriDesk</div>
         <div style="font-size:13px;color:var(--ink3);margin-top:5px;">Ernährung &amp; Finanzen in einer App</div>
       </div>
-      <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:20px;box-shadow:var(--modalsh);padding:26px;">
+      <div class="nd-auth-card" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:20px;box-shadow:var(--modalsh);padding:26px;">
         <div style="font-size:17px;font-weight:700;margin-bottom:18px;"><sc-if value="{{ authIsLogin }}">Anmelden</sc-if><sc-if value="{{ authIsReg }}">Registrierung</sc-if></div>
 
         <sc-if value="{{ authIsLogin }}">
@@ -5042,7 +5070,7 @@
         <div onclick="{{ authToLogin }}" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 18px;border-radius:12px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:14px;cursor:pointer;margin-top:18px;" style-hover="background:var(--chip);"><i data-lucide="arrow-left" style="width:16px;height:16px;"></i>Zurück zur Anmeldung</div>
         </sc-if>
       </div>
-      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;font-size:11.5px;color:var(--mut);"><i data-lucide="shield-check" style="width:13px;height:13px;"></i>Deine Daten liegen sicher auf deinem eigenen Server</div>
+      <div class="nd-auth-footer" style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:18px;font-size:11.5px;color:var(--mut);"><i data-lucide="shield-check" style="width:13px;height:13px;"></i>Deine Daten liegen sicher auf deinem eigenen Server</div>
     </div>
   </div>
   </sc-if>
