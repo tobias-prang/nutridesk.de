@@ -98,7 +98,7 @@
         h('div', { style: { flex: '1 1 auto', minWidth: 0 } },
           h('div', { style: { fontSize: '14px', fontWeight: 600 } }, u.name, u.admin ? h('span', { style: { marginLeft: '8px', fontSize: '10px', fontWeight: 700, color: 'var(--acc)', background: 'var(--acc-bg)', border: '1px solid var(--acc-bd)', padding: '2px 7px', borderRadius: '6px' } }, 'ADMIN') : null),
           h('div', { style: { fontSize: '12px', color: 'var(--ink3)', marginTop: '2px' } }, u.email + (u.username ? ' · @' + u.username : ''))),
-        h('div',{style:{fontSize:'11.5px',color:'var(--ink3)',textAlign:'right',minWidth:'118px'}},fmtBytes(u.storage_used)+' / '+fmtBytes(u.cloud_quota),h('div',{style:{fontSize:'9.5px',color:'var(--mut)',marginTop:'2px'}},'belegt / zugewiesen')),
+        h('div',{style:{fontSize:'11.5px',color:'var(--ink3)',textAlign:'right',minWidth:'138px'}},fmtBytes(u.cloud_used)+' / '+fmtBytes(u.cloud_quota),h('div',{style:{fontSize:'9.5px',color:'var(--mut)',marginTop:'2px'}},'Cloud belegt / zugewiesen'),Number(u.finance_attachment_used)>0?h('div',{style:{fontSize:'9.5px',color:'var(--mut)',marginTop:'3px'}},fmtBytes(u.finance_attachment_used)+' Finanzbuch · separat'):null),
         h('div', { onClick: function () { openEdit(u); }, style: btnGhost }, 'Bearbeiten'));
     });
     var modalEl = null;

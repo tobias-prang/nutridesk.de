@@ -281,7 +281,9 @@ const userNoteImageDir = (uid) => path.join(NOTE_IMAGE_ROOT, String(parseInt(uid
 async function ensureUserNoteImages(uid){const dir=userNoteImageDir(uid);await fsp.mkdir(dir,{recursive:true});return dir;}
 function safeNoteImagePath(uid,storedName){const dir=userNoteImageDir(uid),p=path.join(dir,path.basename(String(storedName)));if(path.dirname(p)!==dir)throw bad('Ungültiger Pfad');return p;}
 async function cloudUsage(uid) {
-  const [[r]] = await pool.execute('SELECT COALESCE(SUM(size),0) AS used FROM cloud_files WHERE user_id = ?', [uid]);
+  // Finanzbuch-Belege liegen technisch im gleichen sicheren Dateispeicher,
+  // sind aber keine Cloud-Dateien und belasten daher die Cloud-Anzeige nicht.
+  const [[r]] = await pool.execute('SELECT COALESCE(SUM(size),0) AS used FROM cloud_files WHERE user_id = ? AND transaction_id IS NULL', [uid]);
   return Number(r.used) || 0;
 }
 async function cloudQuota(uid) {
@@ -496,11 +498,12 @@ async function requireAdmin(req, res, next) {
 app.get('/admin/users', auth, requireAdmin, asyncRoute(async (req, res) => {
   const [rows] = await pool.execute(
     `SELECT u.id, u.email, u.username, u.name, u.first_name, u.last_name, u.admin, u.developer, u.created_at, u.cloud_quota,
-            (SELECT COALESCE(SUM(size),0) FROM cloud_files WHERE user_id = u.id) AS cloud_used,
+            (SELECT COALESCE(SUM(size),0) FROM cloud_files WHERE user_id = u.id AND transaction_id IS NULL) AS cloud_used,
+            (SELECT COALESCE(SUM(size),0) FROM cloud_files WHERE user_id = u.id AND transaction_id IS NOT NULL) AS finance_attachment_used,
             (SELECT COALESCE(SUM(size),0) FROM assistant_note_images WHERE user_id = u.id) AS note_image_used,
             (SELECT COUNT(*) FROM ai_cooldown WHERE user_id = u.id AND used_at > DATE_SUB(NOW(), INTERVAL ${AI_COOLDOWN_DAYS} DAY)) AS ai_cooldowns
      FROM users u ORDER BY u.id ASC`);
-  res.json(rows.map(r => ({ ...r, cloud_quota: Number(r.cloud_quota), cloud_used: Number(r.cloud_used), note_image_used:Number(r.note_image_used), storage_used:Number(r.cloud_used)+Number(r.note_image_used), ai_cooldowns: Number(r.ai_cooldowns) })));
+  res.json(rows.map(r => ({ ...r, cloud_quota: Number(r.cloud_quota), cloud_used: Number(r.cloud_used), finance_attachment_used:Number(r.finance_attachment_used), note_image_used:Number(r.note_image_used), storage_used:Number(r.cloud_used), ai_cooldowns: Number(r.ai_cooldowns) })));
 }));
 
 app.get('/admin/storage', auth, requireAdmin, asyncRoute(async (req,res) => {
@@ -2292,13 +2295,13 @@ app.post('/cloud/upload', auth, rateLimitUser('cloud-up', 30), cloudUpload.singl
   const qPath = req.file.path; // liegt in der Quarantaene
   const cleanupQ = async () => { try { await fsp.unlink(qPath); } catch (e) {} };
   try {
+    const transactionId=req.body.transaction_id?vInt(req.body.transaction_id,'Buchung',1,4294967295,{optional:true}):null;
+    if(transactionId){const [[tx]]=await pool.execute('SELECT id FROM transactions WHERE id=? AND user_id=?',[transactionId,req.uid]);if(!tx){await cleanupQ();throw bad('Buchung nicht gefunden');}}
     const used = await cloudUsage(req.uid), quota = await cloudQuota(req.uid);
-    if (used + req.file.size > quota) { await cleanupQ(); return res.status(413).json({ error: 'Dein Cloud-Speicher ist voll' }); }
+    if (!transactionId && used + req.file.size > quota) { await cleanupQ(); return res.status(413).json({ error: 'Dein Cloud-Speicher ist voll' }); }
     const folderId = req.body.folder_id ? parseInt(req.body.folder_id, 10) : null;
     if (folderId) { const [[p]] = await pool.execute('SELECT id FROM cloud_folders WHERE id=? AND user_id=?', [folderId, req.uid]); if (!p) { await cleanupQ(); throw bad('Ordner nicht gefunden'); } }
     const category = CLOUD_CATS.includes(req.body.category) ? req.body.category : 'sonstiges';
-    const transactionId=req.body.transaction_id?vInt(req.body.transaction_id,'Buchung',1,4294967295,{optional:true}):null;
-    if(transactionId){const [[tx]]=await pool.execute('SELECT id FROM transactions WHERE id=? AND user_id=?',[transactionId,req.uid]);if(!tx){await cleanupQ();throw bad('Buchung nicht gefunden');}}
     // 1) Struktur-/Typvalidierung (Allowlist + Magic-Bytes + Struktur), niemals nur Endung/Client-MIME.
     const v = await validateUpload({ path: qPath, originalName: utf8name(req.file.originalname), size: req.file.size });
     if (!v.ok) {
@@ -2339,8 +2342,8 @@ app.post('/cloud/upload', auth, rateLimitUser('cloud-up', 30), cloudUpload.singl
       await conn.beginTransaction();
       const [[u]] = await conn.execute('SELECT cloud_quota FROM users WHERE id=? FOR UPDATE', [req.uid]);
       const quotaB = u ? Number(u.cloud_quota) : 2147483648;
-      const [[s]] = await conn.execute('SELECT COALESCE(SUM(size),0) AS used FROM cloud_files WHERE user_id=?', [req.uid]);
-      if (Number(s.used) + req.file.size > quotaB) {
+      const [[s]] = await conn.execute('SELECT COALESCE(SUM(size),0) AS used FROM cloud_files WHERE user_id=? AND transaction_id IS NULL', [req.uid]);
+      if (!transactionId && Number(s.used) + req.file.size > quotaB) {
         await conn.rollback();
         await fsp.unlink(activePath).catch(() => {});
         return res.status(413).json({ error: 'Dein Cloud-Speicher ist voll' });
@@ -3482,7 +3485,7 @@ app.post('/assistant-notes/:id/images', auth, rateLimitUser('note-image',20,6000
     let verdict;try{verdict=await scanFile(qPath);}catch(e){throw new HttpError(503,'Das Bild konnte gerade nicht sicher geprüft werden');}
     if(verdict==='infected')throw new HttpError(422,'Das Bild wurde als schädlich erkannt und abgelehnt');
     const [[cnt]]=await pool.execute('SELECT COUNT(*) n FROM assistant_note_images WHERE note_id=? AND user_id=?',[id,req.uid]);if(Number(cnt.n)>=12)throw bad('Maximal 12 Bilder pro Notiz');
-    const [[used]]=await pool.execute('SELECT (SELECT COALESCE(SUM(size),0) FROM cloud_files WHERE user_id=?)+(SELECT COALESCE(SUM(size),0) FROM assistant_note_images WHERE user_id=?) n',[req.uid,req.uid]);
+    const [[used]]=await pool.execute('SELECT (SELECT COALESCE(SUM(size),0) FROM cloud_files WHERE user_id=? AND transaction_id IS NULL)+(SELECT COALESCE(SUM(size),0) FROM assistant_note_images WHERE user_id=?) n',[req.uid,req.uid]);
     if(Number(used.n)+req.file.size>await cloudQuota(req.uid))throw new HttpError(413,'Dein Speicher ist voll');
     await ensureUserNoteImages(req.uid);const out=safeNoteImagePath(req.uid,req.file.filename);await fsp.copyFile(qPath,out);await cleanup();
     const [r]=await pool.execute('INSERT INTO assistant_note_images (user_id,note_id,name,stored_name,size,mime,scan_status) VALUES (?,?,?,?,?,?,?)',[req.uid,id,v.safeName,req.file.filename,req.file.size,v.mime,'clean']);

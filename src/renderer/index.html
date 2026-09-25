@@ -2974,6 +2974,7 @@
           <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-bd);"><i data-lucide="sparkles" style="width:16px;height:16px;"></i>{{ kiAsstName }}</div>
           <div style="display:flex;gap:3px;background:var(--chip);border-radius:11px;padding:3px;">
             <div onclick="{{ kiShowChat }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;background:{{ kiChatBg }};color:{{ kiChatC }};">Chat</div>
+            <div onclick="{{ kiShowInsights }}" style="display:flex;align-items:center;gap:7px;padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;background:{{ kiInsBg }};color:{{ kiInsC }};"><i data-lucide="sparkles" style="width:13px;height:13px;"></i>Insights <span style="display:{{ kiInsCountD }};min-width:18px;height:18px;padding:0 5px;border-radius:9px;align-items:center;justify-content:center;background:var(--acc);color:#0f1117;font-size:10px;font-weight:800;box-sizing:border-box;">{{ kiInsCount }}</span></div>
             <div onclick="{{ kiShowTickets }}" style="padding:7px 14px;border-radius:9px;font-size:12.5px;font-weight:600;cursor:pointer;background:{{ kiTixBg }};color:{{ kiTixC }};">Meine Tickets</div>
           </div>
           <div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:1px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);">{{ todayShort }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mut);opacity:.7;">{{ buildLabel }}</span></div>
@@ -2993,6 +2994,26 @@
       </sc-if>
 
       <div style="flex:1 1 auto;min-height:0;max-width:1200px;width:100%;margin:0 auto;padding:18px 30px 22px;display:flex;gap:18px;box-sizing:border-box;">
+
+        <sc-if value="{{ kiIsInsights }}">
+        <div style="width:100%;min-width:0;overflow:auto;padding:2px 2px 30px;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:18px;">
+            <div><div style="display:flex;align-items:center;gap:10px;font-size:23px;font-weight:750;"><i data-lucide="sparkles" style="width:23px;height:23px;color:var(--acc);"></i>Deine Insights</div><div style="font-size:13px;color:var(--ink3);margin-top:6px;line-height:1.5;">Verständliche Hinweise aus deinen Finanzen, deiner Ernährung, deinen Terminen und deinem Cloud-Speicher.</div></div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span style="display:{{ insUpdatedShow }};font-size:11.5px;color:var(--mut);">{{ insUpdatedLabel }}</span><div onclick="{{ insBtnClick }}" style="display:flex;align-items:center;gap:7px;padding:10px 15px;border-radius:11px;background:{{ insBtnBg }};color:{{ insBtnC }};font-size:12.5px;font-weight:700;cursor:pointer;"><i data-lucide="{{ insBtnIcon }}" class="{{ insBtnSpin }}" style="width:14px;height:14px;"></i>{{ insBtnLabel }}</div></div>
+          </div>
+          <div style="display:{{ insInfoShow }};align-items:flex-start;gap:10px;padding:13px 15px;margin-bottom:14px;border-radius:13px;background:var(--acc-bg);border:1px solid var(--acc-bd);color:var(--ink2);font-size:12.5px;line-height:1.55;"><i data-lucide="{{ insInfoIcon }}" style="width:16px;height:16px;color:var(--acc);flex:0 0 auto;margin-top:1px;"></i>{{ insInfoText }}</div>
+          <div style="display:{{ insErrShow }};align-items:flex-start;gap:10px;padding:13px 15px;margin-bottom:14px;border-radius:13px;background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.3);color:#fca5a5;font-size:12.5px;line-height:1.55;"><i data-lucide="circle-alert" style="width:16px;height:16px;flex:0 0 auto;"></i>{{ insErr }}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">
+            <sc-for list="{{ insightsView }}" as="ins" hint-placeholder-count="4">
+              <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:19px;display:flex;align-items:flex-start;gap:14px;min-height:145px;box-sizing:border-box;">
+                <div style="width:42px;height:42px;border-radius:13px;background:var(--chip);border:1px solid var(--line3);display:flex;align-items:center;justify-content:center;flex:0 0 auto;"><i data-lucide="{{ ins.icon }}" style="width:19px;height:19px;color:{{ ins.color }};"></i></div>
+                <div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px;"><span style="font-size:15px;font-weight:700;color:var(--ink);">{{ ins.title }}</span><span style="font-size:10px;font-weight:750;letter-spacing:.06em;text-transform:uppercase;color:{{ ins.color }};background:var(--chip);border:1px solid var(--line3);padding:3px 7px;border-radius:6px;">{{ ins.catLabel }}</span></div><div style="font-size:13px;color:var(--ink2);line-height:1.65;white-space:normal;overflow-wrap:anywhere;">{{ ins.text }}</div></div>
+              </div>
+            </sc-for>
+          </div>
+          <sc-if value="{{ insEmpty }}"><div style="background:var(--panel);border:1.5px dashed var(--line3);border-radius:18px;padding:48px 24px;text-align:center;color:var(--ink3);"><i data-lucide="scan-search" style="width:30px;height:30px;color:var(--acc);margin-bottom:12px;"></i><div style="font-size:15px;font-weight:700;color:var(--ink2);margin-bottom:6px;">Noch keine Insights</div><div style="font-size:12.5px;line-height:1.55;max-width:460px;margin:0 auto;">Starte eine Analyse. NutriDesk prüft deine vorhandenen Daten und erklärt dir anschließend jeden gefundenen Hinweis vollständig.</div></div></sc-if>
+        </div>
+        </sc-if>
 
         <sc-if value="{{ kiIsChat }}">
         <div style="flex:0 0 400px;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);overflow:hidden;">
@@ -5557,7 +5578,7 @@ class Component extends DCLogic {
     const s=this.state;
     if(s.phase!=='app') return '';
     if(s.area==='notes') return '?notizen';
-    if(s.area==='insights') return '?kiassistent='+(s.kiView==='tickets'?'mytickets':'chat');
+    if(s.area==='insights') return '?kiassistent='+(s.kiView==='tickets'?'mytickets':(s.kiView==='insights'?'insights':'chat'));
     if(s.area==='nutri') { const m={tracker:'tracker',stats:'statistik',recipes:'rezepte'}; return '?ernaehrung='+(m[s.nutriTab]||'tracker'); }
     if(s.area==='fin') { if(s.finTab==='expenses') return '?finanzen='+((s.expSub||'abos')==='loans'?'kredite':'abos'); const m={overview:'uebersicht',tx:'buchungen',income:'einnahmen',tools:'tools',goals:'sparziele',budget:'budgets'}; return '?finanzen='+(m[s.finTab]||'uebersicht'); }
     if(s.area==='community') { const m={couple:'couple',talk:'kommunikation',games:'spiele'}; return '?community='+(m[s.commMode]||'couple'); }
@@ -5576,7 +5597,7 @@ class Component extends DCLogic {
     if(p.has('couple')) return;
     let next=null,load='';
     if(p.has('notizen')) { next={area:'notes'};load='notes'; }
-    else if(p.has('kiassistent')) { const v=p.get('kiassistent');next={area:'insights',kiView:v==='mytickets'?'tickets':'chat'};load='ki'; }
+    else if(p.has('kiassistent')) { const v=p.get('kiassistent');next={area:'insights',kiView:v==='mytickets'?'tickets':(v==='insights'?'insights':'chat')};load='ki'; }
     else if(p.has('ernaehrung')) { const m={tracker:'tracker',plan:'recipes',statistik:'stats',rezepte:'recipes'};next={area:'nutri',nutriTab:m[p.get('ernaehrung')]||'tracker'}; }
     else if(p.has('finanzen')) { const v=p.get('finanzen'),m={uebersicht:'overview',buchungen:'tx',einnahmen:'income',ausgaben:'expenses',tools:'tools',sparziele:'goals',budgets:'budget'};next={area:'fin',finTab:(v==='abos'||v==='kredite')?'expenses':(m[v]||'overview'),...((v==='abos'||v==='kredite')?{expSub:v==='kredite'?'loans':'abos'}:{})}; }
     else if(p.has('community')) { const m={couple:'couple',kommunikation:'talk',spiele:'games'};next={area:'community',commMode:m[p.get('community')]||'couple'};load='community'; }
@@ -5585,7 +5606,7 @@ class Component extends DCLogic {
     else if(p.has('admin')) { next={area:'admin'};load='admin'; }
     else next={area:'home'};
     this._applyingRoute=true;
-    this.setState(next,()=>{this._applyingRoute=false;if(load==='notes')this._loadKiNotes();else if(load==='ki'){this._kiInit();this._loadKiSessions();if(next.kiView==='tickets')this._loadKiTickets();}else if(load==='community'){this._loadCommunity();this._loadCouple();this._loadGames();}else if(load==='cloud')this.loadCloud();else if(load==='admin')this._ensureAdminModule();});
+    this.setState(next,()=>{this._applyingRoute=false;if(load==='notes')this._loadKiNotes();else if(load==='ki'){this._kiInit();this._loadKiSessions();if(next.kiView==='tickets')this._loadKiTickets();if(next.kiView==='insights')this.loadInsights();}else if(load==='community'){this._loadCommunity();this._loadCouple();this._loadGames();}else if(load==='cloud')this.loadCloud();else if(load==='admin')this._ensureAdminModule();});
   };
   _applyAccent() {
     const inApp = this.state.phase === 'app';
@@ -5673,7 +5694,7 @@ class Component extends DCLogic {
     const sc = document.createElement('script');
     // Admin ist ein lazy geladenes Bundle. Die Versionskennung verhindert,
     // dass nach einem Deployment noch tagelang das alte immutable Bundle läuft.
-    sc.src = 'assets/admin.js?v=20260925-2';
+    sc.src = 'assets/admin.js?v=20260925-3';
     sc.onload = () => { this._adminLoading = false; this.setState({ _adminReady: true }); };
     sc.onerror = () => { this._adminLoading = false; this._toast('Admin-Modul konnte nicht geladen werden'); };
     document.head.appendChild(sc);
@@ -7397,6 +7418,7 @@ class Component extends DCLogic {
   kiSetInput = (e) => { this.setState({ kiInput: e.target.value }); };
   kiSetTReply = (e) => { this.setState({ kiTReply: e.target.value }); };
   kiShowChat = () => { this.setState({ kiView:'chat', kiTicketId:0, kiTicket:null }); this._loadKiSessions(); };
+  kiShowInsights = () => { this.setState({ kiView:'insights', kiTicketId:0, kiTicket:null }); this.loadInsights(); };
   kiShowTickets = () => { this.setState({ kiView:'tickets', kiTicketId:0, kiTicket:null }); this._loadKiTickets(); };
   _loadKiNotes = async () => { try{const old=this.state.kiNotes&&this.state.kiNotes.notes||[];for(const n of old)for(const im of(n.images||[]))if(im.src&&im.src.startsWith('blob:'))URL.revokeObjectURL(im.src);const data=await this.api('/assistant-notes');for(const n of(data.notes||[])){for(const im of(n.images||[])){try{const blob=await this._download(im.url);im.src=URL.createObjectURL(blob);}catch(_){im.src='';}}}this.setState({kiNotes:data||{sections:[],notes:[],quickNotes:[]}});}catch(e){this._toast(e.message);} };
   setKiNotesQ = (e) => { const value=e.target.value; clearTimeout(this._kiNotesSearchT); this._kiNotesSearchT=setTimeout(()=>this.setState({kiNotesQ:value,kiNoteOpen:0}),100); };
@@ -7650,7 +7672,7 @@ class Component extends DCLogic {
     // die Karte den Leerzustand ("Alles im Griff") und der Gelesen-Button verschwindet.
     this.setState({ botMsgs: [], botUnread: 0 });
   };
-  goInsightsFromBot = () => { this.setState({ modal:'' }); this.goInsights(); };
+  goInsightsFromBot = () => { this.setState({ modal:'',area:'insights',kiView:'insights' }); this.loadInsights(); };
   openSearch = () => this.setState({ modal:'search', searchQ:'' });
   setSearchQ = (e) => this.setState({ searchQ: e.target.value });
   openWeight = () => this.setState({ modal:'weight', wtInput: this.state.weight || '' });
@@ -10005,7 +10027,7 @@ class Component extends DCLogic {
     const kiT = (s.kiTicket && s.kiTicket.ticket) ? s.kiTicket : null;
     const kiTSt = kiT ? (KI_STL[kiT.ticket.status] || KI_STL.offen) : KI_STL.offen;
     const kiTicketMsgsView = kiT ? (kiT.messages || []).map(mm => { const isU = mm.sender === 'user'; return { text: mm.text, sender: isU ? 'Du' : (mm.sender === 'admin' ? 'Support' : kiAsstName), justify: isU ? 'flex-end' : 'flex-start', bg: isU ? 'var(--acc)' : 'var(--bg2)', c: isU ? '#0f1117' : 'var(--ink)', bd: isU ? 'var(--acc)' : 'var(--line3)', radius: isU ? '14px 14px 4px 14px' : '14px 14px 14px 4px', nameC: isU ? 'rgba(15,17,23,.6)' : 'var(--acc)' }; }) : [];
-    const kiTix = isInsightArea&&s.kiView === 'tickets',kiNotesActive=isNotesArea;
+    const kiTix = isInsightArea&&s.kiView === 'tickets',kiIns=isInsightArea&&s.kiView==='insights',kiNotesActive=isNotesArea;
     const kiNotesData=s.kiNotes||{sections:[],notes:[],quickNotes:[]},kiAllNotes=kiNotesData.notes||[],kiSections=kiNotesData.sections||[],kiSectionMap=new Map(kiSections.map(x=>[Number(x.id),x])),kiNoteMap=new Map(kiAllNotes.map(x=>[Number(x.id),x]));
     const normalizeNoteSearch=v=>String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9äöüß]+/g,' ').trim();
     const kiNQ=normalizeNoteSearch(s.kiNotesQ),kiNTokens=kiNQ.split(/\s+/).filter(Boolean),kiNS=String(s.kiNotesSection||'all');
@@ -10033,10 +10055,11 @@ class Component extends DCLogic {
     return {
       ...base,
       isNutri, isFin, isSet, isHome,
-      kiAsstName, kiIsChat: isInsightArea&&!kiTix, kiIsTickets: kiTix,kiIsNotes:kiNotesActive,
+      kiAsstName, kiIsChat: isInsightArea&&!kiTix&&!kiIns, kiIsTickets: kiTix,kiIsInsights:kiIns,kiIsNotes:kiNotesActive,
       kiChatBg: !kiTix ? 'var(--panel)' : 'transparent', kiChatC: !kiTix ? 'var(--ink)' : 'var(--ink3)',
       kiTixBg: kiTix ? 'var(--panel)' : 'transparent', kiTixC: kiTix ? 'var(--ink)' : 'var(--ink3)',
-      kiShowChat: this.kiShowChat, kiShowTickets: this.kiShowTickets,
+      kiShowChat: this.kiShowChat,kiShowInsights:this.kiShowInsights, kiShowTickets: this.kiShowTickets,
+      kiChatBg:(!kiTix&&!kiIns)?'var(--panel)':'transparent',kiChatC:(!kiTix&&!kiIns)?'var(--ink)':'var(--ink3)',kiInsBg:kiIns?'var(--panel)':'transparent',kiInsC:kiIns?'var(--acc)':'var(--ink3)',kiTixBg:kiTix?'var(--panel)':'transparent',kiTixC:kiTix?'var(--ink)':'var(--ink3)',kiInsCount:String((s.insights||[]).length),kiInsCountD:(s.insights||[]).length?'flex':'none',
       kiNotesQ:s.kiNotesQ||'',setKiNotesQ:this.setKiNotesQ,openKiNoteNew:this.openKiNoteNew,newKiNoteSection:this.newKiNoteSection,openKiNote:this.openKiNote,editKiNote:this.editKiNote,downloadKiNotesPdf:this.downloadKiNotesPdf,kiNotesPdfLabel:s.kiNotesPdfBusy?'PDF wird erstellt …':'PDF herunterladen',kiNotesPdfIcon:s.kiNotesPdfBusy?'loader-2':'file-down',kiNotesPdfSpin:s.kiNotesPdfBusy?'nd-spin':'',
       kiNoteSectionsView:[{id:'all',title:'Alle',icon:'layout-grid',count:kiAllNotes.length},...kiSections.map(sec=>({id:String(sec.id),title:sec.title,icon:sec.icon||'folder',count:kiAllNotes.filter(n=>Number(n.section_id)===Number(sec.id)).length}))].map(sec=>{const on=kiNS===String(sec.id);return{...sec,bg:on?'var(--acc-bg)':'var(--bg2)',bd:on?'var(--acc-bd)':'var(--line3)',c:on?'var(--acc)':'var(--ink3)'};}),pickKiNoteSection:this.pickKiNoteSection,
       kiNotesView,kiNotesEmpty:kiNotesView.length===0,kiQuickNotesView:(kiNotesData.quickNotes||[]),kiNoteDetailReady:!!kiNoteDetail,kiNoteDetailTitle:kiNoteDetail?kiNoteDetail.title:'',kiNoteDetailContent:kiNoteDetail?kiNoteDetail.content:'',kiNoteDetailSection:kiNoteDetailSec?kiNoteDetailSec.title:'',kiNoteDetailTags:kiNoteDetail?(kiNoteDetail.tags||[]):[],kiNoteRelatedView,kiNoteHasRelated:kiNoteRelatedView.length>0,kiNoteDetailImages:kiNoteDetail?(kiNoteDetail.images||[]).map(im=>({...im,alt:im.alt_text||im.name,caption:im.caption||im.alt_text||im.name})):[],kiNoteHasImages:!!(kiNoteDetail&&kiNoteDetail.images&&kiNoteDetail.images.length),
@@ -10073,6 +10096,8 @@ class Component extends DCLogic {
           insBtnBg: canGen ? 'var(--acc)' : 'var(--chip)',
           insBtnC: canGen ? '#0f1117' : 'var(--mut)',
           insBtnClick: canGen ? this.genInsights : this.noop,
+          insBtnIcon: s.insBusy ? 'loader-2' : 'refresh-cw',
+          insBtnSpin: s.insBusy ? 'nd-spin' : '',
           insUpdatedShow: s.insUpdatedAt ? 'inline' : 'none',
           insUpdatedLabel: (() => { const upd = s.insUpdatedAt || 0; if (!upd) return ''; const m = Math.round((now.getTime() - upd) / 60000); return m < 1 ? 'gerade aktualisiert' : (m < 60 ? 'vor ' + m + ' Min aktualisiert' : 'vor ' + Math.round(m / 60) + ' Std aktualisiert'); })(),
           insInfoShow: (!s.aiAvail || cdActive) ? 'flex' : 'none',
