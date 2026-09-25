@@ -590,7 +590,7 @@
   input::placeholder, textarea::placeholder { color:var(--mut); }
   select option { background:var(--panel); color:var(--ink); }
 </style>
-<style>@keyframes ndPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.94)}}.nd-pulse{animation:ndPulse 1.6s ease-in-out infinite}@keyframes ndSpin{to{transform:rotate(360deg)}}.nd-spin{animation:ndSpin .8s linear infinite}input[type=date],input[type=time]{color-scheme:dark}input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer;opacity:.7}input[type=date]::-webkit-calendar-picker-indicator:hover,input[type=time]::-webkit-calendar-picker-indicator:hover{opacity:1}select{color-scheme:dark}input[type=file]::-webkit-file-upload-button{display:none}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--line3);border-radius:6px}::-webkit-scrollbar-track{background:transparent}</style>
+<style>@keyframes ndPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.55;transform:scale(.94)}}.nd-pulse{animation:ndPulse 1.6s ease-in-out infinite}@keyframes ndSpin{to{transform:rotate(360deg)}}.nd-spin{animation:ndSpin .8s linear infinite}@keyframes ndGlobalLoad{0%{transform:translateX(-110%) scaleX(.28)}48%{transform:translateX(18%) scaleX(.72)}100%{transform:translateX(225%) scaleX(.3)}}.nd-global-loading{position:fixed;top:0;left:0;right:0;height:3px;z-index:10000;overflow:hidden;background:rgba(163,230,53,.09);opacity:0;pointer-events:none;transition:opacity .16s ease}.nd-global-loading.is-active{opacity:1}.nd-global-loading>span{display:block;width:55%;height:100%;transform-origin:left center;background:linear-gradient(90deg,transparent,var(--acc),var(--mate),transparent);filter:drop-shadow(0 0 5px var(--acc));animation:ndGlobalLoad 1.15s ease-in-out infinite}input[type=date],input[type=time]{color-scheme:dark}input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{filter:invert(.7);cursor:pointer;opacity:.7}input[type=date]::-webkit-calendar-picker-indicator:hover,input[type=time]::-webkit-calendar-picker-indicator:hover{opacity:1}select{color-scheme:dark}input[type=file]::-webkit-file-upload-button{display:none}::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:var(--line3);border-radius:6px}::-webkit-scrollbar-track{background:transparent}</style>
 <style>
   .nd-main{max-width:calc(100vw - 74px)}
   @media(max-width:1100px){
@@ -661,6 +661,7 @@
 </helmet>
 
 <div style="display:flex;width:100%;min-height:100vh;background:var(--bg);font-family:'Space Grotesk','Inter',system-ui,sans-serif;color:var(--ink);">
+  <div id="nd-global-loading" class="nd-global-loading" role="progressbar" aria-label="Inhalte werden geladen" aria-hidden="true"><span></span></div>
 <sc-if value="{{ appShow }}">
 
   
@@ -5377,6 +5378,9 @@ class Component extends DCLogic {
   }
 
   async api(path, opts = {}) {
+    const showLoading = opts.loading !== false;
+    if (showLoading) this._loadingStart();
+    try {
     const headers = { 'Content-Type': 'application/json' };
     if (this._token) headers['Authorization'] = 'Bearer ' + this._token;
     let resp;
@@ -5400,7 +5404,38 @@ class Component extends DCLogic {
     }
     if (!resp.ok) throw new Error((json && json.error) || ('Fehler ' + resp.status));
     return json;
+    } finally {
+      if (showLoading) this._loadingEnd();
+    }
   }
+  _loadingStart = () => {
+    this._loadingCount = (this._loadingCount || 0) + 1;
+    if (this._loadingCount !== 1) return;
+    clearTimeout(this._loadingDelayT);
+    this._loadingDelayT = setTimeout(() => {
+      if (!this._loadingCount) return;
+      const bar = document.getElementById('nd-global-loading');
+      if (!bar) return;
+      this._loadingShownAt = Date.now();
+      bar.classList.add('is-active');
+      bar.setAttribute('aria-hidden', 'false');
+    }, 180);
+  };
+  _loadingEnd = () => {
+    this._loadingCount = Math.max(0, (this._loadingCount || 0) - 1);
+    if (this._loadingCount) return;
+    clearTimeout(this._loadingDelayT);
+    const elapsed = Date.now() - (this._loadingShownAt || 0);
+    clearTimeout(this._loadingHideT);
+    this._loadingHideT = setTimeout(() => {
+      if (this._loadingCount) return;
+      const bar = document.getElementById('nd-global-loading');
+      if (!bar) return;
+      bar.classList.remove('is-active');
+      bar.setAttribute('aria-hidden', 'true');
+      this._loadingShownAt = 0;
+    }, this._loadingShownAt ? Math.max(0, 320 - elapsed) : 0);
+  };
   _setToken(t) {
     this._token = t;
     try { t ? localStorage.setItem('nutridesk.token', t) : localStorage.removeItem('nutridesk.token'); } catch (e) {}
@@ -5410,11 +5445,16 @@ class Component extends DCLogic {
     return await new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open('POST',API_BASE+path,true);if(this._token)xhr.setRequestHeader('Authorization','Bearer '+this._token);xhr.upload.onprogress=(e)=>{if(e.lengthComputable)onProgress(Math.min(100,Math.round(e.loaded/e.total*100)),'upload');};xhr.upload.onload=()=>onProgress(100,'scan');xhr.onerror=()=>reject(new Error('Keine Verbindung zum Server'));xhr.ontimeout=()=>reject(new Error('Der Upload hat zu lange gedauert'));xhr.timeout=180000;xhr.onload=()=>{let json=null;try{json=JSON.parse(xhr.responseText||'null');}catch(e){}if(xhr.status>=200&&xhr.status<300)resolve(json);else reject(new Error((json&&json.error)||('Fehler '+xhr.status)));};xhr.send(formData);});
   }
   async _download(path) {
+    this._loadingStart();
+    try {
     const headers = {};
     if (this._token) headers['Authorization'] = 'Bearer ' + this._token;
     const resp = await fetch(API_BASE + path, { headers });
     if (!resp.ok) { let j = null; try { j = await resp.json(); } catch (e) {} throw new Error((j && j.error) || ('Fehler ' + resp.status)); }
     return await resp.blob();
+    } finally {
+      this._loadingEnd();
+    }
   }
 
   async loadData({ silent = false } = {}) {
@@ -5570,7 +5610,7 @@ class Component extends DCLogic {
       if (window.nutridesk.getAutostart) window.nutridesk.getAutostart().then(on => this.setState({ autostart: !!on })).catch(() => {});
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearTimeout(this._kiNotesSearchT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearTimeout(this._kiNotesSearchT); clearTimeout(this._loadingDelayT); clearTimeout(this._loadingHideT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); this._syncUrlRoute(); }
   _routeForState = () => {
     const s=this.state;
