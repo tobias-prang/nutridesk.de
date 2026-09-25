@@ -16,7 +16,7 @@ module.exports = function registerBot(app, deps) {
   } = deps;
 
   const WIKI_URL = process.env.WIKI_URL || 'http://127.0.0.1:35248';
-  const NAMES = { man: 'Conrad', woman: 'Sophia' };
+  const NAMES = { man: 'Conrad', woman: 'Sophie' };
   // Fuer die Sprachausgabe Abkuerzungen ausschreiben, damit sie nicht "g" oder "ml" buchstabiert (Anzeige bleibt kompakt).
   function spoken(text) {
     return String(text)
@@ -1083,7 +1083,7 @@ module.exports = function registerBot(app, deps) {
 
     // Begrüßung. NUR wenn danach nichts Inhaltliches mehr kommt: "hey wie war dein tag" ist eine
     // Frage, wurde aber komplett von der Begruessung verschluckt, weil es mit "hey" anfaengt.
-    const nurGruss = /^(hi+|hallo|hey+|moin|servus|gruess dich|guten (morgen|tag|abend)|na|yo|halloechen|hei|hallo zusammen)([ ,!.]+(du|sophia|conrad|leute|zusammen|nochmal|wieder))*[ ,!.]*$/.test(n);
+    const nurGruss = /^(hi+|hallo|hey+|moin|servus|gruess dich|guten (morgen|tag|abend)|na|yo|halloechen|hei|hallo zusammen)([ ,!.]+(du|sophie|conrad|leute|zusammen|nochmal|wieder))*[ ,!.]*$/.test(n);
     if (nurGruss) {
       const first = String(settings.first_name || '').trim().split(/\s+/)[0];
       return { intent: 'greet', reply: `Hey${first ? ' ' + first : ''}! Schön, dass du da bist. Ich bin ${NAMES[settings.assistant === 'man' ? 'man' : 'woman']}. Wie geht es dir heute, und wobei kann ich dir helfen?`, quicks: [{ label: 'Kalorien heute', send: 'Wie viele Kalorien habe ich heute?' }, { label: 'Ausgabe eintragen', send: 'Ich möchte eine Ausgabe eintragen' }, { label: 'Lebensmittel suchen', send: 'Wie viele Kalorien hat eine Banane?' }] };
