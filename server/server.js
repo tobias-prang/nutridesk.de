@@ -2479,7 +2479,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
   await bookSubscriptions(uid).catch(() => {});
   const q = (sql, params = []) => pool.execute(sql, [uid, ...params]).then(([rows]) => rows);
   const [user, settings, weights, water, foodLog, dishes, plan, shopping,
-    transactions, financeFolders, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, cooldowns] = await Promise.all([
+    transactions, financeFolders, financeAttachments, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, cooldowns] = await Promise.all([
     q('SELECT id, email, username, name, first_name, last_name, birthday, phone, street, zip, city, country, admin, developer, totp_enabled, created_at FROM users WHERE id = ?').then(r => r[0]),
     q('SELECT * FROM user_settings WHERE user_id = ?').then(r => r[0]),
     q('SELECT id, `date`, kg FROM weights WHERE user_id = ? ORDER BY `date` ASC'),
@@ -2490,6 +2490,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
     q('SELECT * FROM shopping_items WHERE user_id = ? ORDER BY id ASC'),
     q("SELECT t.*,(SELECT COUNT(*) FROM cloud_files cf WHERE cf.user_id=t.user_id AND cf.transaction_id=t.id AND cf.scan_status IN ('clean','legacy_unverified')) AS attachment_count FROM transactions t WHERE t.user_id = ? ORDER BY t.`date` DESC, t.id DESC LIMIT 200000"),
     q('SELECT id,name,parent_id FROM cloud_folders WHERE user_id=? ORDER BY parent_id IS NOT NULL,parent_id,name ASC'),
+    q("SELECT id,transaction_id,folder_id,name,size,category,created_at FROM cloud_files WHERE user_id=? AND transaction_id IS NOT NULL AND scan_status IN ('clean','legacy_unverified') ORDER BY created_at DESC"),
     q('SELECT * FROM subscriptions WHERE user_id = ? ORDER BY `day` ASC'),
     q('SELECT * FROM loans WHERE user_id = ? ORDER BY id ASC'),
     q('SELECT * FROM goals WHERE user_id = ? ORDER BY id ASC'),
@@ -2519,7 +2520,7 @@ app.get('/bootstrap', auth, asyncRoute(async (req, res) => {
     actualExpenses: getCurrentMonthExpenses({ transactions, month: currentMonth })
   };
   res.json({ user, settings: settingsSafe, weights, water, foodLog, dishes, plan, shopping: shoppingWeeks, shoppingWhole,
-    transactions, financeFolders, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns, financialSummary });
+    transactions, financeFolders, financeAttachments, subscriptions, loans, goals, budgets, assets, dishRatings, todos, appointments, people, incomeSources, aiCooldowns, financialSummary });
 }));
 
 // ---------- KI-Schicht entfernt: Analyse und Planung laufen systembasiert (siehe unten). ----------
