@@ -630,6 +630,10 @@
     .nd-auth-shell>div{width:100%!important;margin:auto 0}
     .nd-auth-card{padding:20px 17px!important;border-radius:16px!important}
     .nd-auth-footer{text-align:center;line-height:1.45;padding:0 12px}
+    .nd-settings-nav{width:100%!important;flex:1 1 100%!important;position:sticky;top:0;z-index:15;background:var(--bg);padding-bottom:8px}
+    .nd-settings-nav-inner{flex-direction:row!important;overflow-x:auto!important;overscroll-behavior-x:contain;padding:6px!important;gap:5px!important;white-space:nowrap;-webkit-overflow-scrolling:touch}
+    .nd-settings-nav-inner>[onclick]{flex:0 0 auto!important;padding:9px 12px!important;font-size:12.5px!important}
+    .nd-settings-nav-inner>[style*="height:1px"]{display:none!important}
     [role="dialog"]{width:100%!important;max-width:100%!important;max-height:calc(100dvh - 92px)!important;border-radius:16px!important}
     [role="dialog"] [style*="justify-content:flex-end"]{flex-wrap:wrap!important}
     [role="dialog"] [style*="justify-content:flex-end"]>[style*="padding:"]{flex:1 1 auto!important;justify-content:center!important;text-align:center}
@@ -1946,7 +1950,7 @@
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;"><span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Einstellungen</span><div style="flex:1 1 auto;height:1px;background:var(--line2);"></div></div><div style="font-size:13px;color:var(--ink3);font-weight:500;">Konto, Körperdaten &amp; Erscheinungsbild</div>
       </div>
       <div style="display:flex;gap:22px;align-items:flex-start;flex-wrap:wrap;">
-        <div style="width:230px;flex:0 0 auto;"><div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:16px;box-shadow:var(--cardsh);padding:8px;display:flex;flex-direction:column;gap:4px;">
+        <div class="nd-settings-nav" style="width:230px;flex:0 0 auto;"><div class="nd-settings-nav-inner" style="background:var(--panel);border:1px solid var(--cardbd);border-radius:16px;box-shadow:var(--cardsh);padding:8px;display:flex;flex-direction:column;gap:4px;">
           <div onclick="{{ sAccount }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stAccount.c }};background:{{ stAccount.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="user-round" style="width:17px;height:17px;"></i>Account</div>
           <div onclick="{{ sProf }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stProf.c }};background:{{ stProf.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="activity" style="width:17px;height:17px;"></i>Profil &amp; Ziele</div>
           <div onclick="{{ sDes }}" style="display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:11px;cursor:pointer;font-size:14px;font-weight:600;color:{{ stDes.c }};background:{{ stDes.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="palette" style="width:17px;height:17px;"></i>Anpassen</div>
