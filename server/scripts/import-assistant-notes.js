@@ -1,75 +1,22 @@
 'use strict';
-
 require('dotenv').config();
-const fs = require('fs');
-const mysql = require('mysql2/promise');
-
-const sourceFile = process.argv[2];
-const account = String(process.argv[3] || '').trim();
-if (!sourceFile || !account) {
-  console.error('Aufruf: node scripts/import-assistant-notes.js data.json konto');
-  process.exit(1);
-}
-
-const data = JSON.parse(fs.readFileSync(sourceFile, 'utf8'));
-const icons = {
-  'fas fa-thumbtack':'pin', 'fas fa-chart-line':'chart-no-axes-combined',
-  'fas fa-route':'route', 'fas fa-comments':'messages-square', 'fas fa-lock':'lock-keyhole',
-  'fas fa-magnifying-glass':'search', 'fas fa-screwdriver-wrench':'wrench',
-  'fas fa-lightbulb':'lightbulb', 'fas fa-circle-check':'circle-check-big',
-  'fas fa-users-gear':'users', 'fas fa-network-wired':'network',
-  'fas fa-tv':'tv', 'fas fa-desktop':'monitor'
-};
-
-const pool = mysql.createPool({
-  host: process.env.DB_HOST || '127.0.0.1', port: Number(process.env.DB_PORT || 3306),
-  user: process.env.DB_USER || 'nutridesk', password: process.env.DB_PASS,
-  database: process.env.DB_NAME || 'nutridesk', connectionLimit: 2,
-});
-
-(async () => {
-  const conn = await pool.getConnection();
-  try {
-    const [users] = await conn.execute(
-      'SELECT id FROM users WHERE LOWER(name)=LOWER(?) OR LOWER(email)=LOWER(?) OR LOWER(SUBSTRING_INDEX(email,\'@\',1))=LOWER(?)',
-      [account, account, account]);
-    if (users.length !== 1) throw new Error(users.length ? 'Konto ist nicht eindeutig' : 'Konto nicht gefunden');
-    const uid = users[0].id;
-    await conn.beginTransaction();
-    await conn.execute('DELETE FROM assistant_quick_notes WHERE user_id=?', [uid]);
-    await conn.execute('DELETE FROM assistant_note_sections WHERE user_id=?', [uid]);
-    const noteIds = new Map();
-    let noteCount = 0;
-    for (let si = 0; si < (data.sections || []).length; si++) {
-      const section = data.sections[si];
-      const [sr] = await conn.execute(
-        'INSERT INTO assistant_note_sections (user_id,external_id,title,icon,sort_order) VALUES (?,?,?,?,?)',
-        [uid, String(section.id).slice(0,100), String(section.title).slice(0,120), icons[section.icon] || 'folder', si]);
-      for (let ni = 0; ni < (section.notes || []).length; ni++) {
-        const note = section.notes[ni];
-        const [nr] = await conn.execute(
-          'INSERT INTO assistant_notes (user_id,section_id,external_id,title,content,tags_json,sort_order) VALUES (?,?,?,?,?,?,?)',
-          [uid, sr.insertId, String(note.id).slice(0,120), String(note.title).slice(0,180), String(note.content || '').slice(0,50000), JSON.stringify((note.tags || []).slice(0,20)), ni]);
-        noteIds.set(String(note.id), nr.insertId); noteCount++;
-      }
-    }
-    for (const section of (data.sections || [])) for (const note of (section.notes || [])) {
-      const from = noteIds.get(String(note.id));
-      for (const externalRelated of (note.relatedNoteIds || [])) {
-        const to = noteIds.get(String(externalRelated));
-        if (from && to && from !== to) {
-          await conn.execute('INSERT IGNORE INTO assistant_note_relations (user_id,note_id,related_id) VALUES (?,?,?)', [uid, from, to]);
-          await conn.execute('INSERT IGNORE INTO assistant_note_relations (user_id,note_id,related_id) VALUES (?,?,?)', [uid, to, from]);
-        }
-      }
-    }
-    for (let i = 0; i < (data.quickNotes || []).length; i++) await conn.execute(
-      'INSERT INTO assistant_quick_notes (user_id,text,sort_order) VALUES (?,?,?)', [uid, String(data.quickNotes[i]).slice(0,500), i]);
-    await conn.commit();
-    console.log(JSON.stringify({ account, sections:(data.sections || []).length, notes:noteCount, quickNotes:(data.quickNotes || []).length }));
-  } catch (e) {
-    await conn.rollback(); throw e;
-  } finally {
-    conn.release(); await pool.end();
-  }
-})().catch(e => { console.error(e.message); process.exit(1); });
+const fs=require('fs'),path=require('path'),crypto=require('crypto'),mysql=require('mysql2/promise');
+const sourceFile=process.argv[2],account=String(process.argv[3]||'').trim();
+if(!sourceFile||!account){console.error('Aufruf: node scripts/import-assistant-notes.js data.json konto');process.exit(1);}
+const data=JSON.parse(fs.readFileSync(sourceFile,'utf8'));
+const icons={'fas fa-thumbtack':'pin','fas fa-chart-line':'chart-no-axes-combined','fas fa-route':'route','fas fa-comments':'messages-square','fas fa-lock':'lock-keyhole','fas fa-magnifying-glass':'search','fas fa-screwdriver-wrench':'wrench','fas fa-lightbulb':'lightbulb','fas fa-circle-check':'circle-check-big','fas fa-users-gear':'users','fas fa-network-wired':'network','fas fa-tv':'tv','fas fa-desktop':'monitor'};
+const storageRoot=process.env.STORAGE_ROOT||'/home/nutridesk.de/storage',backupRoot=process.env.NOTES_BACKUP_ROOT||'/home/nutridesk.de/backups/assistant-notes';
+const pool=mysql.createPool({host:process.env.DB_HOST||'127.0.0.1',port:Number(process.env.DB_PORT||3306),user:process.env.DB_USER||'nutridesk',password:process.env.DB_PASS,database:process.env.DB_NAME||'nutridesk',connectionLimit:2});
+const list=v=>Array.isArray(v)?v.map(String):[];
+const decodeImage=src=>{const m=String(src||'').match(/^data:(image\/(?:png|jpeg|webp|gif));base64,([a-z0-9+/=\r\n]+)$/i);if(!m)throw new Error('Nicht unterstütztes eingebettetes Bildformat');return{mime:m[1].toLowerCase(),buffer:Buffer.from(m[2].replace(/\s/g,''),'base64')}};
+(async()=>{const conn=await pool.getConnection(),written=[];try{
+ const [users]=await conn.execute('SELECT id,username,email,name FROM users WHERE LOWER(username)=LOWER(?) OR LOWER(name)=LOWER(?) OR LOWER(email)=LOWER(?) OR LOWER(SUBSTRING_INDEX(email,\'@\',1))=LOWER(?)',[account,account,account,account]);
+ if(users.length!==1)throw new Error(users.length?'Konto ist nicht eindeutig':'Konto nicht gefunden');const uid=users[0].id,noteDir=path.join(storageRoot,'note-images',String(uid));fs.mkdirSync(noteDir,{recursive:true});
+ const [oldSections]=await conn.execute('SELECT * FROM assistant_note_sections WHERE user_id=? ORDER BY sort_order,id',[uid]),[oldNotes]=await conn.execute('SELECT * FROM assistant_notes WHERE user_id=? ORDER BY section_id,sort_order,id',[uid]),[oldRelations]=await conn.execute('SELECT * FROM assistant_note_relations WHERE user_id=? ORDER BY note_id,related_id',[uid]),[oldQuickNotes]=await conn.execute('SELECT * FROM assistant_quick_notes WHERE user_id=? ORDER BY sort_order,id',[uid]),[oldImages]=await conn.execute('SELECT * FROM assistant_note_images WHERE user_id=? ORDER BY id',[uid]);
+ const stamp=new Date().toISOString().replace(/[:.]/g,'-'),backupDir=path.join(backupRoot,`${stamp}-${uid}`);fs.mkdirSync(path.join(backupDir,'images'),{recursive:true});fs.writeFileSync(path.join(backupDir,'notes.json'),JSON.stringify({user:users[0],sections:oldSections,notes:oldNotes,relations:oldRelations,quickNotes:oldQuickNotes,images:oldImages},null,2));for(const im of oldImages){const f=path.join(noteDir,path.basename(String(im.stored_name)));if(fs.existsSync(f))fs.copyFileSync(f,path.join(backupDir,'images',path.basename(f)));}
+ await conn.beginTransaction();await conn.execute('DELETE FROM assistant_quick_notes WHERE user_id=?',[uid]);await conn.execute('DELETE FROM assistant_note_sections WHERE user_id=?',[uid]);const ids=new Map();let notes=0,images=0;
+ for(let si=0;si<(data.sections||[]).length;si++){const s=data.sections[si],[sr]=await conn.execute('INSERT INTO assistant_note_sections (user_id,external_id,title,icon,sort_order) VALUES (?,?,?,?,?)',[uid,String(s.id).slice(0,100),String(s.title).slice(0,120),icons[s.icon]||'folder',si]);for(let ni=0;ni<(s.notes||[]).length;ni++){const n=s.notes[ni],[nr]=await conn.execute('INSERT INTO assistant_notes (user_id,section_id,external_id,title,content,tags_json,search_aliases_json,sort_order) VALUES (?,?,?,?,?,?,?,?)',[uid,sr.insertId,String(n.id).slice(0,120),String(n.title).slice(0,180),String(n.content||'').slice(0,50000),JSON.stringify(list(n.tags)),JSON.stringify(list(n.searchAliases)),ni]);ids.set(String(n.id),nr.insertId);notes++;if(n.image&&n.image.src){const d=decodeImage(n.image.src),ext=d.mime==='image/jpeg'?'.jpg':'.'+d.mime.split('/')[1],stored=crypto.randomUUID()+ext,target=path.join(noteDir,stored);if(!d.buffer.length)throw new Error(`Leeres Bild in Notiz ${n.id}`);fs.writeFileSync(target,d.buffer,{flag:'wx'});written.push(target);await conn.execute('INSERT INTO assistant_note_images (user_id,note_id,name,alt_text,caption,stored_name,size,mime,scan_status) VALUES (?,?,?,?,?,?,?,?,?)',[uid,nr.insertId,String(n.id).slice(0,150)+ext,String(n.image.alt||'').slice(0,500),String(n.image.caption||'').slice(0,1000),stored,d.buffer.length,d.mime,'clean']);images++;}}}
+ for(const s of(data.sections||[]))for(const n of(s.notes||[])){const from=ids.get(String(n.id));for(const x of(n.relatedNoteIds||[])){const to=ids.get(String(x));if(from&&to&&from!==to){await conn.execute('INSERT IGNORE INTO assistant_note_relations (user_id,note_id,related_id) VALUES (?,?,?)',[uid,from,to]);await conn.execute('INSERT IGNORE INTO assistant_note_relations (user_id,note_id,related_id) VALUES (?,?,?)',[uid,to,from]);}}}
+ for(let i=0;i<(data.quickNotes||[]).length;i++)await conn.execute('INSERT INTO assistant_quick_notes (user_id,text,sort_order) VALUES (?,?,?)',[uid,String(data.quickNotes[i]).slice(0,500),i]);await conn.commit();for(const im of oldImages){try{fs.unlinkSync(path.join(noteDir,path.basename(String(im.stored_name))));}catch(e){if(e.code!=='ENOENT')throw e;}}
+ console.log(JSON.stringify({account,uid,sections:(data.sections||[]).length,notes,quickNotes:(data.quickNotes||[]).length,images,backup:backupDir}));
+}catch(e){try{await conn.rollback();}catch(_){}for(const f of written)try{fs.unlinkSync(f);}catch(_){}throw e;}finally{conn.release();await pool.end();}})().catch(e=>{console.error(e.stack||e.message);process.exit(1);});

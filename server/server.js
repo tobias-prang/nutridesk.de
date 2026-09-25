@@ -3262,14 +3262,14 @@ const assistantRelationIds = (v) => [...new Set((Array.isArray(v) ? v : []).map(
 app.get('/assistant-notes', auth, asyncRoute(async (req, res) => {
   const [sections, notes, relations, quickNotes, images] = await Promise.all([
     pool.execute('SELECT id,external_id,title,icon,sort_order FROM assistant_note_sections WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
-    pool.execute('SELECT id,section_id,external_id,title,content,tags_json,sort_order,updated_at FROM assistant_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
+    pool.execute('SELECT id,section_id,external_id,title,content,tags_json,search_aliases_json,sort_order,updated_at FROM assistant_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
     pool.execute('SELECT note_id,related_id FROM assistant_note_relations WHERE user_id=?', [req.uid]).then(x => x[0]),
     pool.execute('SELECT id,text,sort_order FROM assistant_quick_notes WHERE user_id=? ORDER BY sort_order,id', [req.uid]).then(x => x[0]),
-    pool.execute('SELECT id,note_id,name,size,mime,created_at FROM assistant_note_images WHERE user_id=? ORDER BY id', [req.uid]).then(x=>x[0]),
+    pool.execute('SELECT id,note_id,name,alt_text,caption,size,mime,created_at FROM assistant_note_images WHERE user_id=? ORDER BY id', [req.uid]).then(x=>x[0]),
   ]);
   const rel = new Map(); for (const r of relations) { if (!rel.has(r.note_id)) rel.set(r.note_id, []); rel.get(r.note_id).push(r.related_id); }
   const imgs=new Map();for(const im of images){if(!imgs.has(im.note_id))imgs.set(im.note_id,[]);imgs.get(im.note_id).push({...im,url:'/assistant-note-images/'+im.id});}
-  res.json({ sections, notes: notes.map(n => { let tags=[]; try { tags=JSON.parse(n.tags_json || '[]'); } catch (_) {} return { ...n, tags, related_ids:rel.get(n.id)||[], images:imgs.get(n.id)||[] }; }), quickNotes });
+  res.json({ sections, notes: notes.map(n => { let tags=[],search_aliases=[]; try { tags=JSON.parse(n.tags_json || '[]'); } catch (_) {} try { search_aliases=JSON.parse(n.search_aliases_json || '[]'); } catch (_) {} delete n.tags_json;delete n.search_aliases_json;return { ...n, tags, search_aliases, related_ids:rel.get(n.id)||[], images:imgs.get(n.id)||[] }; }), quickNotes });
 }));
 
 app.get('/assistant-notes/pdf', auth, asyncRoute(async (req, res) => {
