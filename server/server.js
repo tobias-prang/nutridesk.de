@@ -1451,7 +1451,8 @@ app.get('/staging', auth, asyncRoute(async (req, res) => {
 app.post('/staging/book', auth, rateLimitUser('staging-book', 30, 60000), asyncRoute(async (req, res) => {
   const ids = Array.isArray(req.body.ids) ? req.body.ids.map(Number).filter(Boolean) : [];
   const folderId=req.body.folder_id? vInt(req.body.folder_id,'Ordner',1,4294967295):null;
-  if(folderId){const [[folder]]=await pool.execute('SELECT id FROM cloud_folders WHERE id=? AND user_id=?',[folderId,req.uid]);if(!folder)throw bad('Cloud-Ordner nicht gefunden');}
+  if(!folderId) throw bad('Bitte einen Zielordner auswählen oder neu erstellen');
+  const [[folder]]=await pool.execute('SELECT id FROM cloud_folders WHERE id=? AND user_id=?',[folderId,req.uid]);if(!folder)throw bad('Cloud-Ordner nicht gefunden');
   if (!ids.length) throw bad('Keine Auswahl');
   if (ids.length > 5000) throw bad('Zu viele auf einmal');
   const ph = ids.map(() => '?').join(',');
