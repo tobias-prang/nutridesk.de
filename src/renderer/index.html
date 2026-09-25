@@ -2645,6 +2645,10 @@
           <div onclick="{{ pickUpload }}" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13px;cursor:pointer;" style-hover="opacity:.9;"><span style="display:{{ clUpBtnD }};align-items:center;gap:8px;"><i data-lucide="upload" style="width:15px;height:15px;"></i>Hochladen</span><span style="display:{{ clUpBusyD }};align-items:center;gap:8px;"><i data-lucide="loader-2" class="nd-spin" style="width:15px;height:15px;"></i>Lädt …</span></div>
         </div>
       </div>
+      <div style="display:{{ clUploadProgressD }};margin:-4px 0 16px;padding:14px 16px;border-radius:14px;background:var(--panel);border:1px solid var(--acc-bd);box-shadow:var(--cardsh);">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:9px;"><i data-lucide="{{ clUploadIcon }}" class="{{ clUploadSpin }}" style="width:16px;height:16px;color:var(--acc);flex:0 0 auto;"></i><div style="flex:1;min-width:0;"><div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ clUploadName }}</div><div style="font-size:10.5px;color:var(--ink3);margin-top:2px;">{{ clUploadPhase }}</div></div><span style="font:700 12px 'JetBrains Mono',monospace;color:var(--acc);">{{ clUploadPctLabel }}</span></div>
+        <div style="height:7px;border-radius:5px;background:var(--track);overflow:hidden;"><div style="height:100%;width:{{ clUploadPctWidth }};background:linear-gradient(90deg,var(--acc-mate),var(--acc));border-radius:5px;transition:width .18s ease;"></div></div>
+      </div>
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
         <div style="display:flex;align-items:center;gap:10px;background:var(--bg2);border:1px solid var(--line3);border-radius:11px;padding:10px 14px;flex:1 1 260px;min-width:0;">
           <i data-lucide="search" style="width:16px;height:16px;color:var(--mut);flex:0 0 auto;"></i>
@@ -5320,7 +5324,7 @@ class Component extends DCLogic {
       cmMembers:[], cmChat:[], cmText:'', cmBusy:false, cmStats:null, cmProfile:null,
       commChannels:[], commChannel:'allgemein', cnName:'', cnDesc:'',
       couple:null, coupleInviteUrl:'', coupleColor:'#ec4899', coupleWidth:5, coupleDrawing:false,
-      vaultTab:'cloud', clFolder:null, clFolders:[], clFiles:[], clCrumbs:[], clUsage:0, clQuota:2147483648, clSearch:'', clCat:'', clUploading:false,
+      vaultTab:'cloud', clFolder:null, clFolders:[], clFiles:[], clCrumbs:[], clUsage:0, clQuota:2147483648, clSearch:'', clCat:'', clUploading:false,clUploadPct:0,clUploadName:'',clUploadPhase:'',
       nfName:'', cfId:0, cfName:'', cfCat:'sonstiges', cfTags:'',
       aeQuotaGb:'2',
       selDishIso:'', rrBusy:false, swBusy:false,
@@ -5401,16 +5405,9 @@ class Component extends DCLogic {
     this._token = t;
     try { t ? localStorage.setItem('nutridesk.token', t) : localStorage.removeItem('nutridesk.token'); } catch (e) {}
   }
-  async _upload(path, formData) {
-    const headers = {};
-    if (this._token) headers['Authorization'] = 'Bearer ' + this._token;
-    let resp;
-    try { resp = await fetch(API_BASE + path, { method:'POST', headers, body: formData }); }
-    catch (e) { throw new Error('Keine Verbindung zum Server'); }
-    let json = null;
-    try { json = await resp.json(); } catch (e) {}
-    if (!resp.ok) throw new Error((json && json.error) || ('Fehler ' + resp.status));
-    return json;
+  async _upload(path, formData, onProgress) {
+    if(!onProgress){const headers={};if(this._token)headers.Authorization='Bearer '+this._token;let resp;try{resp=await fetch(API_BASE+path,{method:'POST',headers,body:formData});}catch(e){throw new Error('Keine Verbindung zum Server');}let json=null;try{json=await resp.json();}catch(e){}if(!resp.ok)throw new Error((json&&json.error)||('Fehler '+resp.status));return json;}
+    return await new Promise((resolve,reject)=>{const xhr=new XMLHttpRequest();xhr.open('POST',API_BASE+path,true);if(this._token)xhr.setRequestHeader('Authorization','Bearer '+this._token);xhr.upload.onprogress=(e)=>{if(e.lengthComputable)onProgress(Math.min(100,Math.round(e.loaded/e.total*100)),'upload');};xhr.upload.onload=()=>onProgress(100,'scan');xhr.onerror=()=>reject(new Error('Keine Verbindung zum Server'));xhr.ontimeout=()=>reject(new Error('Der Upload hat zu lange gedauert'));xhr.timeout=180000;xhr.onload=()=>{let json=null;try{json=JSON.parse(xhr.responseText||'null');}catch(e){}if(xhr.status>=200&&xhr.status<300)resolve(json);else reject(new Error((json&&json.error)||('Fehler '+xhr.status)));};xhr.send(formData);});
   }
   async _download(path) {
     const headers = {};
@@ -5772,16 +5769,17 @@ class Component extends DCLogic {
     const files = [...(e.target.files || [])];
     e.target.value = '';
     if (!files.length || this.state.clUploading) return;
-    this.setState({ clUploading:true });
+    this.setState({ clUploading:true,clUploadPct:0,clUploadName:files[0].name,clUploadPhase:'Upload wird vorbereitet …' });
     let ok = 0;
     for (const file of files) {
       const fd = new FormData();
       fd.append('file', file);
       if (this.state.clFolder) fd.append('folder_id', this.state.clFolder);
-      try { await this._upload('/cloud/upload', fd); ok++; }
+      this.setState({clUploadName:file.name,clUploadPct:0,clUploadPhase:'Datei wird übertragen …'});
+      try { await this._upload('/cloud/upload', fd,(pct,phase)=>this.setState({clUploadPct:pct,clUploadPhase:phase==='scan'?'Upload vollständig · Datei wird geprüft und sicher gespeichert …':'Datei wird übertragen …'})); ok++; }
       catch (err) { this._toast(file.name + ': ' + err.message); }
     }
-    this.setState({ clUploading:false });
+    this.setState({ clUploading:false,clUploadPct:100,clUploadPhase:'Fertig' });
     if (ok) this._toast(ok === 1 ? 'Datei hochgeladen' : ok + ' Dateien hochgeladen');
     this.loadCloud();
   };
@@ -10151,6 +10149,7 @@ class Component extends DCLogic {
       openNewFolder: this.openNewFolder, pickUpload: this.pickUpload, doUpload: this.doUpload,
       downloadFile: this.downloadFile, openFileEdit: this.openFileEdit, delFolder: this.delFolder,
       clUploading: s.clUploading, clUpBtnD: s.clUploading ? 'none' : 'flex', clUpBusyD: s.clUploading ? 'flex' : 'none',
+      clUploadProgressD:s.clUploading?'block':'none',clUploadName:s.clUploadName||'Datei',clUploadPhase:s.clUploadPhase||'Upload wird vorbereitet …',clUploadPctLabel:Math.round(s.clUploadPct||0)+' %',clUploadPctWidth:Math.round(s.clUploadPct||0)+'%',clUploadIcon:(s.clUploadPct||0)>=100?'shield-check':'upload-cloud',clUploadSpin:(s.clUploadPct||0)>=100?'nd-pulse':'',
       clAtRoot: !s.clFolder, clRootC: s.clFolder ? 'var(--ink3)' : 'var(--acc)',
       clCrumbs: (s.clCrumbs || []).map(c => ({ id: c.id, name: c.name })),
       clFolders: (s.clFolders || []).map(f => ({
