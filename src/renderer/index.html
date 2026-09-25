@@ -5534,7 +5534,7 @@ class Component extends DCLogic {
     if(s.area==='notes') return '?notizen';
     if(s.area==='insights') return '?kiassistent='+(s.kiView==='tickets'?'mytickets':'chat');
     if(s.area==='nutri') { const m={tracker:'tracker',stats:'statistik',recipes:'rezepte'}; return '?ernaehrung='+(m[s.nutriTab]||'tracker'); }
-    if(s.area==='fin') { const m={overview:'uebersicht',tx:'buchungen',income:'einnahmen',expenses:'ausgaben',tools:'tools',abos:'abos',loans:'kredite',goals:'sparziele',budget:'budgets'}; return '?finanzen='+(m[s.finTab]||'uebersicht'); }
+    if(s.area==='fin') { if(s.finTab==='expenses') return '?finanzen='+((s.expSub||'abos')==='loans'?'kredite':'abos'); const m={overview:'uebersicht',tx:'buchungen',income:'einnahmen',tools:'tools',goals:'sparziele',budget:'budgets'}; return '?finanzen='+(m[s.finTab]||'uebersicht'); }
     if(s.area==='community') { const m={couple:'couple',talk:'kommunikation',games:'spiele'}; return '?community='+(m[s.commMode]||'couple'); }
     if(s.area==='set') return '?einstellungen='+(s.setTab||'profile');
     if(s.area==='cloud') return '?cloud';
@@ -5553,7 +5553,7 @@ class Component extends DCLogic {
     if(p.has('notizen')) { next={area:'notes'};load='notes'; }
     else if(p.has('kiassistent')) { const v=p.get('kiassistent');next={area:'insights',kiView:v==='mytickets'?'tickets':'chat'};load='ki'; }
     else if(p.has('ernaehrung')) { const m={tracker:'tracker',plan:'recipes',statistik:'stats',rezepte:'recipes'};next={area:'nutri',nutriTab:m[p.get('ernaehrung')]||'tracker'}; }
-    else if(p.has('finanzen')) { const m={uebersicht:'overview',buchungen:'tx',einnahmen:'income',ausgaben:'expenses',tools:'tools',abos:'abos',kredite:'loans',sparziele:'goals',budgets:'budget'};next={area:'fin',finTab:m[p.get('finanzen')]||'overview'}; }
+    else if(p.has('finanzen')) { const v=p.get('finanzen'),m={uebersicht:'overview',buchungen:'tx',einnahmen:'income',ausgaben:'expenses',tools:'tools',sparziele:'goals',budgets:'budget'};next={area:'fin',finTab:(v==='abos'||v==='kredite')?'expenses':(m[v]||'overview'),...((v==='abos'||v==='kredite')?{expSub:v==='kredite'?'loans':'abos'}:{})}; }
     else if(p.has('community')) { const m={couple:'couple',kommunikation:'talk',spiele:'games'};next={area:'community',commMode:m[p.get('community')]||'couple'};load='community'; }
     else if(p.has('einstellungen')) next={area:'set',setTab:p.get('einstellungen')||'profile'};
     else if(p.has('cloud')) { next={area:'cloud'};load='cloud'; }
