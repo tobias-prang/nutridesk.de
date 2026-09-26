@@ -1672,7 +1672,10 @@
           </div>
           <div style="margin-top:14px;padding:11px 14px;border-radius:11px;background:var(--bg);border:1px solid var(--cardbd);display:flex;gap:10px;align-items:center;">
             <i data-lucide="zap" style="width:15px;height:15px;color:#fbbf24;flex:0 0 auto;"></i>
-            <span style="font-size:12px;color:var(--ink3);">Mit <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">€ 100</span> Sondertilgung/Monat wärst du schon im <b style="color:var(--ink2);font-weight:600;">{{ freeExtraLabel }}</b> schuldenfrei.</span>
+            <div style="display:flex;flex-direction:column;gap:3px;">
+              <span style="font-size:12px;color:var(--ink3);">Mit insgesamt <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">€ 100</span> Sondertilgung/Monat wärst du im <b style="color:var(--ink2);font-weight:600;">{{ freeExtraLabel }}</b> schuldenfrei.</span>
+              <span style="font-size:10.5px;color:var(--mut);">{{ freeExtraDetail }}</span>
+            </div>
           </div>
         </div>
         <div style="display:flex;flex-direction:column;gap:16px;">
@@ -5308,6 +5311,41 @@ class Component extends DCLogic {
       }
       return { months: m, totalInterest: ti, rows };
     };
+    this.simLoansWithExtra = (loans, extraTotal) => {
+      const rows = (loans || []).map(l => ({
+        balance: Math.max(0, Number(l.balance) || 0),
+        rate: Math.max(0, Number(l.rate) || 0),
+        interest: Math.max(0, Number(l.interest) || 0),
+      })).filter(l => l.balance > 0);
+      const initialCount = rows.length;
+      const extra = Math.max(0, Number(extraTotal) || 0);
+      let months = 0, totalInterest = 0;
+      while (rows.some(l => l.balance > .005) && months < 600) {
+        let active = rows.filter(l => l.balance > .005);
+        for (const loan of active) {
+          const interest = loan.balance * loan.interest / 12;
+          loan.balance += interest;
+          totalInterest += interest;
+          loan.balance = Math.max(0, loan.balance - Math.min(loan.balance, loan.rate));
+        }
+        let extraLeft = extra;
+        active = rows.filter(l => l.balance > .005);
+        while (extraLeft > .005 && active.length) {
+          const share = extraLeft / active.length;
+          let spent = 0;
+          for (const loan of active) {
+            const payment = Math.min(loan.balance, share);
+            loan.balance -= payment;
+            spent += payment;
+          }
+          if (spent < .005) break;
+          extraLeft -= spent;
+          active = rows.filter(l => l.balance > .005);
+        }
+        months++;
+      }
+      return { months, totalInterest, initialCount, initialShare: initialCount ? extra / initialCount : 0 };
+    };
 
     let token = null;
     try { token = localStorage.getItem('nutridesk.token'); } catch (e) {}
@@ -7268,15 +7306,14 @@ class Component extends DCLogic {
     const azP = n(s.azPrice, 100), azW = Math.max(0.01, n(s.azWage, 15)), azH = azP / azW, azHh = Math.floor(azH), azMm = Math.round((azH - azHh) * 60);
     // Was-waere-wenn: Sondertilgung (nutzt echte Kredite)
     const wLoans = (s.data && s.data.loans) || [];
-    let wBal = 0, wRate = 0, wIntW = 0;
-    wLoans.forEach(l => { const b = Number(l.balance) || 0; wBal += b; wRate += Number(l.rate) || 0; wIntW += b * (Number(l.interest) || 0); });
-    const wAvgInt = wBal > 0 ? wIntW / wBal : 0;
-    const wSim = (bal, monthly, ar) => { let m = 0, intr = 0; const mr = ar / 12; if (monthly <= bal * mr) return { m: 9999, intr: Infinity }; while (bal > 0.01 && m < 1200) { const i = bal * mr; intr += i; bal -= (monthly - i); m++; } return { m, intr }; };
+    let wBal = 0, wRate = 0;
+    wLoans.forEach(l => { wBal += Number(l.balance) || 0; wRate += Number(l.rate) || 0; });
     const wExtra = n(s.wSonder, 100);
     const wHasLoans = wLoans.length > 0 && wBal > 0 && wRate > 0;
-    const wBase = wHasLoans ? wSim(wBal, wRate, wAvgInt) : { m: 0, intr: 0 };
-    const wWith = wHasLoans ? wSim(wBal, wRate + wExtra, wAvgInt) : { m: 0, intr: 0 };
-    const wMonthsSaved = Math.max(0, wBase.m - wWith.m), wIntSaved = Math.max(0, wBase.intr - wWith.intr);
+    const wBaseMonths = wHasLoans ? Math.max(...wLoans.map(l => this.sim(Number(l.balance) || 0, Number(l.rate) || 0, Number(l.interest) || 0).months)) : 0;
+    const wBaseInterest = wHasLoans ? wLoans.reduce((sum, l) => sum + this.sim(Number(l.balance) || 0, Number(l.rate) || 0, Number(l.interest) || 0).totalInterest, 0) : 0;
+    const wWith = wHasLoans ? this.simLoansWithExtra(wLoans, wExtra) : { months:0, totalInterest:0 };
+    const wMonthsSaved = Math.max(0, wBaseMonths - wWith.months), wIntSaved = Math.max(0, wBaseInterest - wWith.totalInterest);
     // Was-waere-wenn: Gehaltserhoehung (nutzt Netto-Schaetzung)
     const netOf = (gr) => { const soc = gr * 0.20; const tax = estTax(Math.max(0, (gr - soc) * 12)) / 12; return Math.max(0, gr - soc - tax); };
     const wrGross = n(s.wRaiseGross, 3500), wrPct = n(s.wRaisePct, 5), wrNew = wrGross * (1 + wrPct / 100), wrExtra = netOf(wrNew) - netOf(wrGross);
@@ -9909,10 +9946,13 @@ class Component extends DCLogic {
     const pay = hasLoans && totalBal.length >= 2 ? this.mkLine(totalBal, 0, Math.max(...totalBal) * 1.05) : null;
     const freeLabel = hasLoans && maxM > 0 ? monLabel(maxM - 1) : '-';
     const totalRate = obligations.loans;
-    let freeExtraLabel = '-';
+    let freeExtraLabel = '-', freeExtraDetail = '';
     if (hasLoans) {
-      const simX = this.sim(loanTotal, totalRate + 100, loanSims.length ? loanSims.reduce((x, y) => x + y.interest, 0) / loanSims.length : 0);
+      const simX = this.simLoansWithExtra(d.loans, 100);
       freeExtraLabel = simX.months > 0 ? monLabel(simX.months - 1) : '-';
+      freeExtraDetail = simX.initialCount > 1
+        ? 'Start: € ' + fmt(simX.initialShare) + ' je Kredit. Sobald einer abbezahlt ist, wird nur dessen Sondertilgungsanteil auf die übrigen Kredite verteilt.'
+        : 'Die vollen € 100 gehen zusätzlich in diesen Kredit.';
     }
     const biggest = loanSims.slice().sort((a, b) => b.balance - a.balance)[0];
     const tilgRows = biggest ? biggest.simr.rows.slice(0, 6).map((r, i) => ({
@@ -10773,7 +10813,7 @@ class Component extends DCLogic {
       loans: loansView, hasLoans, loanCountLabel: d.loans.length + (d.loans.length === 1 ? ' laufender Kredit' : ' laufende Kredite'),
       loanRateTotal:'€ ' + fmt(totalRate), loanTotalLabel:'€ ' + fmt(loanTotal),
       payPoly: pay ? pay.poly : '', payArea: pay ? pay.area : '', payLast: pay ? pay.last : { x:0, y:0 },
-      freeLabel, freeExtraLabel, tilgRows, tilgLoanName: biggest ? biggest.l.name : '-',
+      freeLabel, freeExtraLabel, freeExtraDetail, tilgRows, tilgLoanName: biggest ? biggest.l.name : '-',
       openLoan: this.openLoan, delLoan: this.delLoan,
 
       modDeposit: s.modal === 'deposit',
