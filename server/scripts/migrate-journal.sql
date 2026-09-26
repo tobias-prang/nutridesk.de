@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS journal_entries (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id       INT UNSIGNED NOT NULL,
+  entry_date    DATE NOT NULL,
+  title_enc     MEDIUMTEXT NOT NULL,
+  content_enc   LONGTEXT NOT NULL,
+  created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_journal_user_date (user_id, entry_date, id),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;

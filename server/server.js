@@ -2145,6 +2145,63 @@ function decTotp(stored) {
 }
 authenticator.options = { step: 30, window: 1 };
 
+// ---------- Privates Tagebuch (verschluesselt + TOTP-gesperrt) ----------
+const { createJournalCrypto } = require('./lib/journal-crypto');
+const journalCrypto = createJournalCrypto(JWT_SECRET);
+const signJournalToken = user => jwt.sign(
+  { uid:Number(user.id), av:Number(user.auth_version), purpose:'journal', jti:crypto.randomUUID() },
+  JWT_SECRET,
+  { expiresIn:'10m', algorithm:'HS256', issuer:'nutridesk-auth', audience:'nutridesk-journal', header:{typ:'journal+jwt'} }
+);
+async function requireJournalAccess(req,res,next) {
+  const token=String(req.headers['x-journal-token']||'');
+  if(!token)return res.status(403).json({error:'Tagebuch gesperrt. Bitte mit Google Authenticator entsperren',code:'JOURNAL_LOCKED'});
+  let p;
+  try{p=jwt.verify(token,JWT_SECRET,{algorithms:['HS256'],issuer:'nutridesk-auth',audience:'nutridesk-journal'});}catch(_){return res.status(403).json({error:'Tagebuch-Sitzung abgelaufen. Bitte erneut entsperren',code:'JOURNAL_LOCKED'});}
+  if(p.purpose!=='journal'||Number(p.uid)!==Number(req.uid))return res.status(403).json({error:'Tagebuch-Sitzung ungültig',code:'JOURNAL_LOCKED'});
+  const [[u]]=await pool.execute('SELECT auth_version,totp_enabled FROM users WHERE id=?',[req.uid]);
+  if(!u||!u.totp_enabled||Number(u.auth_version)!==Number(p.av))return res.status(403).json({error:'Tagebuch-Sitzung ungültig. Bitte erneut entsperren',code:'JOURNAL_LOCKED'});
+  res.set('Cache-Control','no-store');next();
+}
+const mapJournalRow=(uid,r)=>({id:Number(r.id),date:String(r.entry_date).slice(0,10),title:journalCrypto.decrypt(uid,r.title_enc),content:journalCrypto.decrypt(uid,r.content_enc),created_at:r.created_at,updated_at:r.updated_at});
+
+app.get('/journal/status',auth,asyncRoute(async(req,res)=>{
+  const [[u]]=await pool.execute('SELECT totp_enabled FROM users WHERE id=?',[req.uid]);
+  res.set('Cache-Control','no-store');res.json({enabled:!!(u&&u.totp_enabled)});
+}));
+app.post('/journal/unlock',auth,rateLimitUser('journal-unlock',8,600000),asyncRoute(async(req,res)=>{
+  const code=vStr(req.body.code,'Authenticator-Code',12).replace(/\s/g,'');
+  if(!/^\d{6}$/.test(code))throw bad('Der Authenticator-Code muss 6-stellig sein');
+  const [[u]]=await pool.execute('SELECT id,auth_version,totp_enabled,totp_secret_enc FROM users WHERE id=?',[req.uid]);
+  if(!u||!u.totp_enabled||!u.totp_secret_enc)return res.status(403).json({error:'Du musst Google Authenticator zuerst in den Einstellungen aktivieren',code:'TOTP_REQUIRED'});
+  let valid=false;try{valid=authenticator.verify({token:code,secret:decTotp(u.totp_secret_enc)});}catch(_){}
+  if(!valid)return res.status(403).json({error:'Der Authenticator-Code ist falsch oder abgelaufen',code:'TOTP_INVALID'});
+  logEvent('info','journal_unlock','Privates Tagebuch entsperrt',{uid:req.uid,ip:reqIp(req)});
+  res.set('Cache-Control','no-store');res.json({token:signJournalToken(u),expires_in:600});
+}));
+app.get('/journal',auth,requireJournalAccess,asyncRoute(async(req,res)=>{
+  const [rows]=await pool.execute('SELECT id,entry_date,title_enc,content_enc,created_at,updated_at FROM journal_entries WHERE user_id=? ORDER BY entry_date DESC,id DESC LIMIT 500',[req.uid]);
+  res.json(rows.map(r=>mapJournalRow(req.uid,r)));
+}));
+app.post('/journal',auth,requireJournalAccess,rateLimitUser('journal-write',60),asyncRoute(async(req,res)=>{
+  const date=vDate(req.body.date,'Datum'),title=vStr(req.body.title,'Titel',160).trim(),content=vStr(req.body.content,'Text',100000).trim();
+  if(!title||!content)throw bad('Titel und Text dürfen nicht leer sein');
+  const [r]=await pool.execute('INSERT INTO journal_entries (user_id,entry_date,title_enc,content_enc) VALUES (?,?,?,?)',[req.uid,date,journalCrypto.encrypt(req.uid,title),journalCrypto.encrypt(req.uid,content)]);
+  const [[row]]=await pool.execute('SELECT id,entry_date,title_enc,content_enc,created_at,updated_at FROM journal_entries WHERE id=? AND user_id=?',[r.insertId,req.uid]);
+  res.json(mapJournalRow(req.uid,row));
+}));
+app.put('/journal/:id',auth,requireJournalAccess,rateLimitUser('journal-write',60),asyncRoute(async(req,res)=>{
+  const id=vInt(req.params.id,'Eintrag',1,4294967295),date=vDate(req.body.date,'Datum'),title=vStr(req.body.title,'Titel',160).trim(),content=vStr(req.body.content,'Text',100000).trim();
+  if(!title||!content)throw bad('Titel und Text dürfen nicht leer sein');
+  const [r]=await pool.execute('UPDATE journal_entries SET entry_date=?,title_enc=?,content_enc=? WHERE id=? AND user_id=?',[date,journalCrypto.encrypt(req.uid,title),journalCrypto.encrypt(req.uid,content),id,req.uid]);
+  if(!r.affectedRows)return res.status(404).json({error:'Tagebucheintrag nicht gefunden'});
+  const [[row]]=await pool.execute('SELECT id,entry_date,title_enc,content_enc,created_at,updated_at FROM journal_entries WHERE id=? AND user_id=?',[id,req.uid]);res.json(mapJournalRow(req.uid,row));
+}));
+app.delete('/journal/:id',auth,requireJournalAccess,rateLimitUser('journal-write',60),asyncRoute(async(req,res)=>{
+  const id=vInt(req.params.id,'Eintrag',1,4294967295);const [r]=await pool.execute('DELETE FROM journal_entries WHERE id=? AND user_id=?',[id,req.uid]);
+  if(!r.affectedRows)return res.status(404).json({error:'Tagebucheintrag nicht gefunden'});res.json({ok:true});
+}));
+
 const SMTP_READY = process.env.SMTP_DELIVERY_ENABLED === '1' && !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
 const mailer = SMTP_READY ? nodemailer.createTransport({
   host: process.env.SMTP_HOST,

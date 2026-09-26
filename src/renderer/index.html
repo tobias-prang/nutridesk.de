@@ -607,8 +607,9 @@
     .nd-main [data-screen-label]{padding-left:14px!important;padding-right:14px!important;padding-bottom:86px!important}
     .nd-main [style*="position:fixed"][style*="inset:0"]{padding:12px 12px 78px!important;box-sizing:border-box}
     .nd-main [style*="position:sticky"][style*="border-bottom"]>div{padding-left:12px!important;padding-right:12px!important;overflow-x:auto;white-space:nowrap;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch}
-    .nd-main [data-screen-label="Assistent und Notizen"]>[style*="position:sticky"]>div{flex-wrap:wrap!important;overflow-x:visible!important;white-space:normal!important}
-    .nd-main [data-screen-label="Assistent und Notizen"]>[style*="position:sticky"]>div>[style*="flex-direction:column"]{display:none!important}
+    .nd-main [data-screen-label="Assistent und Organisation"]>[style*="position:sticky"]>div{flex-wrap:wrap!important;overflow-x:visible!important;white-space:normal!important}
+    .nd-main [data-screen-label="Assistent und Organisation"]>[style*="position:sticky"]>div>[style*="flex-direction:column"]{display:none!important}
+    .nd-journal-grid{grid-template-columns:1fr!important}.nd-journal-fields{grid-template-columns:1fr!important}
     .nd-main [style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}
     .nd-main [style*="flex:0 0 400px"]{flex:1 1 100%!important;min-height:420px}
     .nd-main [style*="max-width:1200px"][style*="gap:18px"]{flex-wrap:wrap;overflow:auto!important}
@@ -673,7 +674,7 @@
     <div onclick="{{ goCloud }}" title="Cloud" style="width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:{{ sbV.c }};background:{{ sbV.bg }};border:1px solid {{ sbV.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="cloud" style="width:21px;height:21px;"></i></div>
     <div onclick="{{ goCommunity }}" title="Community" style="width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:{{ sbC.c }};background:{{ sbC.bg }};border:1px solid {{ sbC.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="users" style="width:21px;height:21px;"></i></div>
     <div onclick="{{ goInsights }}" title="KI-Assistent" style="width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:{{ sbI.c }};background:{{ sbI.bg }};border:1px solid {{ sbI.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="sparkles" style="width:21px;height:21px;"></i></div>
-    <div onclick="{{ goNotes }}" title="Notizen" style="width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:{{ sbNo.c }};background:{{ sbNo.bg }};border:1px solid {{ sbNo.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="notebook-tabs" style="width:21px;height:21px;"></i></div>
+    <div onclick="{{ goNotes }}" title="Organisation" style="width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:{{ sbNo.c }};background:{{ sbNo.bg }};border:1px solid {{ sbNo.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="layout-dashboard" style="width:21px;height:21px;"></i></div>
     <div onclick="{{ openSearch }}" title="Suche (Strg+K)" style="margin-top:auto;width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mut);" style-hover="background:var(--wchip);color:var(--ink2);"><i data-lucide="search" style="width:21px;height:21px;"></i></div>
     <!-- Benachrichtigungen liegen jetzt in der Neuigkeiten-Card auf der Startseite -->
     <sc-if value="{{ userIsAdmin }}"><div onclick="{{ goAdmin }}" title="Admin · Nutzerverwaltung" style="width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:{{ sbA.c }};background:{{ sbA.bg }};border:1px solid {{ sbA.bd }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);"><i data-lucide="shield" style="width:21px;height:21px;"></i></div></sc-if>
@@ -2998,7 +2999,7 @@
 
     
     <sc-if value="{{ showAssistantWorkspace }}">
-    <div data-screen-label="Assistent und Notizen" style="display:flex;flex-direction:column;height:100vh;">
+    <div data-screen-label="Assistent und Organisation" style="display:flex;flex-direction:column;height:100vh;">
       <sc-if value="{{ showInsights }}">
       <div style="position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--chip);flex:0 0 auto;">
         <div style="max-width:1200px;margin:0 auto;padding:12px 30px;display:flex;align-items:center;gap:10px;">
@@ -3016,9 +3017,9 @@
       <sc-if value="{{ showNotesArea }}">
       <div style="position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--chip);flex:0 0 auto;">
         <div style="max-width:1200px;margin:0 auto;padding:12px 30px;display:flex;align-items:center;gap:10px;">
-          <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-bd);"><i data-lucide="notebook-tabs" style="width:16px;height:16px;"></i>Notizen</div>
-          <span style="font-size:12px;color:var(--ink3);">Deine persönliche Wissenssammlung</span>
-          <div onclick="{{ downloadKiNotesPdf }}" style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:10px;border:1px solid var(--acc-bd);background:var(--acc-bg);color:var(--acc);font-size:12px;font-weight:700;cursor:pointer;"><i data-lucide="{{ kiNotesPdfIcon }}" class="{{ kiNotesPdfSpin }}" style="width:14px;height:14px;"></i>{{ kiNotesPdfLabel }}</div>
+          <div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;font-size:13.5px;font-weight:600;color:var(--acc);background:var(--acc-bg);border:1px solid var(--acc-bd);"><i data-lucide="layout-dashboard" style="width:16px;height:16px;"></i>Organisation</div>
+          <div style="display:flex;gap:3px;background:var(--chip);border-radius:11px;padding:3px;"><div onclick="{{ orgShowNotes }}" style="display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:650;cursor:pointer;background:{{ orgNotesBg }};color:{{ orgNotesC }};"><i data-lucide="notebook-tabs" style="width:13px;height:13px;"></i>Notizen</div><div onclick="{{ orgShowJournal }}" style="display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;font-size:12.5px;font-weight:650;cursor:pointer;background:{{ orgJournalBg }};color:{{ orgJournalC }};"><i data-lucide="book-heart" style="width:13px;height:13px;"></i>Tagebuch</div></div>
+          <sc-if value="{{ kiIsNotes }}"><div onclick="{{ downloadKiNotesPdf }}" style="margin-left:auto;display:flex;align-items:center;gap:7px;padding:9px 13px;border-radius:10px;border:1px solid var(--acc-bd);background:var(--acc-bg);color:var(--acc);font-size:12px;font-weight:700;cursor:pointer;"><i data-lucide="{{ kiNotesPdfIcon }}" class="{{ kiNotesPdfSpin }}" style="width:14px;height:14px;"></i>{{ kiNotesPdfLabel }}</div></sc-if>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:1px;"><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--mut);">{{ todayShort }}</span><span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--mut);opacity:.7;">{{ buildLabel }}</span></div>
         </div>
       </div>
@@ -3157,6 +3158,14 @@
               <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--acc);font-weight:700;margin-bottom:10px;">Schnell gemerkt</div><div style="display:flex;flex-direction:column;gap:7px;"><sc-for list="{{ kiQuickNotesView }}" as="qn" hint-placeholder-count="6"><div style="display:flex;gap:8px;padding:9px 10px;border-radius:10px;background:var(--panel);border:1px solid var(--line3);font-size:11.5px;line-height:1.45;color:var(--ink2);"><i data-lucide="check" style="width:13px;height:13px;color:var(--acc);flex:0 0 auto;margin-top:2px;"></i>{{ qn.text }}</div></sc-for></div>
             </div>
           </div>
+        </div>
+        </sc-if>
+
+        <sc-if value="{{ orgIsJournal }}">
+        <div style="flex:1 1 auto;min-width:0;overflow:auto;">
+          <sc-if value="{{ journalNeedsSetup }}"><div style="min-height:430px;display:flex;align-items:center;justify-content:center;"><div style="width:560px;max-width:100%;padding:34px;background:var(--panel);border:1px solid var(--cardbd);border-radius:20px;box-shadow:var(--cardsh);text-align:center;"><div style="width:62px;height:62px;border-radius:18px;margin:0 auto 16px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="shield-alert" style="width:28px;height:28px;"></i></div><div style="font-size:20px;font-weight:750;margin-bottom:8px;">Authenticator erforderlich</div><div style="font-size:13px;color:var(--ink3);line-height:1.65;max-width:460px;margin:0 auto 20px;">Du musst Google Authenticator in den Einstellungen aktivieren, bevor du das verschlüsselte Tagebuch verwenden kannst.</div><div onclick="{{ journalGoSettings }}" style="display:inline-flex;align-items:center;gap:8px;padding:11px 17px;border-radius:11px;background:var(--acc);color:#0f1117;font-size:13px;font-weight:750;cursor:pointer;"><i data-lucide="smartphone" style="width:16px;height:16px;"></i>Authenticator aktivieren</div></div></div></sc-if>
+          <sc-if value="{{ journalNeedsUnlock }}"><div style="min-height:430px;display:flex;align-items:center;justify-content:center;"><div style="width:520px;max-width:100%;padding:30px;background:var(--panel);border:1px solid var(--cardbd);border-radius:20px;box-shadow:var(--cardsh);"><div style="display:flex;align-items:center;gap:13px;margin-bottom:20px;"><div style="width:48px;height:48px;border-radius:14px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="book-lock" style="width:22px;height:22px;"></i></div><div><div style="font-size:18px;font-weight:750;">Tagebuch entsperren</div><div style="font-size:12px;color:var(--ink3);margin-top:3px;">Mit deinem aktuellen Google-Authenticator-Code</div></div></div><input inputmode="numeric" autocomplete="one-time-code" maxlength="6" value="{{ journalCode }}" oninput="{{ setJournalCode }}" onkeydown="{{ journalCodeKey }}" placeholder="000000" style="width:100%;box-sizing:border-box;background:var(--bg2);border:1px solid var(--line3);border-radius:12px;padding:14px;text-align:center;color:var(--ink);font:750 24px 'JetBrains Mono',monospace;letter-spacing:.28em;outline:none;"><div style="display:{{ journalErrD }};margin-top:10px;color:#f87171;font-size:12px;line-height:1.5;">{{ journalErr }}</div><div onclick="{{ unlockJournal }}" style="margin-top:15px;display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:11px;background:var(--acc);color:#0f1117;font-size:13px;font-weight:750;cursor:pointer;"><i data-lucide="{{ journalUnlockIcon }}" class="{{ journalUnlockSpin }}" style="width:16px;height:16px;"></i>{{ journalUnlockLabel }}</div><div style="margin-top:13px;font-size:10.5px;color:var(--mut);text-align:center;line-height:1.5;">Die Entsperrung gilt 10 Minuten. Der Code wird nicht gespeichert.</div></div></div></sc-if>
+          <sc-if value="{{ journalReady }}"><div class="nd-journal-grid" style="display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px;min-height:560px;"><div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;"><div style="padding:15px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px;"><div style="flex:1;"><div style="font-size:14px;font-weight:750;">Deine Einträge</div><div style="font-size:10.5px;color:var(--mut);margin-top:2px;">AES-256-GCM-verschlüsselt gespeichert</div></div><div onclick="{{ newJournalEntry }}" title="Neuer Eintrag" style="width:36px;height:36px;border-radius:10px;background:var(--acc);color:#0f1117;display:flex;align-items:center;justify-content:center;cursor:pointer;"><i data-lucide="plus" style="width:16px;height:16px;"></i></div></div><div style="flex:1;overflow:auto;padding:9px;display:flex;flex-direction:column;gap:6px;"><sc-for list="{{ journalEntriesView }}" as="je" hint-placeholder-count="4"><div onclick="{{ openJournalEntry }}" data-id="{{ je.id }}" style="padding:12px;border-radius:11px;background:{{ je.bg }};border:1px solid {{ je.bd }};cursor:pointer;"><div style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ je.title }}</div><div style="font-size:10.5px;color:var(--ink3);margin-top:3px;">{{ je.dateLabel }}</div><div style="font-size:10.5px;color:var(--mut);margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ je.excerpt }}</div></div></sc-for><sc-if value="{{ journalEmpty }}"><div style="padding:38px 12px;text-align:center;color:var(--mut);font-size:12px;line-height:1.55;">Noch kein Eintrag.<br>Schreib deinen ersten Gedanken auf.</div></sc-if></div></div><div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;padding:22px;display:flex;flex-direction:column;"><div style="display:flex;align-items:center;gap:10px;margin-bottom:17px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="pen-line" style="width:18px;height:18px;"></i></div><div><div style="font-size:16px;font-weight:750;">{{ journalEditorTitle }}</div><div style="font-size:10.5px;color:var(--mut);margin-top:2px;">Titel und Inhalt liegen nie im Klartext in der Datenbank.</div></div></div><div class="nd-journal-fields" style="display:grid;grid-template-columns:180px 1fr;gap:11px;margin-bottom:11px;"><input type="date" data-dc-bind-value="{{ journalDate }}" onchange="{{ setJournalDate }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px;color:var(--ink);color-scheme:dark;"><input value="{{ journalTitle }}" oninput="{{ setJournalTitle }}" placeholder="Titel des Eintrags" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 13px;color:var(--ink);outline:none;"></div><textarea value="{{ journalContent }}" oninput="{{ setJournalContent }}" placeholder="Was beschäftigt dich heute?" style="flex:1;min-height:330px;background:var(--bg2);border:1px solid var(--line3);border-radius:12px;padding:15px;color:var(--ink);font:13.5px/1.7 'Space Grotesk',sans-serif;resize:vertical;outline:none;"></textarea><div style="display:{{ journalErrD }};margin-top:9px;color:#f87171;font-size:12px;">{{ journalErr }}</div><div style="display:flex;align-items:center;gap:9px;margin-top:14px;flex-wrap:wrap;"><div onclick="{{ deleteJournalEntry }}" style="display:{{ journalDeleteD }};padding:10px 13px;border-radius:10px;border:1px solid rgba(248,113,113,.3);color:#f87171;font-size:12px;font-weight:700;cursor:pointer;">Löschen</div><div style="margin-left:auto;font-size:10.5px;color:var(--mut);">Automatische Sperre nach 10 Minuten</div><div onclick="{{ saveJournalEntry }}" style="display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:10px;background:var(--acc);color:#0f1117;font-size:12px;font-weight:750;cursor:pointer;"><i data-lucide="{{ journalSaveIcon }}" class="{{ journalSaveSpin }}" style="width:14px;height:14px;"></i>{{ journalSaveLabel }}</div></div></div></div></sc-if>
         </div>
         </sc-if>
 
@@ -5378,7 +5387,7 @@ class Component extends DCLogic {
       phase: token ? 'loading' : 'auth',   // auth | loading | app | offline
       authScreen: 'login', authEmail:'', authPw:'', authPw2:'', authName:'', authErr:'', authBusy:false,auth2fa:false,authCode:'',authChallenge:'',
       data: null, onboard: 0,
-      area:'home', nutriTab:'tracker', finTab:'overview', setTab:'profile', sysTab:'changelog',
+      area:'home', nutriTab:'tracker', finTab:'overview', setTab:'profile', sysTab:'changelog', orgTab:'notes',
       modal:'', toast:'',
       searchQ:'', period:'week', planWeek:0, selDishId:0, selDishMeal:'mittag', shopClosedWeeks:[],
       shopModalView:'staggered', shopModalWeek:0,
@@ -5425,6 +5434,7 @@ class Component extends DCLogic {
       kiPrefs:{ veggie:false, protein:true, cheap:false, fast:false, vegan:false, lowcarb:false, lactosefree:false, glutenfree:false, mealprep:false }, kiBudget:'50', kiBudgetType:'woche', kiPersons:1, kiDays:30, kiMeals:{ fruh:true, mittag:true, abend:true, snack:true }, kiWish:'',
       kiStep:'form', kiQs:[], kiQBusy:false, kiFree:'', kiStartTs:0, kiSummary:null,
       kiNotes:{sections:[],notes:[],quickNotes:[]},kiNotesQ:'',kiNotesSection:'pinned',kiNoteOpen:0,kiNotesPdfBusy:false,kinId:0,kinSection:'',kinTitle:'',kinContent:'',kinTags:'',kinPinned:false,kinRelations:[],kinRelQ:'',kinNewImages:[],
+      journalEnabled:false,journalStatusLoaded:false,journalUnlocked:false,journalToken:'',journalExpiresAt:0,journalCode:'',journalErr:'',journalBusy:false,journalEntries:[],journalId:0,journalDate:'',journalTitle:'',journalContent:'',
       aboType:'streaming', aboName:'', aboPrice:'', aboDay:'1', aboCycle:'monatlich', aboFrist:'1 Monat',
       aboStart:'', aboPhases:[], aboAuto:true, aboInfoId:0, aboMenuOpen:0,
       lnType:'sonstiges', lnStart:'',
@@ -5462,7 +5472,7 @@ class Component extends DCLogic {
     const showLoading = opts.loading !== false;
     if (showLoading) this._loadingStart();
     try {
-    const headers = { 'Content-Type': 'application/json' };
+    const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
     if (this._token) headers['Authorization'] = 'Bearer ' + this._token;
     let resp;
     try {
@@ -5691,12 +5701,12 @@ class Component extends DCLogic {
       if (window.nutridesk.getAutostart) window.nutridesk.getAutostart().then(on => this.setState({ autostart: !!on })).catch(() => {});
     }
   }
-  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearTimeout(this._kiNotesSearchT); clearTimeout(this._loadingDelayT); clearTimeout(this._loadingHideT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
+  componentWillUnmount() { window.removeEventListener('keydown', this._key); window.removeEventListener('popstate', this._routePop); clearTimeout(this._toastT); clearTimeout(this._bankTanPollT); clearTimeout(this._kiNotesSearchT); clearTimeout(this._journalLockT); clearTimeout(this._loadingDelayT); clearTimeout(this._loadingHideT); clearInterval(this._kiTick); clearInterval(this._notifTick); clearInterval(this._insTick); clearTimeout(this._breakT); this.stopScan(); this._mpWarmStop(); }
   componentDidUpdate() { this._lucide(); this._applyAccent(); this._pushNotifs(); this._mountBot(); this._syncUrlRoute(); }
   _routeForState = () => {
     const s=this.state;
     if(s.phase!=='app') return '';
-    if(s.area==='notes') return '?notizen';
+    if(s.area==='notes') return '?organisation='+(s.orgTab==='journal'?'tagebuch':'notizen');
     if(s.area==='insights') return '?kiassistent='+(s.kiView==='tickets'?'mytickets':(s.kiView==='insights'?'insights':'chat'));
     if(s.area==='nutri') { const m={tracker:'tracker',stats:'statistik',recipes:'rezepte'}; return '?ernaehrung='+(m[s.nutriTab]||'tracker'); }
     if(s.area==='fin') { if(s.finTab==='expenses') return '?finanzen='+((s.expSub||'abos')==='loans'?'kredite':'abos'); const m={overview:'uebersicht',tx:'buchungen',income:'einnahmen',tools:'tools',goals:'sparziele',budget:'budgets'}; return '?finanzen='+(m[s.finTab]||'uebersicht'); }
@@ -5715,7 +5725,8 @@ class Component extends DCLogic {
     let p; try { p=new URLSearchParams(location.search); } catch(_){ return; }
     if(p.has('couple')) return;
     let next=null,load='';
-    if(p.has('notizen')) { next={area:'notes'};load='notes'; }
+    if(p.has('notizen')) { next={area:'notes',orgTab:'notes'};load='notes'; }
+    else if(p.has('organisation')) { const v=p.get('organisation');next={area:'notes',orgTab:v==='tagebuch'?'journal':'notes'};load=v==='tagebuch'?'journal':'notes'; }
     else if(p.has('kiassistent')) { const v=p.get('kiassistent');next={area:'insights',kiView:v==='mytickets'?'tickets':(v==='insights'?'insights':'chat')};load='ki'; }
     else if(p.has('ernaehrung')) { const m={tracker:'tracker',plan:'recipes',statistik:'stats',rezepte:'recipes'};next={area:'nutri',nutriTab:m[p.get('ernaehrung')]||'tracker'}; }
     else if(p.has('finanzen')) { const v=p.get('finanzen'),m={uebersicht:'overview',buchungen:'tx',einnahmen:'income',ausgaben:'expenses',tools:'tools',sparziele:'goals',budgets:'budget'};next={area:'fin',finTab:(v==='abos'||v==='kredite')?'expenses':(m[v]||'overview'),...((v==='abos'||v==='kredite')?{expSub:v==='kredite'?'loans':'abos'}:{})}; }
@@ -5725,7 +5736,7 @@ class Component extends DCLogic {
     else if(p.has('admin')) { next={area:'admin'};load='admin'; }
     else next={area:'home'};
     this._applyingRoute=true;
-    this.setState(next,()=>{this._applyingRoute=false;if(load==='notes')this._loadKiNotes();else if(load==='ki'){this._kiInit();this._loadKiSessions();if(next.kiView==='tickets')this._loadKiTickets();if(next.kiView==='insights')this.loadInsights();}else if(load==='community'){this._loadCommunity();this._loadCouple();this._loadGames();}else if(load==='cloud')this.loadCloud();else if(load==='admin')this._ensureAdminModule();});
+    this.setState(next,()=>{this._applyingRoute=false;if(load==='notes')this._loadKiNotes();else if(load==='journal')this._loadJournalStatus();else if(load==='ki'){this._kiInit();this._loadKiSessions();if(next.kiView==='tickets')this._loadKiTickets();if(next.kiView==='insights')this.loadInsights();}else if(load==='community'){this._loadCommunity();this._loadCouple();this._loadGames();}else if(load==='cloud')this.loadCloud();else if(load==='admin')this._ensureAdminModule();});
   };
   _applyAccent() {
     const inApp = this.state.phase === 'app';
@@ -7573,7 +7584,24 @@ class Component extends DCLogic {
   };
 
   goInsights = () => { this.setState({ area:'insights',kiView:this.state.kiView==='tickets'?'tickets':'chat' }); this._kiInit(); this._loadKiSessions(); };
-  goNotes = () => { this.setState({area:'notes',kiTicketId:0,kiTicket:null});this._loadKiNotes(); };
+  goNotes = () => { this.setState({area:'notes',orgTab:'notes',kiTicketId:0,kiTicket:null});this._loadKiNotes(); };
+  orgShowNotes = () => {this.setState({orgTab:'notes',journalErr:''});this._loadKiNotes();};
+  orgShowJournal = () => {this.setState({orgTab:'journal',journalErr:''});this._loadJournalStatus();};
+  journalGoSettings = () => this.setState({area:'set',setTab:'privacy'});
+  _loadJournalStatus = async () => {try{const r=await this.api('/journal/status',{loading:false});this.setState({journalEnabled:!!r.enabled,journalStatusLoaded:true,...(!r.enabled?{journalUnlocked:false,journalToken:'',journalEntries:[]}:{})});if(r.enabled&&this.state.journalToken&&Date.now()<this.state.journalExpiresAt)this._loadJournalEntries();}catch(e){this.setState({journalStatusLoaded:true,journalErr:e.message});}};
+  _journalHeaders = () => ({'X-Journal-Token':this.state.journalToken||''});
+  setJournalCode = (e) => this.setState({journalCode:String(e.target.value||'').replace(/\D/g,'').slice(0,6),journalErr:''});
+  journalCodeKey = (e) => {if(e.key==='Enter'){e.preventDefault();this.unlockJournal();}};
+  unlockJournal = async () => {const code=this.state.journalCode;if(this.state.journalBusy)return;if(!/^\d{6}$/.test(code)){this.setState({journalErr:'Bitte den 6-stelligen Code eingeben'});return;}this.setState({journalBusy:true,journalErr:''});try{const r=await this.api('/journal/unlock',{method:'POST',body:{code},loading:false});const exp=Date.now()+Number(r.expires_in||600)*1000;this.setState({journalToken:r.token,journalExpiresAt:exp,journalUnlocked:true,journalCode:'',journalBusy:false});clearTimeout(this._journalLockT);this._journalLockT=setTimeout(()=>this._lockJournal('Das Tagebuch wurde automatisch gesperrt'),Math.max(1000,exp-Date.now()));await this._loadJournalEntries();}catch(e){this.setState({journalBusy:false,journalErr:e.message});}};
+  _lockJournal = (message) => {this.setState({journalUnlocked:false,journalToken:'',journalExpiresAt:0,journalEntries:[],journalId:0,journalTitle:'',journalContent:'',journalErr:message||''});};
+  _loadJournalEntries = async () => {if(!this.state.journalToken)return;try{const rows=await this.api('/journal',{headers:this._journalHeaders(),loading:false});const entries=Array.isArray(rows)?rows:[];this.setState({journalEntries:entries,journalUnlocked:true,...(!this.state.journalId&&entries.length?{journalId:entries[0].id,journalDate:entries[0].date,journalTitle:entries[0].title,journalContent:entries[0].content}:{})});}catch(e){this._lockJournal(e.message);}};
+  newJournalEntry = () => this.setState({journalId:0,journalDate:this._todayIso(),journalTitle:'',journalContent:'',journalErr:''});
+  openJournalEntry = (e) => {const id=Number(e.currentTarget.dataset.id),row=(this.state.journalEntries||[]).find(x=>Number(x.id)===id);if(row)this.setState({journalId:id,journalDate:row.date,journalTitle:row.title,journalContent:row.content,journalErr:''});};
+  setJournalDate = (e) => this.setState({journalDate:e.target.value,journalErr:''});
+  setJournalTitle = (e) => this.setState({journalTitle:e.target.value,journalErr:''});
+  setJournalContent = (e) => this.setState({journalContent:e.target.value,journalErr:''});
+  saveJournalEntry = async () => {const s=this.state;if(s.journalBusy)return;const title=String(s.journalTitle||'').trim(),content=String(s.journalContent||'').trim();if(!s.journalDate||!title||!content){this.setState({journalErr:'Bitte Datum, Titel und Text ausfüllen'});return;}this.setState({journalBusy:true,journalErr:''});try{const row=await this.api('/journal'+(s.journalId?'/'+s.journalId:''),{method:s.journalId?'PUT':'POST',headers:this._journalHeaders(),body:{date:s.journalDate,title,content},loading:false});const entries=s.journalId?(s.journalEntries||[]).map(x=>Number(x.id)===Number(row.id)?row:x):[row,...(s.journalEntries||[])];entries.sort((a,b)=>String(b.date).localeCompare(String(a.date))||Number(b.id)-Number(a.id));this.setState({journalBusy:false,journalEntries:entries,journalId:row.id,journalDate:row.date,journalTitle:row.title,journalContent:row.content});this._toast('Tagebucheintrag verschlüsselt gespeichert');}catch(e){if(/gesperrt|abgelaufen|ungültig/i.test(e.message))this._lockJournal(e.message);else this.setState({journalBusy:false,journalErr:e.message});}};
+  deleteJournalEntry = async () => {const id=Number(this.state.journalId);if(!id)return;if(!(await this.askConfirm({title:'Tagebucheintrag löschen',message:'Der verschlüsselte Eintrag wird endgültig gelöscht.',confirmLabel:'Löschen'})))return;this.setState({journalBusy:true,journalErr:''});try{await this.api('/journal/'+id,{method:'DELETE',headers:this._journalHeaders(),loading:false});const entries=(this.state.journalEntries||[]).filter(x=>Number(x.id)!==id),row=entries[0];this.setState({journalBusy:false,journalEntries:entries,journalId:row?row.id:0,journalDate:row?row.date:this._todayIso(),journalTitle:row?row.title:'',journalContent:row?row.content:''});this._toast('Tagebucheintrag gelöscht');}catch(e){if(/gesperrt|abgelaufen|ungültig/i.test(e.message))this._lockJournal(e.message);else this.setState({journalBusy:false,journalErr:e.message});}};
   _kiInit = () => {
     if (!this.state.kiSession) {
       const sid = 'ki' + Math.random().toString(36).slice(2, 12);
@@ -10303,7 +10331,8 @@ class Component extends DCLogic {
     const kiT = (s.kiTicket && s.kiTicket.ticket) ? s.kiTicket : null;
     const kiTSt = kiT ? (KI_STL[kiT.ticket.status] || KI_STL.offen) : KI_STL.offen;
     const kiTicketMsgsView = kiT ? (kiT.messages || []).map(mm => { const isU = mm.sender === 'user'; return { text: mm.text, sender: isU ? 'Du' : (mm.sender === 'admin' ? 'Support' : kiAsstName), justify: isU ? 'flex-end' : 'flex-start', bg: isU ? 'var(--acc)' : 'var(--bg2)', c: isU ? '#0f1117' : 'var(--ink)', bd: isU ? 'var(--acc)' : 'var(--line3)', radius: isU ? '14px 14px 4px 14px' : '14px 14px 14px 4px', nameC: isU ? 'rgba(15,17,23,.6)' : 'var(--acc)' }; }) : [];
-    const kiTix = isInsightArea&&s.kiView === 'tickets',kiIns=isInsightArea&&s.kiView==='insights',kiNotesActive=isNotesArea;
+    const kiTix = isInsightArea&&s.kiView === 'tickets',kiIns=isInsightArea&&s.kiView==='insights',kiNotesActive=isNotesArea&&s.orgTab!=='journal',orgJournalActive=isNotesArea&&s.orgTab==='journal';
+    const journalEntriesView=(s.journalEntries||[]).map(x=>{const on=Number(x.id)===Number(s.journalId);let dateLabel=x.date||'';try{dateLabel=new Date(String(x.date)+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'long',year:'numeric'});}catch(_){}return{id:x.id,title:x.title,dateLabel,excerpt:String(x.content||'').replace(/\s+/g,' ').slice(0,90),bg:on?'var(--acc-bg)':'var(--bg2)',bd:on?'var(--acc-bd)':'var(--line3)'};});
     const kiNotesData=s.kiNotes||{sections:[],notes:[],quickNotes:[]},kiAllNotes=kiNotesData.notes||[],kiSections=(kiNotesData.sections||[]).filter(x=>x.title!=='Verknüpft Wichtig'),kiSectionMap=new Map(kiSections.map(x=>[Number(x.id),x])),kiNoteMap=new Map(kiAllNotes.map(x=>[Number(x.id),x]));
     const normalizeNoteSearch=v=>String(v||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9äöüß]+/g,' ').trim();
     const kiNQ=normalizeNoteSearch(s.kiNotesQ),kiNTokens=kiNQ.split(/\s+/).filter(Boolean),kiNS=String(s.kiNotesSection||'all');
@@ -10332,7 +10361,9 @@ class Component extends DCLogic {
     return {
       ...base,
       isNutri, isFin, isSet, isHome,
-      kiAsstName, kiIsChat: isInsightArea&&!kiTix&&!kiIns, kiIsTickets: kiTix,kiIsInsights:kiIns,kiIsNotes:kiNotesActive,
+      kiAsstName, kiIsChat: isInsightArea&&!kiTix&&!kiIns, kiIsTickets: kiTix,kiIsInsights:kiIns,kiIsNotes:kiNotesActive,orgIsJournal:orgJournalActive,
+      orgShowNotes:this.orgShowNotes,orgShowJournal:this.orgShowJournal,orgNotesBg:kiNotesActive?'var(--panel)':'transparent',orgNotesC:kiNotesActive?'var(--acc)':'var(--ink3)',orgJournalBg:orgJournalActive?'var(--panel)':'transparent',orgJournalC:orgJournalActive?'var(--acc)':'var(--ink3)',
+      journalNeedsSetup:orgJournalActive&&s.journalStatusLoaded&&!s.journalEnabled,journalNeedsUnlock:orgJournalActive&&s.journalEnabled&&!s.journalUnlocked,journalReady:orgJournalActive&&s.journalEnabled&&s.journalUnlocked,journalGoSettings:this.journalGoSettings,journalCode:s.journalCode,setJournalCode:this.setJournalCode,journalCodeKey:this.journalCodeKey,unlockJournal:this.unlockJournal,journalErr:s.journalErr,journalErrD:s.journalErr?'block':'none',journalUnlockLabel:s.journalBusy?'Wird geprüft …':'Sicher entsperren',journalUnlockIcon:s.journalBusy?'loader-2':'unlock-keyhole',journalUnlockSpin:s.journalBusy?'nd-spin':'',journalEntriesView,journalEmpty:journalEntriesView.length===0,newJournalEntry:this.newJournalEntry,openJournalEntry:this.openJournalEntry,journalEditorTitle:s.journalId?'Eintrag bearbeiten':'Neuer Eintrag',journalDate:s.journalDate||this._todayIso(),journalTitle:s.journalTitle||'',journalContent:s.journalContent||'',setJournalDate:this.setJournalDate,setJournalTitle:this.setJournalTitle,setJournalContent:this.setJournalContent,saveJournalEntry:this.saveJournalEntry,deleteJournalEntry:this.deleteJournalEntry,journalDeleteD:s.journalId?'block':'none',journalSaveLabel:s.journalBusy?'Speichert …':'Verschlüsselt speichern',journalSaveIcon:s.journalBusy?'loader-2':'shield-check',journalSaveSpin:s.journalBusy?'nd-spin':'',
       kiChatBg: !kiTix ? 'var(--panel)' : 'transparent', kiChatC: !kiTix ? 'var(--ink)' : 'var(--ink3)',
       kiTixBg: kiTix ? 'var(--panel)' : 'transparent', kiTixC: kiTix ? 'var(--ink)' : 'var(--ink3)',
       kiShowChat: this.kiShowChat,kiShowInsights:this.kiShowInsights, kiShowTickets: this.kiShowTickets,
