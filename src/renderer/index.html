@@ -1632,7 +1632,7 @@
       </sc-if>
       <div style="margin-top:14px;padding:12px 16px;border-radius:11px;background:var(--panel);border:1px solid var(--cardbd);display:flex;gap:10px;align-items:center;">
         <i data-lucide="bell-ring" style="width:15px;height:15px;color:#fbbf24;flex:0 0 auto;"></i>
-        <span style="font-size:12.5px;color:var(--ink3);">Erinnerung <b style="color:var(--ink2);font-weight:600;">7 Tage vor Verlängerung</b> ist aktiv · alle Beträge fließen automatisch als <b style="color:var(--ink2);font-weight:600;">Abo</b> in die Buchungen.</span>
+        <span style="font-size:12.5px;color:var(--ink3);">Erinnerung <b style="color:var(--ink2);font-weight:600;">7 Tage vor Verlängerung</b> ist aktiv · nur mitberechnete Abos fließen automatisch in deine Finanzsummen.</span>
       </div>
     </div>
     </sc-if>
@@ -3646,7 +3646,7 @@
           <div onclick="{{ setAboCycM }}" style="padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ segCycM.c }};background:{{ segCycM.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">monatlich</div>
           <div onclick="{{ setAboCycY }}" style="padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;color:{{ segCycY.c }};background:{{ segCycY.bg }};" style-hover="box-shadow:inset 0 0 0 999px var(--wchip);">jährlich</div>
         </div>
-        <span style="font-size:11.5px;color:var(--mut);text-align:right;">Erinnerung 7 Tage vor Verlängerung · zählt automatisch als Ausgabe</span>
+        <span style="font-size:11.5px;color:var(--mut);text-align:right;">Erinnerung 7 Tage vor Verlängerung · sofern mitberechnet als Ausgabe</span>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <div onclick="{{ closeModal }}" style="padding:10px 16px;border-radius:11px;border:1px solid var(--line3);color:var(--ink2);font-weight:600;font-size:13.5px;cursor:pointer;" style-hover="background:var(--chip);">Abbrechen</div>
