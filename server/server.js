@@ -3794,6 +3794,9 @@ app.post('/loans/:id/installment', auth, loanPayLimit, asyncRoute(async (req, re
     await conn.beginTransaction();
     const [[loan]] = await conn.execute('SELECT * FROM loans WHERE id = ? AND user_id = ? FOR UPDATE', [req.params.id, req.uid]);
     if (!loan) { await conn.rollback(); return res.status(404).json({ error: 'Nicht gefunden' }); }
+    if (loan.start_date && String(loan.start_date).slice(0, 10) > new Date().toISOString().slice(0, 10)) {
+      await conn.rollback(); return res.status(400).json({ error: 'Dieser Kredit ist noch geplant und startet erst am ' + String(loan.start_date).slice(0, 10) });
+    }
     let next;
     try { next = applyRegularInstallment(loan); }
     catch (e) { await conn.rollback(); return res.status(400).json({ error: e.message }); }

@@ -1648,7 +1648,7 @@
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;">
           <span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Kredite</span>
           <div style="flex:1 1 auto;height:1px;background:var(--line2);"></div>
-          <sc-if value="{{ hasLoans }}"><div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13px;flex:0 0 auto;"><i data-lucide="party-popper" style="width:15px;height:15px;"></i>Schuldenfrei im {{ freeLabel }}</div></sc-if>
+          <sc-if value="{{ hasActiveLoans }}"><div style="display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13px;flex:0 0 auto;"><i data-lucide="party-popper" style="width:15px;height:15px;"></i>Schuldenfrei im {{ freeLabel }}</div></sc-if>
           <div onclick="{{ openLoan }}" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-radius:11px;background:var(--acc);color:#0f1117;font-weight:600;font-size:13.5px;cursor:pointer;flex:0 0 auto;" style-hover="opacity:.9;"><i data-lucide="plus" style="width:16px;height:16px;"></i>Kredit hinzufügen</div>
         </div>
         <div style="font-size:13px;color:var(--ink3);font-weight:500;">{{ loanCountLabel }} · Rate gesamt <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ loanRateTotal }}</span> / Monat</div>
@@ -1680,21 +1680,22 @@
         </div>
         <div style="display:flex;flex-direction:column;gap:16px;">
           <sc-for list="{{ loans }}" as="ln" hint-placeholder-count="2">
-            <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:20px 22px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-                <span style="font-size:14.5px;font-weight:700;">{{ ln.name }}</span>
-                <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;">{{ ln.zins }} Zins</span><div onclick="{{ addLoanInstallment }}" data-id="{{ ln.id }}" title="Eine reguläre Rate verbuchen" style="height:28px;border-radius:8px;padding:0 9px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;gap:4px;align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);cursor:pointer;font-size:11px;font-weight:700;" style-hover="opacity:.8;"><i data-lucide="plus" style="width:13px;height:13px;"></i>1 Rate</div><div onclick="{{ undoLoanInstallment }}" data-id="{{ ln.id }}" title="Letzte reguläre Rate zurücknehmen" style="height:28px;border-radius:8px;padding:0 9px;background:var(--chip);border:1px solid var(--line3);display:flex;gap:4px;align-items:center;justify-content:center;flex:0 0 auto;color:var(--ink2);cursor:pointer;font-size:11px;font-weight:700;" style-hover="opacity:.8;"><i data-lucide="minus" style="width:13px;height:13px;"></i>1 Rate</div><div onclick="{{ openLoanPay }}" data-id="{{ ln.id }}" title="Sondertilgung erfassen" style="width:28px;height:28px;border-radius:8px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);cursor:pointer;" style-hover="opacity:.8;"><i data-lucide="badge-euro" style="width:14px;height:14px;"></i></div><div onclick="{{ openLoanEdit }}" data-id="{{ ln.id }}" title="Bearbeiten" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);background:var(--chip);"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div onclick="{{ delLoan }}" data-id="{{ ln.id }}" title="Löschen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
+            <div style="background:{{ ln.cardBg }};border:1px solid {{ ln.cardBorder }};border-radius:18px;box-shadow:var(--cardsh);padding:20px 22px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0;"><span style="font-size:14.5px;font-weight:700;">{{ ln.name }}</span><span style="font-size:10.5px;font-weight:700;color:{{ ln.statusColor }};background:{{ ln.statusBg }};border:1px solid {{ ln.statusBorder }};padding:3px 8px;border-radius:999px;white-space:nowrap;">{{ ln.statusLabel }}</span></div>
+                <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;">{{ ln.zins }} Zins</span><div onclick="{{ addLoanInstallment }}" data-id="{{ ln.id }}" title="Eine reguläre Rate verbuchen" style="height:28px;border-radius:8px;padding:0 9px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:{{ ln.payActionD }};gap:4px;align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);cursor:pointer;font-size:11px;font-weight:700;" style-hover="opacity:.8;"><i data-lucide="plus" style="width:13px;height:13px;"></i>1 Rate</div><div onclick="{{ undoLoanInstallment }}" data-id="{{ ln.id }}" title="Letzte reguläre Rate zurücknehmen" style="height:28px;border-radius:8px;padding:0 9px;background:var(--chip);border:1px solid var(--line3);display:{{ ln.undoActionD }};gap:4px;align-items:center;justify-content:center;flex:0 0 auto;color:var(--ink2);cursor:pointer;font-size:11px;font-weight:700;" style-hover="opacity:.8;"><i data-lucide="minus" style="width:13px;height:13px;"></i>1 Rate</div><div onclick="{{ openLoanPay }}" data-id="{{ ln.id }}" title="Sondertilgung erfassen" style="width:28px;height:28px;border-radius:8px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:{{ ln.payActionD }};align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);cursor:pointer;" style-hover="opacity:.8;"><i data-lucide="badge-euro" style="width:14px;height:14px;"></i></div><div onclick="{{ openLoanEdit }}" data-id="{{ ln.id }}" title="Bearbeiten" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);background:var(--chip);"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div onclick="{{ delLoan }}" data-id="{{ ln.id }}" title="Löschen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;letter-spacing:-.02em;">{{ ln.rest }}</div>
               <div style="font-size:12px;color:var(--ink3);margin-top:3px;">Offen · Rate <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.rate }}</span>/Monat</div>
               <div style="font-size:11.5px;color:var(--ink3);margin-top:4px;margin-bottom:12px;">Insgesamt <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.original }}</span></div>
+              <div style="display:{{ ln.startD }};align-items:center;gap:6px;padding:8px 10px;margin-bottom:12px;border-radius:9px;background:{{ ln.statusBg }};border:1px solid {{ ln.statusBorder }};font-size:11.5px;color:{{ ln.statusColor }};"><i data-lucide="calendar-clock" style="width:13px;height:13px;"></i>Startet am <b>{{ ln.startLabel }}</b></div>
               <div style="display:flex;gap:14px;font-size:11.5px;color:var(--ink3);margin-bottom:12px;flex-wrap:wrap;">
                 <span>Rate <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.paid }}</span> von <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.total }}</span></span>
                 <span>Restzins <span style="font-family:'JetBrains Mono',monospace;color:#fbbf24;">{{ ln.restZins }}</span></span>
                 <span style="display:inline-flex;align-items:center;gap:5px;"><i data-lucide="flag" style="width:12px;height:12px;color:{{ ln.endeC }};"></i>Abbezahlt <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:{{ ln.endeC }};">{{ ln.ende }}</span></span>
               </div>
               <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink3);margin-bottom:7px;"><span>Getilgt</span><span style="font-family:'JetBrains Mono',monospace;color:var(--acc);">{{ ln.pct }}</span></div>
-              <div style="height:8px;border-radius:5px;background:var(--track);overflow:hidden;"><div style="height:100%;border-radius:5px;background:linear-gradient(90deg,var(--acc),var(--acc-mate));width:{{ ln.pct }};"></div></div>
+              <div style="height:8px;border-radius:5px;background:var(--track);overflow:hidden;"><div style="height:100%;border-radius:5px;background:{{ ln.progressBg }};width:{{ ln.pct }};"></div></div>
             </div>
           </sc-for>
         </div>
@@ -3893,8 +3894,9 @@
         <div style="font-size:11.5px;color:var(--ink3);margin-top:6px;">Auswahl: 1, 3, 6, 12, 24, 36, 48 oder 60 · eigene Zahl ist ebenfalls möglich.</div>
       </div>
       <div style="margin-bottom:16px;">
-        <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Vertragsbeginn (optional)</span>
+        <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Startdatum (optional)</span>
         <input type="date" data-dc-bind-value="{{ lnStart }}" onchange="{{ setLnStart }}" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;box-sizing:border-box;color-scheme:dark;" style-focus="border-color:var(--acc);">
+        <div style="font-size:11.5px;color:var(--ink3);margin-top:6px;">Liegt das Datum in der Zukunft, erscheint der Kredit orange als „Geplant“ und zählt bis zum Start nicht zur Monatsbelastung.</div>
       </div>
       <div style="display:{{ lnCalcD }};align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border-radius:11px;background:var(--acc-bg);border:1px solid var(--acc-bd);margin-bottom:18px;">
         <div style="min-width:0;"><div style="font-size:12.5px;color:var(--ink2);">Seit Vertragsbeginn bereits gezahlt: <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--acc);">{{ lnCalcAmount }}</span></div><div style="font-size:11.5px;color:var(--ink3);margin-top:2px;">{{ lnCalcMonths }} Monate à Monatsrate (Schätzung)</div></div>
@@ -9831,7 +9833,7 @@ class Component extends DCLogic {
 
     const hasCashflow = cfRaw.some(x => x.e > 0 || x.a > 0);
 
-    const loanTotal = d.loans.reduce((x, l) => x + parseFloat(l.balance), 0);
+    const loanTotal = d.loans.filter(l => (parseFloat(l.balance) || 0) > 0 && (!l.start_date || String(l.start_date).slice(0, 10) <= todayIso)).reduce((x, l) => x + parseFloat(l.balance), 0);
     const avgExp = Math.max(1, expMonth || 1);
     const notMonths = bankTotal / avgExp;
     const schuldenQ = assetsTotal > 0 ? Math.round(loanTotal / assetsTotal * 100) : (loanTotal > 0 ? 100 : 0);
@@ -10015,45 +10017,70 @@ class Component extends DCLogic {
     const loanSims = d.loans.map(l => {
       const balance = parseFloat(l.balance), rate = parseFloat(l.rate), interest = parseFloat(l.interest);
       const simr = this.sim(balance, rate, interest);
-      return { l, balance, rate, interest, simr };
+      const startIso = l.start_date ? String(l.start_date).slice(0, 10) : '';
+      const status = balance <= 0 ? 'done' : (startIso && startIso > todayIso ? 'scheduled' : 'running');
+      return { l, balance, rate, interest, simr, startIso, status };
     });
     const monLabel = i => { const mo = (now.getMonth() + 1 + i) % 12, yr = now.getFullYear() + Math.floor((now.getMonth() + 1 + i) / 12); return this.MON_SHORT[mo] + ' ' + yr; };
-    const loansView = loanSims.map(({ l, balance, rate, interest, simr }) => {
+    const loanEndLabel = (startIso, months) => {
+      if (!months || months >= 600) return months >= 600 ? 'nie (Rate zu klein)' : '-';
+      const base = startIso && startIso > todayIso ? new Date(startIso + 'T00:00:00') : new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const end = new Date(base.getFullYear(), base.getMonth() + months - 1, 1);
+      return this.MON_SHORT[end.getMonth()] + ' ' + end.getFullYear();
+    };
+    const loansView = loanSims.map(({ l, balance, rate, interest, simr, startIso, status }) => {
       const paid = l.paid_months || 0;
       const balanceCents = Math.round(balance * 100), rateCents = Math.max(1, Math.round(rate * 100));
       const inferredTotal = paid + Math.ceil(balanceCents / rateCents);
       const origTotal = Number(l.total_installments) || inferredTotal;
       const origBalance = balance + 0; // Getilgt-Anteil aus gezahlten Monaten approximieren
-      const pctPaid = origTotal > 0 ? Math.round(paid / origTotal * 100) : 0;
+      const pctPaid = status === 'done' ? 100 : (origTotal > 0 ? Math.round(paid / origTotal * 100) : 0);
+      const style = status === 'scheduled'
+        ? { label:'Geplant', color:'#fb923c', bg:'rgba(251,146,60,.10)', border:'rgba(251,146,60,.42)', card:'linear-gradient(135deg,rgba(251,146,60,.10),var(--panel) 58%)', progress:'linear-gradient(90deg,#fb923c,#fbbf24)', order:1 }
+        : status === 'done'
+          ? { label:'Abbezahlt', color:'#4ade80', bg:'rgba(74,222,128,.10)', border:'rgba(74,222,128,.38)', card:'linear-gradient(135deg,rgba(74,222,128,.10),var(--panel) 58%)', progress:'linear-gradient(90deg,#4ade80,#2dd4bf)', order:2 }
+          : { label:'Laufend', color:'#f87171', bg:'rgba(248,113,113,.10)', border:'rgba(248,113,113,.38)', card:'linear-gradient(135deg,rgba(248,113,113,.10),var(--panel) 58%)', progress:'linear-gradient(90deg,#f87171,#fb923c)', order:0 };
       return {
         id: l.id, name: l.name, zins: (interest * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' %',
         rest:'€ ' + fmt(balance), original:'€ ' + fmt(Number(l.original_amount) > 0 ? Number(l.original_amount) : balance + paid * rate), rate:'€ ' + fmt(rate),
         paid, total: origTotal, restZins:'€ ' + fmt(simr.totalInterest),
-        ende: simr.months >= 600 ? 'nie (Rate zu klein)' : (simr.months > 0 ? monLabel(simr.months - 1) : '-'),
-        endeC: simr.months >= 600 ? '#f87171' : 'var(--acc)',
-        pct: pctPaid + '%',
+        ende: status === 'done' ? 'erledigt' : loanEndLabel(startIso, simr.months),
+        endeC: status === 'done' ? '#4ade80' : (simr.months >= 600 ? '#f87171' : 'var(--acc)'),
+        pct: pctPaid + '%', statusLabel:style.label, statusColor:style.color, statusBg:style.bg, statusBorder:style.border,
+        cardBg:style.card, cardBorder:style.border, progressBg:style.progress, statusOrder:style.order,
+        startD:status === 'scheduled' ? 'flex' : 'none', startLabel:startIso ? (this._ddmm(startIso) + startIso.slice(0, 4)) : '',
+        payActionD:status === 'running' ? 'flex' : 'none', undoActionD:status !== 'scheduled' && paid > 0 ? 'flex' : 'none',
       };
-    });
-    const maxM = Math.max(0, ...loanSims.map(x => x.simr.months));
+    }).sort((a, b) => a.statusOrder - b.statusOrder || a.name.localeCompare(b.name, 'de'));
+    const activeLoanSims = loanSims.filter(x => x.status === 'running');
+    const maxM = Math.max(0, ...activeLoanSims.map(x => x.simr.months));
     const totalBal = [];
     for (let i = 0; i <= maxM; i++) {
       let sum = 0;
-      for (const { balance, simr } of loanSims) sum += i === 0 ? balance : (simr.rows[i - 1] ? simr.rows[i - 1].rest : 0);
+      for (const { balance, simr } of activeLoanSims) sum += i === 0 ? balance : (simr.rows[i - 1] ? simr.rows[i - 1].rest : 0);
       totalBal.push(sum);
     }
     const hasLoans = d.loans.length > 0;
-    const pay = hasLoans && totalBal.length >= 2 ? this.mkLine(totalBal, 0, Math.max(...totalBal) * 1.05) : null;
-    const freeLabel = hasLoans && maxM > 0 ? monLabel(maxM - 1) : '-';
+    const hasActiveLoans = activeLoanSims.length > 0;
+    const scheduledLoanCount = loanSims.filter(x => x.status === 'scheduled').length;
+    const doneLoanCount = loanSims.filter(x => x.status === 'done').length;
+    const loanCountLabel = [
+      activeLoanSims.length ? activeLoanSims.length + ' laufend' : '',
+      scheduledLoanCount ? scheduledLoanCount + ' geplant' : '',
+      doneLoanCount ? doneLoanCount + ' fertig' : '',
+    ].filter(Boolean).join(' · ') || 'Keine Kredite';
+    const pay = hasActiveLoans && totalBal.length >= 2 ? this.mkLine(totalBal, 0, Math.max(...totalBal) * 1.05) : null;
+    const freeLabel = hasActiveLoans && maxM > 0 ? monLabel(maxM - 1) : '-';
     const totalRate = obligations.loans;
     let freeExtraLabel = '-', freeExtraDetail = '';
-    if (hasLoans) {
-      const simX = this.simLoansWithExtra(d.loans, 100);
+    if (hasActiveLoans) {
+      const simX = this.simLoansWithExtra(activeLoanSims.map(x => x.l), 100);
       freeExtraLabel = simX.months > 0 ? monLabel(simX.months - 1) : '-';
       freeExtraDetail = simX.initialCount > 1
         ? 'Start: € ' + fmt(simX.initialShare) + ' je Kredit. Sobald einer abbezahlt ist, wird nur dessen Sondertilgungsanteil auf die übrigen Kredite verteilt.'
         : 'Die vollen € 100 gehen zusätzlich in diesen Kredit.';
     }
-    const biggest = loanSims.slice().sort((a, b) => b.balance - a.balance)[0];
+    const biggest = activeLoanSims.slice().sort((a, b) => b.balance - a.balance)[0];
     const tilgRows = biggest ? biggest.simr.rows.slice(0, 6).map((r, i) => ({
       mon: monLabel(i), rate: fmt(biggest.rate), zins: fmt(r.z), tilg: fmt(r.t), rest:'€ ' + fmt(r.rest),
     })) : [];
@@ -10909,7 +10936,7 @@ class Component extends DCLogic {
         showSaving: t.saving > 0 ? 'inline-flex' : 'none',
       })),
 
-      loans: loansView, hasLoans, loanCountLabel: d.loans.length + (d.loans.length === 1 ? ' laufender Kredit' : ' laufende Kredite'),
+      loans: loansView, hasLoans, hasActiveLoans, loanCountLabel,
       loanRateTotal:'€ ' + fmt(totalRate), loanTotalLabel:'€ ' + fmt(loanTotal),
       payPoly: pay ? pay.poly : '', payArea: pay ? pay.area : '', payLast: pay ? pay.last : { x:0, y:0 },
       freeLabel, freeExtraLabel, freeExtraDetail, tilgRows, tilgLoanName: biggest ? biggest.l.name : '-',
