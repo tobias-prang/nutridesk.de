@@ -42,6 +42,7 @@ function applyRegularInstallment(item) {
 }
 
 function subscriptionChargeCents(item, month) {
+  if (Number(item.exclude_from_totals)) return 0;
   if (!subscriptionIsActive(item, month)) return 0;
   const price = cents(item.price);
   return item.cycle === 'jährlich' ? Math.round(price / 12) : price;

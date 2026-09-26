@@ -35,6 +35,15 @@ test('Verträge und Kredite ergeben die reguläre Monatsbelastung', () => {
   assert.deepEqual(getMonthlyFinancialObligations({ subscriptions, loans, month }), { month, subscriptions: 25, loans: 374.41, savings: 0, total: 399.41 });
 });
 
+test('nicht mitberechnete Verträge bleiben aus der Monatsbelastung', () => {
+  const subscriptions = [
+    { price: 25, cycle: 'monatlich' },
+    { price: 60, cycle: 'monatlich', exclude_from_totals: 1 },
+    { price: 120, cycle: 'jährlich', exclude_from_totals: true }
+  ];
+  assert.equal(getMonthlyFinancialObligations({ subscriptions, month }).subscriptions, 25);
+});
+
 test('automatisches Sparziel zählt nur im aktiven Zeitraum und bis zum Ziel', () => {
   const goals = [{ auto_save: 1, saved: 0, target: 500, rate: 50, start_date: '2026-09-10', target_date: '2026-12-31' }];
   assert.equal(getMonthlyFinancialObligations({ goals, month: '2026-08' }).savings, 0);

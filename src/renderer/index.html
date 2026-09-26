@@ -1592,7 +1592,7 @@
           <div style="display:flex;align-items:center;gap:14px;padding:14px 12px;margin:0 -12px;border-radius:12px;background:{{ ab.rowBg }};border-bottom:1px solid {{ ab.bd }};">
             <div style="width:40px;height:40px;border-radius:12px;background:var(--chip);display:flex;align-items:center;justify-content:center;flex:0 0 auto;opacity:{{ ab.op }};"><i data-lucide="{{ ab.icon }}" style="width:19px;height:19px;color:var(--acc);"></i></div>
             <div style="width:230px;flex:0 0 auto;min-width:0;opacity:{{ ab.op }};">
-              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ ab.name }}</span><span style="display:{{ ab.stBadge }};align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.03em;color:{{ ab.stC }};background:{{ ab.stBg }};border:1px solid {{ ab.stBd }};padding:2px 7px;border-radius:5px;white-space:nowrap;"><i data-lucide="calendar-x" style="width:10px;height:10px;"></i>{{ ab.stText }}</span></div>
+              <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ ab.name }}</span><span style="display:{{ ab.stBadge }};align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.03em;color:{{ ab.stC }};background:{{ ab.stBg }};border:1px solid {{ ab.stBd }};padding:2px 7px;border-radius:5px;white-space:nowrap;"><i data-lucide="{{ ab.stIcon }}" style="width:10px;height:10px;"></i>{{ ab.stText }}</span></div>
               <div style="font-size:12px;color:var(--ink3);margin-top:2px;">{{ ab.typeLabel }}</div>
             </div>
             <div style="display:{{ ab.midNormal }};align-items:center;gap:16px;flex:1 1 auto;min-width:0;">
@@ -1603,11 +1603,22 @@
             <div style="display:{{ ab.midCanceled }};align-items:center;justify-content:center;gap:8px;flex:1 1 auto;min-width:0;color:var(--mut);">
               <i data-lucide="ban" style="width:15px;height:15px;flex:0 0 auto;"></i><span style="font-size:12.5px;font-weight:600;">{{ ab.canceledInfo }}</span>
             </div>
-            <span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;width:90px;text-align:right;flex:0 0 auto;opacity:{{ ab.op }};text-decoration:{{ ab.priceDeco }};">{{ ab.price }}</span>
-            <div onclick="{{ openAboCancel }}" data-id="{{ ab.id }}" title="Kündigung vormerken" style="display:{{ ab.btnCancel }};align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="background:var(--chip);color:#fbbf24;"><i data-lucide="calendar-x" style="width:15px;height:15px;"></i></div>
-            <div onclick="{{ undoAboCancel }}" data-id="{{ ab.id }}" title="Kündigung zurückziehen" style="display:{{ ab.btnUndo }};align-items:center;justify-content:center;width:30px;height:30px;border-radius:9px;color:var(--ink3);cursor:pointer;flex:0 0 auto;" style-hover="background:var(--chip);color:var(--acc);"><i data-lucide="undo-2" style="width:15px;height:15px;"></i></div>
-            <div onclick="{{ openAboResume }}" data-id="{{ ab.id }}" style="display:{{ ab.btnResume }};align-items:center;gap:6px;padding:7px 12px;border-radius:9px;border:1px solid var(--acc-bd);background:var(--acc-bg);color:var(--acc);font-size:12px;font-weight:600;cursor:pointer;flex:0 0 auto;" style-hover="opacity:.85;"><i data-lucide="rotate-ccw" style="width:13px;height:13px;"></i>Reaktivieren</div>
-            <div onclick="{{ openAboInfo }}" data-id="{{ ab.id }}" title="Infos" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);background:var(--chip);"><i data-lucide="info" style="width:14px;height:14px;"></i></div><div onclick="{{ openAboEdit }}" data-id="{{ ab.id }}" title="Bearbeiten" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);background:var(--chip);"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div onclick="{{ delAbo }}" data-id="{{ ab.id }}" title="Löschen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600;width:90px;text-align:right;flex:0 0 auto;opacity:{{ ab.op }};text-decoration:{{ ab.priceDeco }};color:{{ ab.priceC }};">{{ ab.price }}</span>
+            <div style="position:relative;flex:0 0 auto;z-index:{{ ab.menuZ }};">
+              <div onclick="{{ toggleAboMenu }}" data-id="{{ ab.id }}" title="Aktionen" style="width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:{{ ab.menuC }};background:{{ ab.menuBg }};border:1px solid {{ ab.menuBd }};cursor:pointer;" style-hover="color:var(--ink);background:var(--chip);"><i data-lucide="ellipsis" style="width:17px;height:17px;"></i></div>
+              <sc-if value="{{ ab.menuOpen }}">
+              <div style="position:absolute;right:0;top:40px;width:226px;padding:7px;background:var(--panel);border:1px solid var(--line3);border-radius:13px;box-shadow:0 18px 45px rgba(0,0,0,.42);z-index:60;">
+                <div onclick="{{ toggleAboExcluded }}" data-id="{{ ab.id }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:#a78bfa;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="background:rgba(167,139,250,.12);"><i data-lucide="{{ ab.excludeIcon }}" style="width:15px;height:15px;"></i>{{ ab.excludeLabel }}</div>
+                <div onclick="{{ openAboCancel }}" data-id="{{ ab.id }}" style="display:{{ ab.btnCancel }};align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:#fbbf24;font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="background:rgba(251,191,36,.1);"><i data-lucide="calendar-x" style="width:15px;height:15px;"></i>Kündigung vormerken</div>
+                <div onclick="{{ undoAboCancel }}" data-id="{{ ab.id }}" style="display:{{ ab.btnUndo }};align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--acc);font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="background:var(--acc-bg);"><i data-lucide="undo-2" style="width:15px;height:15px;"></i>Kündigung zurückziehen</div>
+                <div onclick="{{ openAboResume }}" data-id="{{ ab.id }}" style="display:{{ ab.btnResume }};align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--acc);font-size:12.5px;font-weight:600;cursor:pointer;" style-hover="background:var(--acc-bg);"><i data-lucide="rotate-ccw" style="width:15px;height:15px;"></i>Reaktivieren</div>
+                <div style="height:1px;background:var(--line2);margin:5px 3px;"></div>
+                <div onclick="{{ openAboInfo }}" data-id="{{ ab.id }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--ink2);font-size:12.5px;cursor:pointer;" style-hover="background:var(--chip);color:var(--ink);"><i data-lucide="info" style="width:15px;height:15px;"></i>Details</div>
+                <div onclick="{{ openAboEdit }}" data-id="{{ ab.id }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:var(--ink2);font-size:12.5px;cursor:pointer;" style-hover="background:var(--chip);color:var(--ink);"><i data-lucide="pencil" style="width:15px;height:15px;"></i>Bearbeiten</div>
+                <div onclick="{{ delAbo }}" data-id="{{ ab.id }}" style="display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:9px;color:#f87171;font-size:12.5px;cursor:pointer;" style-hover="background:rgba(248,113,113,.1);"><i data-lucide="trash-2" style="width:15px;height:15px;"></i>Löschen</div>
+              </div>
+              </sc-if>
+            </div>
           </div>
         </sc-for>
       </div>
@@ -5357,7 +5368,7 @@ class Component extends DCLogic {
       kiStep:'form', kiQs:[], kiQBusy:false, kiFree:'', kiStartTs:0, kiSummary:null,
       kiNotes:{sections:[],notes:[],quickNotes:[]},kiNotesQ:'',kiNotesSection:'pinned',kiNoteOpen:0,kiNotesPdfBusy:false,kinId:0,kinSection:'',kinTitle:'',kinContent:'',kinTags:'',kinPinned:false,kinRelations:[],kinRelQ:'',kinNewImages:[],
       aboType:'streaming', aboName:'', aboPrice:'', aboDay:'1', aboCycle:'monatlich', aboFrist:'1 Monat',
-      aboStart:'', aboPhases:[], aboAuto:true, aboInfoId:0,
+      aboStart:'', aboPhases:[], aboAuto:true, aboInfoId:0, aboMenuOpen:0,
       lnType:'sonstiges', lnStart:'',
       incCalc:false, incCalcWage:'', incCalcHours:'', incCalcState:'Bayern', incCalcChurch:false,
       aboId:0, lnId:0, glId:0, bgId:0, asId:0,
@@ -7759,7 +7770,7 @@ class Component extends DCLogic {
   txMonthNext = () => { const cur = this._curMonth(); const m = this._shiftMonth(this.state.txMonth || cur, 1); if (m > cur) return; this.setState({ txMonth: m }); };
   analyzeBook = () => this.setState(v => ({ bookAnalysisOpen: !v.bookAnalysisOpen }));
   openAbo = () => this.setState({ modal:'abo', aboId:0, aboType:'streaming', aboName:'', aboPrice:'', aboDay:'1', aboCycle:'monatlich', aboFrist:'1 Monat', aboStart:'', aboPhases:[], aboAuto:true });
-  openAboEdit = (e) => { const a = (this.state.data.subscriptions || []).find(x => x.id === parseInt(e.currentTarget.dataset.id)); if (!a) return; let ph = []; try { ph = JSON.parse(a.phases || '[]'); } catch (e2) { ph = []; } this.setState({ modal:'abo', aboId:a.id, aboType:a.type, aboName:a.name, aboPrice:String(a.price).replace('.', ','), aboDay:String(a.day), aboCycle:a.cycle, aboFrist:a.frist, aboStart:(a.start_date ? String(a.start_date).slice(0, 10) : ''), aboPhases:(Array.isArray(ph) ? ph.map(x => ({ m:String(x.m), p:String(x.p).replace('.', ',') })) : []), aboAuto:(a.auto_book == null ? true : !!a.auto_book) }); };
+  openAboEdit = (e) => { e.stopPropagation(); const a = (this.state.data.subscriptions || []).find(x => x.id === parseInt(e.currentTarget.dataset.id)); if (!a) return; let ph = []; try { ph = JSON.parse(a.phases || '[]'); } catch (e2) { ph = []; } this.setState({ modal:'abo', aboMenuOpen:0, aboId:a.id, aboType:a.type, aboName:a.name, aboPrice:String(a.price).replace('.', ','), aboDay:String(a.day), aboCycle:a.cycle, aboFrist:a.frist, aboStart:(a.start_date ? String(a.start_date).slice(0, 10) : ''), aboPhases:(Array.isArray(ph) ? ph.map(x => ({ m:String(x.m), p:String(x.p).replace('.', ',') })) : []), aboAuto:(a.auto_book == null ? true : !!a.auto_book) }); };
   _todayIso = () => new Date().toISOString().slice(0, 10);
   openGoal = () => this.setState({ modal:'goal', glId:0, glIcon:'plane', glName:'', glTarget:'', glRate:'', glDate:'', glStart:this._todayIso(), glAuto:true });
   openGoalEdit = (e) => { const g = (this.state.data.goals || []).find(x => x.id === parseInt(e.currentTarget.dataset.id)); if (!g) return; this.setState({ modal:'goal', glId:g.id, glIcon:g.icon || 'plane', glName:g.name, glTarget:String(g.target).replace('.', ','), glRate:String(g.rate).replace('.', ','), glDate:g.target_date ? String(g.target_date).slice(0,10) : '', glStart:g.start_date ? String(g.start_date).slice(0,10) : this._todayIso(), glAuto:!!g.auto_save }); };
@@ -8364,13 +8375,30 @@ class Component extends DCLogic {
       this.refresh();
     } catch (e) { this._toast(e.message); }
   };
-  openAboInfo = (e) => this.setState({ modal:'aboInfo', aboInfoId: parseInt(e.currentTarget.dataset.id) });
+  toggleAboMenu = (e) => { e.stopPropagation(); const id = parseInt(e.currentTarget.dataset.id); this.setState(v => ({ aboMenuOpen: v.aboMenuOpen === id ? 0 : id })); };
+  toggleAboExcluded = async (e) => {
+    e.stopPropagation();
+    const id = parseInt(e.currentTarget.dataset.id);
+    const ab = (this.state.data.subscriptions || []).find(x => x.id === id);
+    if (!ab) return;
+    const excluded = !Number(ab.exclude_from_totals);
+    this.setState({ aboMenuOpen:0 });
+    try {
+      await this.api('/subscriptions/' + id, { method:'PUT', body:{ exclude_from_totals: excluded ? 1 : 0 } });
+      this._toast(excluded ? 'Abo wird nicht mehr mitberechnet' : 'Abo wird wieder mitberechnet');
+      await this.refresh();
+    } catch (error) { this._toast(error.message); }
+  };
+  openAboInfo = (e) => { e.stopPropagation(); this.setState({ modal:'aboInfo', aboMenuOpen:0, aboInfoId: parseInt(e.currentTarget.dataset.id) }); };
   delAbo = async (e) => {
+    e.stopPropagation();
     const id = e.currentTarget.dataset.id;
+    this.setState({ aboMenuOpen:0 });
     try { await this.api('/subscriptions/' + id, { method:'DELETE' }); this._toast('Abo gelöscht'); this.refresh(); }
     catch (e2) { this._toast(e2.message); }
   };
   openAboCancel = (e) => {
+    e.stopPropagation();
     const id = parseInt(e.currentTarget.dataset.id);
     const ab = (this.state.data.subscriptions || []).find(x => x.id === id);
     if (!ab) return;
@@ -8384,7 +8412,7 @@ class Component extends DCLogic {
     } else {
       dt.setDate(dt.getDate() + 1);
     }
-    this.setState({ modal:'aboCancel', abcId: id, abcName: ab.name, abcDate: this._iso(dt) });
+    this.setState({ modal:'aboCancel', aboMenuOpen:0, abcId: id, abcName: ab.name, abcDate: this._iso(dt) });
   };
   setAbcDate = (e) => this.setState({ abcDate: e.target.value });
   saveAboCancel = async () => {
@@ -8398,7 +8426,9 @@ class Component extends DCLogic {
     } catch (e) { this._toast(e.message); }
   };
   undoAboCancel = async (e) => {
+    e.stopPropagation();
     const id = e.currentTarget.dataset.id;
+    this.setState({ aboMenuOpen:0 });
     try {
       await this.api('/subscriptions/' + id, { method:'PUT', body:{ cancel_date: null, resume_date: null } });
       this._toast('Kündigung zurückgezogen');
@@ -8406,10 +8436,11 @@ class Component extends DCLogic {
     } catch (e2) { this._toast(e2.message); }
   };
   openAboResume = (e) => {
+    e.stopPropagation();
     const id = parseInt(e.currentTarget.dataset.id);
     const ab = (this.state.data.subscriptions || []).find(x => x.id === id);
     if (!ab) return;
-    this.setState({ modal:'aboResume', abrId: id, abrName: ab.name, abrDate: this._todayIso() });
+    this.setState({ modal:'aboResume', aboMenuOpen:0, abrId: id, abrName: ab.name, abrDate: this._todayIso() });
   };
   setAbrDate = (e) => this.setState({ abrDate: e.target.value });
   saveAboResume = async () => {
@@ -9591,6 +9622,7 @@ class Component extends DCLogic {
     };
     const upcoming = [];
     for (const ab of d.subscriptions) {
+      if (Number(ab.exclude_from_totals)) continue;
       if (ab.cycle === 'jährlich') continue;
       const price = parseFloat(ab.price);
       const stAb = aboState(ab);
@@ -9754,25 +9786,31 @@ class Component extends DCLogic {
     }));
 
     const aboActive = d.subscriptions.filter(x => aboState(x) !== 'gekuendigt');
-    const aboSum = aboActive.reduce((x, b) => x + (b.cycle === 'jährlich' ? parseFloat(b.price) / 12 : parseFloat(b.price)), 0);
+    const aboCounted = aboActive.filter(x => !Number(x.exclude_from_totals));
+    const aboSum = aboCounted.reduce((x, b) => x + (b.cycle === 'jährlich' ? parseFloat(b.price) / 12 : parseFloat(b.price)), 0);
     const abosView = d.subscriptions.map((x, i) => {
       const st = aboState(x);
       const canceled = st === 'gekuendigt';
+      const excluded = !!Number(x.exclude_from_totals);
       const daysLeft = x.cancel_date ? Math.round((new Date(x.cancel_date + 'T00:00:00') - new Date(todayIso + 'T00:00:00')) / 86400000) : 0;
-      let rowBg = 'transparent', stC = 'var(--ink3)', stBg = 'var(--chip)', stBd = 'var(--line3)', stText = '';
+      let rowBg = 'transparent', stC = 'var(--ink3)', stBg = 'var(--chip)', stBd = 'var(--line3)', stText = '', stIcon = 'calendar-x';
       if (st === 'vorgemerkt') {
         stText = 'endet ' + this._ddmm(x.cancel_date) + x.cancel_date.slice(0, 4);
         if (daysLeft <= 7) { rowBg = 'rgba(248,113,113,.08)'; stC = '#f87171'; stBg = 'rgba(248,113,113,.13)'; stBd = 'rgba(248,113,113,.35)'; }
         else if (daysLeft <= 30) { rowBg = 'rgba(251,191,36,.07)'; stC = '#fbbf24'; stBg = 'rgba(251,191,36,.13)'; stBd = 'rgba(251,191,36,.35)'; }
         else { rowBg = 'rgba(251,191,36,.035)'; stC = '#caa53d'; stBg = 'rgba(251,191,36,.08)'; stBd = 'rgba(251,191,36,.22)'; }
       }
+      if (excluded) {
+        rowBg = 'rgba(167,139,250,.075)'; stC = '#c4b5fd'; stBg = 'rgba(167,139,250,.14)'; stBd = 'rgba(167,139,250,.38)';
+        stText = 'nicht mitberechnet'; stIcon = 'circle-off';
+      }
       const resumeSoon = canceled && x.resume_date && x.resume_date > todayIso;
       return {
         id: x.id, icon: this.ABO_TYPES[x.type].icon, typeLabel: this.ABO_TYPES[x.type].label,
         name: x.name, cycle: x.cycle, frist: x.frist, dayLabel:'jeden ' + x.day + '.',
         price: eur(parseFloat(x.price)), bd: i === d.subscriptions.length - 1 ? 'transparent' : 'var(--chip)',
-        rowBg, stText, stC, stBg, stBd,
-        stBadge: st === 'vorgemerkt' ? 'inline-flex' : 'none',
+        rowBg, stText, stC, stBg, stBd, stIcon,
+        stBadge: st === 'vorgemerkt' || excluded ? 'inline-flex' : 'none',
         midNormal: canceled ? 'none' : 'flex', midCanceled: canceled ? 'flex' : 'none',
         btnCancel: st === 'aktiv' ? 'flex' : 'none',
         btnUndo: st === 'vorgemerkt' ? 'flex' : 'none',
@@ -9780,11 +9818,16 @@ class Component extends DCLogic {
         canceledInfo: !canceled ? '' : (resumeSoon
           ? 'läuft wieder ab ' + this._ddmm(x.resume_date) + x.resume_date.slice(0, 4)
           : 'Gekündigt seit ' + this._ddmm(x.cancel_date) + x.cancel_date.slice(0, 4)),
-        op: canceled ? '.45' : '1', priceDeco: canceled ? 'line-through' : 'none',
+        op: canceled ? '.45' : (excluded ? '.72' : '1'), priceDeco: canceled ? 'line-through' : 'none', priceC: excluded ? '#c4b5fd' : 'var(--ink)',
+        menuOpen: Number(s.aboMenuOpen) === Number(x.id), menuZ: Number(s.aboMenuOpen) === Number(x.id) ? '50' : '2',
+        menuC: Number(s.aboMenuOpen) === Number(x.id) ? 'var(--ink)' : 'var(--mut)', menuBg: Number(s.aboMenuOpen) === Number(x.id) ? 'var(--chip)' : 'transparent', menuBd: Number(s.aboMenuOpen) === Number(x.id) ? 'var(--line3)' : 'transparent',
+        excludeLabel: excluded ? 'Wieder mitberechnen' : 'Nicht mitberechnen', excludeIcon: excluded ? 'circle-check-big' : 'circle-off',
       };
     });
     const aboCanceledCount = d.subscriptions.length - aboActive.length;
+    const aboExcludedCount = aboActive.length - aboCounted.length;
     const aboCountLabel = aboActive.length + (aboActive.length === 1 ? ' aktiver Vertrag' : ' aktive Verträge')
+      + (aboExcludedCount > 0 ? ' · ' + aboExcludedCount + ' nicht mitberechnet' : '')
       + (aboCanceledCount > 0 ? ' · ' + aboCanceledCount + ' gekündigt' : '');
 
     let aboInfoView = { icon:'credit-card', name:'', typeLabel:'', startLabel:'—', priceLabel:'', paidLabel:'€ 0,00', nextChangeD:'none', nextChangeLabel:'', phasesD:'none', phases:[] };
@@ -10709,6 +10752,7 @@ class Component extends DCLogic {
       abos: abosView, hasAbos: d.subscriptions.length > 0,
       aboMonth: eur(aboSum), aboYear: eur(aboSum * 12), aboCount: d.subscriptions.length, aboCountLabel,
       openAbo: this.openAbo, delAbo: this.delAbo, openAboInfo: this.openAboInfo, aboInfoView,
+      toggleAboMenu: this.toggleAboMenu, toggleAboExcluded: this.toggleAboExcluded,
       openAboCancel: this.openAboCancel, undoAboCancel: this.undoAboCancel, openAboResume: this.openAboResume,
       modAboCancel: s.modal === 'aboCancel', modAboResume: s.modal === 'aboResume',
       abcName: s.abcName, abcDate: s.abcDate, setAbcDate: this.setAbcDate, saveAboCancel: this.saveAboCancel,

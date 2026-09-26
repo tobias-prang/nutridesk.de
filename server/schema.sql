@@ -146,6 +146,7 @@ CREATE TABLE IF NOT EXISTS subscriptions (
   frist         VARCHAR(20) NOT NULL DEFAULT '1 Monat',
   cancel_date   DATE NULL,  -- Kündigung vorgemerkt zum / gekündigt am (NULL = aktiv)
   resume_date   DATE NULL,  -- nach Kündigung: läuft wieder ab diesem Datum
+  exclude_from_totals TINYINT(1) NOT NULL DEFAULT 0, -- sichtbar, aber nicht in Finanzsummen einrechnen
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_subs_user (user_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

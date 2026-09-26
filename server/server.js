@@ -1046,6 +1046,7 @@ const RESOURCES = {
       start_date: b.start_date !== undefined ? vDate(b.start_date, 'Vertragsbeginn', { optional: true }) : (partial ? undefined : null),
       phases: b.phases !== undefined ? JSON.stringify((Array.isArray(b.phases) ? b.phases : []).slice(0, 12).map(p => ({ m: Math.max(1, Math.min(600, parseInt(p.m) || 1)), p: Math.max(0, Math.min(1000000, parseFloat(String(p.p).replace(',', '.')) || 0)) }))) : (partial ? undefined : '[]'),
       auto_book: b.auto_book !== undefined ? vBool(b.auto_book) : (partial ? undefined : 1),
+      exclude_from_totals: b.exclude_from_totals !== undefined ? vBool(b.exclude_from_totals) : (partial ? undefined : 0),
     }),
   },
   income_sources: {
@@ -2429,7 +2430,7 @@ app.delete('/plan/:date/:meal', auth, rateLimitUser('plan', 240), asyncRoute(asy
 // Aktions-/Staffelpreise (phases) werden beruecksichtigt; nur vorwaerts (last_booked),
 // damit vom Nutzer geloeschte Buchungen nicht wieder auftauchen. tag = 'abo:<id>'.
 async function bookSubscriptions(uid) {
-  const [subs] = await pool.execute("SELECT * FROM subscriptions WHERE user_id=? AND auto_book=1 AND start_date IS NOT NULL", [uid]);
+  const [subs] = await pool.execute("SELECT * FROM subscriptions WHERE user_id=? AND auto_book=1 AND exclude_from_totals=0 AND start_date IS NOT NULL", [uid]);
   if (!subs.length) return;
   const now = new Date();
   const today = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
@@ -2864,7 +2865,7 @@ function subBase(name) {
 async function gatherInsightData(uid) {
   const q = (sql) => pool.execute(sql, [uid]).then(([r]) => r);
   const [subs, cats, months, periods, loans, goals, budgets, food7, water7, weights, appts, todos, sett] = await Promise.all([
-    q('SELECT name, price, cycle, cancel_date, resume_date FROM subscriptions WHERE user_id = ?'),
+    q('SELECT name, price, cycle, cancel_date, resume_date, exclude_from_totals FROM subscriptions WHERE user_id = ?'),
     q("SELECT category, ROUND(SUM(-amount),2) AS spent FROM transactions WHERE user_id = ? AND planned = 0 AND amount < 0 AND `date` >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) GROUP BY category ORDER BY spent DESC LIMIT 8"),
     q("SELECT DATE_FORMAT(`date`, '%Y-%m') AS ym, ROUND(SUM(GREATEST(amount,0)),2) AS ein, ROUND(SUM(GREATEST(-amount,0)),2) AS aus FROM transactions WHERE user_id = ? AND planned = 0 AND `date` >= DATE_SUB(CURDATE(), INTERVAL 90 DAY) GROUP BY ym ORDER BY ym"),
     q("SELECT CASE WHEN `date` >= DATE_SUB(CURDATE(), INTERVAL 30 DAY) THEN 'recent' ELSE 'previous' END AS period, ROUND(SUM(GREATEST(amount,0)),2) AS ein, ROUND(SUM(GREATEST(-amount,0)),2) AS aus FROM transactions WHERE user_id = ? AND planned = 0 AND `date` >= DATE_SUB(CURDATE(), INTERVAL 60 DAY) GROUP BY period"),
@@ -2881,6 +2882,7 @@ async function gatherInsightData(uid) {
   const dn = new Date();
   const today = dn.getFullYear() + '-' + String(dn.getMonth() + 1).padStart(2, '0') + '-' + String(dn.getDate()).padStart(2, '0');
   const activeSubs = subs
+    .filter(s => !Number(s.exclude_from_totals))
     .filter(s => !s.cancel_date || s.cancel_date > today || (s.resume_date && s.resume_date <= today))
     .map(s => ({ name: s.name, price: Number(s.price) || 0, cycle: s.cycle, monthly: (Number(s.price) || 0) / (s.cycle === 'jährlich' ? 12 : 1) }));
   const subMonthly = activeSubs.reduce((a, s) => a + s.monthly, 0);
