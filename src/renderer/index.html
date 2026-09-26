@@ -1798,12 +1798,12 @@
     </sc-if>
 
     <sc-if value="{{ showTools }}">
-    <div data-screen-label="Werkzeuge" style="padding:26px 30px 44px;max-width:1340px;margin:0 auto;">
+    <div data-screen-label="Werkzeuge" style="padding:30px 30px 52px;max-width:1080px;margin:0 auto;">
       <div style="margin-bottom:22px;">
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:7px;flex-wrap:wrap;"><span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);flex:0 0 auto;white-space:nowrap;">Werkzeuge</span><div style="flex:1 1 auto;height:1px;background:var(--line2);"></div></div>
-        <div style="font-size:13px;color:var(--ink3);font-weight:500;">Rechner und Helfer rund um deine Finanzen · alles offline und lokal</div>
+        <div style="font-size:13px;color:var(--ink3);font-weight:500;">Rechner und Helfer rund um deine Finanzen · übersichtlich mit deinen echten Daten</div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr;gap:18px;margin-bottom:20px;">
         <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="piggy-bank" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Sparziel-Rechner</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Rate über Zeitraum oder Monatsanzahl berechnen</div></div></div>
           <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;margin-bottom:12px;">Zielbetrag €<input value="{{ sgAmount }}" onchange="{{ setSgAmount }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;box-sizing:border-box;" style-focus="border-color:var(--acc);"></label>
@@ -1884,14 +1884,19 @@
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:14px;margin:22px 0 14px;"><span style="font-size:12.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--ink2);">Was wäre wenn</span><div style="flex:1 1 auto;height:1px;background:var(--line2);"></div><span style="font-size:12px;color:var(--mut);">rechnet mit deinen echten Daten</span></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px;">
-        <div style="background:var(--panel);border:1px solid var(--cardbd);border-radius:18px;box-shadow:var(--cardsh);padding:22px;">
+      <div style="display:grid;grid-template-columns:1fr;gap:18px;margin-bottom:16px;">
+        <div style="background:linear-gradient(135deg,var(--panel),rgba(163,230,53,.035));border:1px solid var(--acc-bd);border-radius:20px;box-shadow:var(--cardsh);padding:24px;">
           <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;"><div style="width:40px;height:40px;border-radius:12px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;color:var(--acc);"><i data-lucide="zap" style="width:19px;height:19px;"></i></div><div><div style="font-size:15px;font-weight:700;">Sondertilgung</div><div style="font-size:12px;color:var(--ink3);margin-top:2px;">Schneller schuldenfrei</div></div></div>
           <sc-if value="{{ wHasLoans }}">
-          <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;margin-bottom:14px;">Extra pro Monat €<input value="{{ wSonder }}" onchange="{{ setWSonder }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:10px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;" style-focus="border-color:var(--acc);"></label>
-          <div style="display:flex;flex-direction:column;gap:8px;">
-            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;color:var(--ink3);">Früher fertig</span><span style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--acc);">{{ wSonderMonths }} Mon.</span></div>
-            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:12px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;"><span style="font-size:12px;color:var(--ink3);">Zinsen gespart</span><span style="font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--acc);">{{ wSonderInt }}</span></div>
+          <div style="display:grid;grid-template-columns:minmax(240px,1.4fr) minmax(180px,.8fr);gap:12px;margin-bottom:14px;">
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Kredit auswählen<select data-dc-bind-value="{{ wLoanId }}" onchange="{{ setWLoan }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:11px;padding:11px 12px;color:var(--ink);font-size:13px;outline:none;width:100%;"><sc-for list="{{ wLoanOptions }}" as="wo"><option value="{{ wo.id }}">{{ wo.label }}</option></sc-for></select></label>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--ink3);font-weight:600;">Extra pro Monat €<input value="{{ wSonder }}" onchange="{{ setWSonder }}" style="background:var(--bg2);border:1px solid var(--line3);border-radius:11px;padding:11px 12px;color:var(--ink);font-size:13.5px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;box-sizing:border-box;" style-focus="border-color:var(--acc);"></label>
+          </div>
+          <div style="padding:10px 12px;border-radius:11px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:flex-start;gap:9px;margin-bottom:14px;"><i data-lucide="info" style="width:15px;height:15px;color:var(--acc);margin-top:1px;flex:0 0 auto;"></i><span style="font-size:11.5px;color:var(--ink3);line-height:1.5;">{{ wSonderScope }}</span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:13px;padding:13px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Neue Restlaufzeit</div><div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:650;color:var(--ink);">{{ wSonderFinish }}</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:13px;padding:13px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Früher fertig</div><div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:650;color:var(--acc);">{{ wSonderMonths }} Mon.</div></div>
+            <div style="background:var(--bg);border:1px solid var(--cardbd);border-radius:13px;padding:13px 14px;"><div style="font-size:11px;color:var(--ink3);margin-bottom:6px;">Zinsen gespart</div><div style="font-family:'JetBrains Mono',monospace;font-size:16px;font-weight:650;color:var(--acc);">{{ wSonderInt }}</div></div>
           </div>
           </sc-if>
           <sc-if value="{{ wNoLoans }}"><div style="font-size:12.5px;color:var(--mut);line-height:1.5;padding:8px 0;">Leg zuerst einen Kredit unter Ausgaben an, dann rechne ich dir hier aus, wie viel eine Sondertilgung spart.</div></sc-if>
@@ -5399,6 +5404,7 @@ class Component extends DCLogic {
       glName:'', glTarget:'', glRate:'', glIcon:'plane', glDate:'', glStart:'', glAuto:true,
       sgMode:'dates', sgAmount:'1500', sgFrom:'', sgTo:'', sgMonths:'12',
       netMode:'monthly', netBrutto:'3500', netWeeklyHours:'40', netFrom:'', netTo:'', netTaxClass:'I', netState:'Rheinland-Pfalz', netChurch:false, netChildless:true,
+      wLoanId:'all', wSonder:'100',
       txType:'out', txName:'', txAmt:'', txCat:'Lebensmittel', txFolder:'', finFolderName:'', finFolderReturn:'', txQ:'', txFilter:'all', txAccount:'all',
       bookTab:'overview', bookAnalysisOpen:false, bookFolderClosed:{}, staging:[], stagingSel:{}, stagingVisibleLimit:100, sortFolder:'', sortPendingIds:[], txEditId:0, txInfo:'', txDate:'', txMonth:'', txAttachments:[], txExistingAttachments:[],
       bankStatus:null, bankConnectionId:0, bankBlz:'', bankUrl:'', bankLogin:'', bankPin:'', bankTanMedia:'', bankBusy:false, bankSyncDays:'3650', bankSyncProgress:1, bankSyncFound:0, bankSyncRange:1, bankSyncRanges:10, bankSearch:'', bankResults:[], bankBankName:'', bankTanToken:'', bankTanChallenge:'', bankTanCode:'', bankTanDecoupled:false, bankTanAction:'connect',
@@ -7270,6 +7276,7 @@ class Component extends DCLogic {
   setAzPrice = (e) => this.setState({ azPrice: e.target.value });
   setAzWage = (e) => this.setState({ azWage: e.target.value });
   setWSonder = (e) => this.setState({ wSonder: e.target.value });
+  setWLoan = (e) => this.setState({ wLoanId: e.target.value });
   setWRaiseGross = (e) => this.setState({ wRaiseGross: e.target.value });
   setWRaisePct = (e) => this.setState({ wRaisePct: e.target.value });
   setWExpRed = (e) => this.setState({ wExpRed: e.target.value });
@@ -7310,10 +7317,22 @@ class Component extends DCLogic {
     wLoans.forEach(l => { wBal += Number(l.balance) || 0; wRate += Number(l.rate) || 0; });
     const wExtra = n(s.wSonder, 100);
     const wHasLoans = wLoans.length > 0 && wBal > 0 && wRate > 0;
-    const wBaseMonths = wHasLoans ? Math.max(...wLoans.map(l => this.sim(Number(l.balance) || 0, Number(l.rate) || 0, Number(l.interest) || 0).months)) : 0;
-    const wBaseInterest = wHasLoans ? wLoans.reduce((sum, l) => sum + this.sim(Number(l.balance) || 0, Number(l.rate) || 0, Number(l.interest) || 0).totalInterest, 0) : 0;
-    const wWith = wHasLoans ? this.simLoansWithExtra(wLoans, wExtra) : { months:0, totalInterest:0 };
+    const wRequestedLoanId = String(s.wLoanId || 'all');
+    const wSelectedLoan = wRequestedLoanId === 'all' ? null : wLoans.find(l => String(l.id) === wRequestedLoanId);
+    const wLoanId = wSelectedLoan ? String(wSelectedLoan.id) : 'all';
+    const wCalcLoans = wSelectedLoan ? [wSelectedLoan] : wLoans;
+    const wBaseMonths = wHasLoans ? Math.max(...wCalcLoans.map(l => this.sim(Number(l.balance) || 0, Number(l.rate) || 0, Number(l.interest) || 0).months)) : 0;
+    const wBaseInterest = wHasLoans ? wCalcLoans.reduce((sum, l) => sum + this.sim(Number(l.balance) || 0, Number(l.rate) || 0, Number(l.interest) || 0).totalInterest, 0) : 0;
+    const wWith = wHasLoans ? this.simLoansWithExtra(wCalcLoans, wExtra) : { months:0, totalInterest:0 };
     const wMonthsSaved = Math.max(0, wBaseMonths - wWith.months), wIntSaved = Math.max(0, wBaseInterest - wWith.totalInterest);
+    const wFinishDate = new Date(now.getFullYear(), now.getMonth() + Math.max(0, wWith.months), 1);
+    const wSonderFinish = wWith.months > 0 ? this.MON_SHORT[wFinishDate.getMonth()] + ' ' + wFinishDate.getFullYear() : '–';
+    const wLoanOptions = [{ id:'all', label:'Alle Kredite · Extra gleichmäßig verteilen' }].concat(wLoans.map(l => ({ id:String(l.id), label:l.name + ' · Rest € ' + this.fmt(Number(l.balance) || 0) })));
+    const wSonderScope = wSelectedLoan
+      ? 'Die zusätzlichen € ' + this.fmt(wExtra) + ' gelten nur für „' + wSelectedLoan.name + '“. Andere Kredite beeinflussen dieses Ergebnis nicht.'
+      : (wLoans.length > 1
+        ? 'Die zusätzlichen € ' + this.fmt(wExtra) + ' werden zunächst mit € ' + this.fmt(wExtra / wLoans.length) + ' auf jeden der ' + wLoans.length + ' Kredite verteilt. Wird einer abbezahlt, verteilt sich nur dessen Sondertilgungsanteil weiter.'
+        : 'Die zusätzlichen € ' + this.fmt(wExtra) + ' gelten vollständig für „' + (wLoans[0] ? wLoans[0].name : 'den Kredit') + '“.');
     // Was-waere-wenn: Gehaltserhoehung (nutzt Netto-Schaetzung)
     const netOf = (gr) => { const soc = gr * 0.20; const tax = estTax(Math.max(0, (gr - soc) * 12)) / 12; return Math.max(0, gr - soc - tax); };
     const wrGross = n(s.wRaiseGross, 3500), wrPct = n(s.wRaisePct, 5), wrNew = wrGross * (1 + wrPct / 100), wrExtra = netOf(wrNew) - netOf(wrGross);
@@ -7323,7 +7342,7 @@ class Component extends DCLogic {
     wTx.forEach(t => { const a = Number(t.amount) || 0; if (a < 0) { wExpSum += (-a); const mk = String(t.date || '').slice(0, 7); if (mk) wMonths[mk] = 1; } });
     const wNMonths = Math.max(1, Object.keys(wMonths).length), wExpMon = wExpSum / wNMonths, wExpRedPct = n(s.wExpRed, 10), wExpSaveM = wExpMon * wExpRedPct / 100;
     return {
-      wSonder: s.wSonder == null ? '100' : s.wSonder, setWSonder: this.setWSonder, wHasLoans, wNoLoans: !wHasLoans,
+      wSonder: s.wSonder == null ? '100' : s.wSonder, setWSonder: this.setWSonder, setWLoan:this.setWLoan, wLoanId, wLoanOptions, wSonderScope, wSonderFinish, wHasLoans, wNoLoans: !wHasLoans,
       wSonderMonths: wMonthsSaved, wSonderYears: (wMonthsSaved / 12).toFixed(1).replace('.', ','), wSonderInt: '€ ' + this.fmt(wIntSaved),
       wRaiseGross: s.wRaiseGross == null ? '3500' : s.wRaiseGross, wRaisePct: s.wRaisePct == null ? '5' : s.wRaisePct, setWRaiseGross: this.setWRaiseGross, setWRaisePct: this.setWRaisePct,
       wRaiseNetM: '€ ' + this.fmt(wrExtra), wRaiseNetY: '€ ' + this.fmt(wrExtra * 12), wRaiseGrossNew: '€ ' + this.fmt(wrNew),
