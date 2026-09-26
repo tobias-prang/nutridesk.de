@@ -3896,7 +3896,7 @@
       <div style="margin-bottom:16px;">
         <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Startdatum (optional)</span>
         <input type="date" data-dc-bind-value="{{ lnStart }}" onchange="{{ setLnStart }}" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;box-sizing:border-box;color-scheme:dark;" style-focus="border-color:var(--acc);">
-        <div style="font-size:11.5px;color:var(--ink3);margin-top:6px;">Liegt das Datum in der Zukunft, erscheint der Kredit orange als „Geplant“ und zählt bis zum Start nicht zur Monatsbelastung.</div>
+        <div style="font-size:11.5px;color:var(--ink3);margin-top:6px;">Liegt das Datum in der Zukunft, erscheint der Kredit orange als „Geplant“. Seine Rate zählt erst ab dem Startmonat zur Monatsbelastung.</div>
       </div>
       <div style="display:{{ lnCalcD }};align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border-radius:11px;background:var(--acc-bg);border:1px solid var(--acc-bd);margin-bottom:18px;">
         <div style="min-width:0;"><div style="font-size:12.5px;color:var(--ink2);">Seit Vertragsbeginn bereits gezahlt: <span style="font-family:'JetBrains Mono',monospace;font-weight:600;color:var(--acc);">{{ lnCalcAmount }}</span></div><div style="font-size:11.5px;color:var(--ink3);margin-top:2px;">{{ lnCalcMonths }} Monate à Monatsrate (Schätzung)</div></div>
