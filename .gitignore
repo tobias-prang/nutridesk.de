@@ -9,6 +9,9 @@ dist/
 tmp/
 artifacts/
 
+# Private Laufzeitdaten auf dem Server (/home/nutridesk.de/app/assets)
+assets/
+
 .DS_Store
 Thumbs.db
 

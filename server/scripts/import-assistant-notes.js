@@ -5,7 +5,7 @@ const sourceFile=process.argv[2],account=String(process.argv[3]||'').trim();
 if(!sourceFile||!account){console.error('Aufruf: node scripts/import-assistant-notes.js data.json konto');process.exit(1);}
 const data=JSON.parse(fs.readFileSync(sourceFile,'utf8'));
 const icons={'fas fa-thumbtack':'pin','fas fa-chart-line':'chart-no-axes-combined','fas fa-route':'route','fas fa-comments':'messages-square','fas fa-lock':'lock-keyhole','fas fa-magnifying-glass':'search','fas fa-screwdriver-wrench':'wrench','fas fa-lightbulb':'lightbulb','fas fa-circle-check':'circle-check-big','fas fa-users-gear':'users','fas fa-network-wired':'network','fas fa-tv':'tv','fas fa-desktop':'monitor'};
-const noteImageRoot=process.env.NOTE_IMAGE_ROOT||'/home/nutridesk.de/assets/notes',backupRoot=process.env.NOTES_BACKUP_ROOT||'/home/nutridesk.de/backups/assistant-notes';
+const noteImageRoot=process.env.NOTE_IMAGE_ROOT||'/home/nutridesk.de/app/assets/notes',backupRoot=process.env.NOTES_BACKUP_ROOT||'/home/nutridesk.de/backups/assistant-notes';
 const pool=mysql.createPool({host:process.env.DB_HOST||'127.0.0.1',port:Number(process.env.DB_PORT||3306),user:process.env.DB_USER||'nutridesk',password:process.env.DB_PASS,database:process.env.DB_NAME||'nutridesk',connectionLimit:2});
 const list=v=>Array.isArray(v)?v.map(String):[];
 const decodeImage=src=>{const m=String(src||'').match(/^data:(image\/(?:png|jpeg|webp|gif));base64,([a-z0-9+/=\r\n]+)$/i);if(!m)throw new Error('Nicht unterstütztes eingebettetes Bildformat');return{mime:m[1].toLowerCase(),buffer:Buffer.from(m[2].replace(/\s/g,''),'base64')}};

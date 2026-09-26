@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS foods (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   barcode VARCHAR(32) NULL,
+  source_id VARCHAR(64) NULL,
   name VARCHAR(200) NOT NULL,
   brand VARCHAR(140) NULL,
   kcal DECIMAL(8,2) NOT NULL DEFAULT 0,
@@ -8,10 +9,12 @@ CREATE TABLE IF NOT EXISTS foods (
   protein DECIMAL(8,2) NOT NULL DEFAULT 0,
   fat DECIMAL(8,2) NOT NULL DEFAULT 0,
   source VARCHAR(40) NOT NULL DEFAULT 'manual',
+  market_de TINYINT(1) NOT NULL DEFAULT 0,
   image_small_url VARCHAR(500) NULL,
   normalized_name VARCHAR(200) GENERATED ALWAYS AS (LOWER(TRIM(name))) STORED,
   UNIQUE KEY uq_food_barcode (barcode),
-  UNIQUE KEY uq_food_normalized_name (normalized_name),
+  UNIQUE KEY uq_food_source_id (source, source_id),
+  KEY idx_food_normalized_name (normalized_name),
   FULLTEXT KEY ft_food_name_brand (name, brand)
 ) ENGINE=InnoDB;
 

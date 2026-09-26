@@ -271,9 +271,9 @@ function rateLimitGlobal(req, res, next) {
 app.use(rateLimitGlobal);
 
 // ---------- Cloud-Speicher (Dateien pro Nutzer, streng isoliert) ----------
-// Private Nutzerdateien liegen gesammelt unter /home/nutridesk.de/assets.
+// Private Nutzerdateien liegen gesammelt unter /home/nutridesk.de/app/assets.
 // Dieser Ordner ist absichtlich NICHT die öffentliche /assets-Webroute.
-const PRIVATE_ASSET_ROOT = process.env.PRIVATE_ASSET_ROOT || '/home/nutridesk.de/assets';
+const PRIVATE_ASSET_ROOT = process.env.PRIVATE_ASSET_ROOT || '/home/nutridesk.de/app/assets';
 const CLOUD_ROOT = process.env.CLOUD_ROOT || path.join(PRIVATE_ASSET_ROOT, 'cloud');
 const NOTE_IMAGE_ROOT = process.env.NOTE_IMAGE_ROOT || path.join(PRIVATE_ASSET_ROOT, 'notes');
 const CLOUD_CATS = ['garantie', 'vertrag', 'rechnung', 'versicherung', 'sonstiges'];
@@ -2819,7 +2819,7 @@ app.post('/ai/food-lookup', auth, asyncRoute(async (req, res) => {
     [rows] = await pool.execute(
       'SELECT name, kcal, carbs, protein, fat FROM foods WHERE MATCH(name, brand) AGAINST (? IN BOOLEAN MODE) ' +
       'ORDER BY (name LIKE ? AND kcal BETWEEN 20 AND 900) DESC, (name LIKE ?) DESC, ' +
-      '(name LIKE ? AND kcal BETWEEN 20 AND 900) DESC, (kcal > 0) DESC, LENGTH(name) ASC LIMIT 1',
+      '(name LIKE ? AND kcal BETWEEN 20 AND 900) DESC, (source = \'bls-4.0\') DESC, market_de DESC, (kcal > 0) DESC, LENGTH(name) ASC LIMIT 1',
       [bool, toks[0] + '%', toks[0] + '%', '%' + toks[0] + '%']);
   }
   if (!rows.length) {
@@ -2827,7 +2827,7 @@ app.post('/ai/food-lookup', auth, asyncRoute(async (req, res) => {
     // Name beginnt mit dem Begriff + plausible Nährwerte + kurzer Name zuerst.
     [rows] = await pool.execute(
       'SELECT name, kcal, carbs, protein, fat FROM foods WHERE name LIKE ? ' +
-      'ORDER BY (name LIKE ? AND kcal BETWEEN 20 AND 900) DESC, (name LIKE ?) DESC, (kcal > 0) DESC, LENGTH(name) ASC LIMIT 1',
+      'ORDER BY (name LIKE ? AND kcal BETWEEN 20 AND 900) DESC, (name LIKE ?) DESC, (source = \'bls-4.0\') DESC, market_de DESC, (kcal > 0) DESC, LENGTH(name) ASC LIMIT 1',
       ['%' + q + '%', q + '%', q + '%']);
   }
   if (!rows.length) throw bad('Dazu habe ich keine Nährwerte gefunden');
@@ -3720,11 +3720,26 @@ app.get('/food/search', auth, rateLimitUser('food-search', 40), asyncRoute(async
   const tokens = q.toLowerCase().replace(/[+\-><()~*"@]/g, ' ').split(/\s+/).filter(w => w.length >= 3).slice(0, 6);
   if (!tokens.length) return res.json({ items: [] });
   const bool = tokens.map(w => '+' + w + '*').join(' ');
+  const normalizedQuery = q.toLowerCase().trim();
   let rows;
   try {
     [rows] = await pool.execute(
-      'SELECT id, name, brand, kcal, carbs, protein, fat, image_small_url FROM foods WHERE MATCH(name, brand) AGAINST (? IN BOOLEAN MODE) LIMIT 40',
-      [bool]);
+      `SELECT id, name, brand, kcal, carbs, protein, fat, image_small_url
+       FROM foods
+       WHERE MATCH(name, brand) AGAINST (? IN BOOLEAN MODE)
+       ORDER BY CASE
+                  WHEN source='bls-4.0' AND (LOWER(name)=? OR LOWER(name)=CONCAT(?, ' roh')) THEN 6
+                  WHEN market_de=1 AND LOWER(name)=? THEN 5
+                  WHEN source='bls-4.0' AND (LOWER(name) LIKE CONCAT(?, ' %') OR LOWER(name) LIKE CONCAT(?, '-%')) THEN 4
+                  WHEN market_de=1 AND (LOWER(name) LIKE CONCAT(?, ' %') OR LOWER(name) LIKE CONCAT(?, '-%')) THEN 3
+                  WHEN source='bls-4.0' THEN 2
+                  WHEN market_de=1 THEN 1
+                  ELSE 0
+                END DESC,
+                MATCH(name, brand) AGAINST (? IN BOOLEAN MODE) DESC,
+                LENGTH(name) ASC
+       LIMIT 40`,
+      [bool, normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, normalizedQuery, bool]);
   } catch (e) { rows = []; }
   const items = [];
   const seen = new Set();
