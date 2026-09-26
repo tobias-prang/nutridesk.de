@@ -271,9 +271,11 @@ function rateLimitGlobal(req, res, next) {
 app.use(rateLimitGlobal);
 
 // ---------- Cloud-Speicher (Dateien pro Nutzer, streng isoliert) ----------
-const CLOUD_ROOT = process.env.CLOUD_ROOT || '/home/nutridesk.de/cloud';
-const STORAGE_ROOT = process.env.STORAGE_ROOT || '/home/nutridesk.de/storage';
-const NOTE_IMAGE_ROOT = path.join(STORAGE_ROOT, 'note-images');
+// Private Nutzerdateien liegen gesammelt unter /home/nutridesk.de/assets.
+// Dieser Ordner ist absichtlich NICHT die öffentliche /assets-Webroute.
+const PRIVATE_ASSET_ROOT = process.env.PRIVATE_ASSET_ROOT || '/home/nutridesk.de/assets';
+const CLOUD_ROOT = process.env.CLOUD_ROOT || path.join(PRIVATE_ASSET_ROOT, 'cloud');
+const NOTE_IMAGE_ROOT = process.env.NOTE_IMAGE_ROOT || path.join(PRIVATE_ASSET_ROOT, 'notes');
 const CLOUD_CATS = ['garantie', 'vertrag', 'rechnung', 'versicherung', 'sonstiges'];
 const userCloudDir = (uid) => path.join(CLOUD_ROOT, String(parseInt(uid, 10)));
 async function ensureUserCloud(uid) { const dir = userCloudDir(uid); await fsp.mkdir(dir, { recursive: true }); return dir; }
@@ -301,7 +303,7 @@ function safeCloudPath(uid, storedName) {
 const MAX_CLOUD_FILE = 250 * 1024 * 1024;
 // SEC-004B: Uploads landen ZUERST in einer Quarantaene (ausserhalb des aktiven Cloud-Verzeichnisses),
 // werden validiert + gescannt und erst nach bestandener Pruefung atomar ins Aktivverzeichnis verschoben.
-const QUARANTINE_ROOT = process.env.QUARANTINE_ROOT || '/home/nutridesk.de/quarantine';
+const QUARANTINE_ROOT = process.env.QUARANTINE_ROOT || path.join(PRIVATE_ASSET_ROOT, 'quarantine');
 async function ensureQuarantine() { await fsp.mkdir(QUARANTINE_ROOT, { recursive: true }); return QUARANTINE_ROOT; }
 async function reapQuarantine() {
   try {
@@ -507,7 +509,7 @@ app.get('/admin/users', auth, requireAdmin, asyncRoute(async (req, res) => {
 }));
 
 app.get('/admin/storage', auth, requireAdmin, asyncRoute(async (req,res) => {
-  const st = await fsp.statfs(process.env.STORAGE_ROOT || '/home/nutridesk.de/storage');
+  const st = await fsp.statfs(PRIVATE_ASSET_ROOT);
   const total = Number(st.blocks) * Number(st.bsize), free = Number(st.bavail) * Number(st.bsize);
   const [[q]]=await pool.execute('SELECT COALESCE(SUM(cloud_quota),0) AS allocated FROM users');
   const [[u]]=await pool.execute('SELECT COALESCE(SUM(size),0) AS cloud_used FROM cloud_files');
@@ -532,7 +534,7 @@ app.put('/admin/users/:id/quota', auth, requireAdmin, asyncRoute(async (req, res
   const gb = vNum(req.body.quota_gb, 'Speicher (GB)', 0, 1024);
   const bytes = Math.round(gb * 1024 * 1024 * 1024);
   const [[quotaState]]=await pool.execute('SELECT COALESCE(SUM(cloud_quota),0) AS allocated,COALESCE(MAX(CASE WHEN id=? THEN cloud_quota END),0) AS current_quota FROM users',[id]);
-  const disk=await fsp.statfs(process.env.STORAGE_ROOT || '/home/nutridesk.de/storage');
+  const disk=await fsp.statfs(PRIVATE_ASSET_ROOT);
   const diskTotal=Number(disk.blocks)*Number(disk.bsize);
   if((Number(quotaState.allocated)||0)-(Number(quotaState.current_quota)||0)+bytes>diskTotal)throw bad('Nicht genügend zuweisbarer Serverspeicher verfügbar');
   const [r] = await pool.execute('UPDATE users SET cloud_quota = ? WHERE id = ?', [bytes, id]);

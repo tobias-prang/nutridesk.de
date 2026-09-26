@@ -363,7 +363,7 @@ CREATE TABLE IF NOT EXISTS couple_spaces (
 -- user_settings hat zusätzlich: vault_pin_hash VARCHAR(100) NULL (PIN für den Tresor, bcrypt)
 
 -- Cloud: Ordner (parent_id für Verschachtelung) und Dateien (auf Disk unter
--- /home/nutridesk.de/cloud/{USER_ID}/ mit zufälligem stored_name, DB hält Metadaten).
+-- /home/nutridesk.de/assets/cloud/{USER_ID}/ mit zufälligem stored_name, DB hält Metadaten).
 -- users.cloud_quota BIGINT (Default 2 GB) begrenzt den Speicher pro Nutzer (Admin verwaltbar).
 CREATE TABLE IF NOT EXISTS cloud_folders (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -488,7 +488,7 @@ ALTER TABLE transactions
 -- server/scripts/migrate-bank-connections.sql migriert.
 
 -- Bilder in strukturierten Notizen. Die Dateien liegen ausserhalb des Webroots
--- unter STORAGE_ROOT/note-images/{user_id}; Downloads sind immer authentifiziert.
+-- unter NOTE_IMAGE_ROOT/{user_id}; Downloads sind immer authentifiziert.
 CREATE TABLE IF NOT EXISTS assistant_note_images (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id       INT UNSIGNED NOT NULL,
