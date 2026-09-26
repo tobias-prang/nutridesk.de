@@ -1686,7 +1686,8 @@
                 <div style="display:flex;gap:8px;align-items:center;"><span style="font-size:11px;font-weight:600;color:var(--ink3);background:var(--chip);border:1px solid var(--line3);padding:3px 9px;border-radius:6px;">{{ ln.zins }} Zins</span><div onclick="{{ addLoanInstallment }}" data-id="{{ ln.id }}" title="Eine reguläre Rate verbuchen" style="height:28px;border-radius:8px;padding:0 9px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;gap:4px;align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);cursor:pointer;font-size:11px;font-weight:700;" style-hover="opacity:.8;"><i data-lucide="plus" style="width:13px;height:13px;"></i>1 Rate</div><div onclick="{{ undoLoanInstallment }}" data-id="{{ ln.id }}" title="Letzte reguläre Rate zurücknehmen" style="height:28px;border-radius:8px;padding:0 9px;background:var(--chip);border:1px solid var(--line3);display:flex;gap:4px;align-items:center;justify-content:center;flex:0 0 auto;color:var(--ink2);cursor:pointer;font-size:11px;font-weight:700;" style-hover="opacity:.8;"><i data-lucide="minus" style="width:13px;height:13px;"></i>1 Rate</div><div onclick="{{ openLoanPay }}" data-id="{{ ln.id }}" title="Sondertilgung erfassen" style="width:28px;height:28px;border-radius:8px;background:var(--acc-bg);border:1px solid var(--acc-bd);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--acc);cursor:pointer;" style-hover="opacity:.8;"><i data-lucide="badge-euro" style="width:14px;height:14px;"></i></div><div onclick="{{ openLoanEdit }}" data-id="{{ ln.id }}" title="Bearbeiten" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:var(--acc);background:var(--chip);"><i data-lucide="pencil" style="width:14px;height:14px;"></i></div><div onclick="{{ delLoan }}" data-id="{{ ln.id }}" title="Löschen" style="width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--mut);cursor:pointer;" style-hover="color:#f87171;background:var(--chip);"><i data-lucide="trash-2" style="width:14px;height:14px;"></i></div></div>
               </div>
               <div style="font-family:'JetBrains Mono',monospace;font-size:26px;font-weight:600;letter-spacing:-.02em;">{{ ln.rest }}</div>
-              <div style="font-size:12px;color:var(--ink3);margin-top:3px;margin-bottom:12px;">Restschuld · Rate <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.rate }}</span>/Monat</div>
+              <div style="font-size:12px;color:var(--ink3);margin-top:3px;">Offen · Rate <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.rate }}</span>/Monat</div>
+              <div style="font-size:11.5px;color:var(--ink3);margin-top:4px;margin-bottom:12px;">Insgesamt <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.original }}</span></div>
               <div style="display:flex;gap:14px;font-size:11.5px;color:var(--ink3);margin-bottom:12px;flex-wrap:wrap;">
                 <span>Rate <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.paid }}</span> von <span style="font-family:'JetBrains Mono',monospace;color:var(--ink2);">{{ ln.total }}</span></span>
                 <span>Restzins <span style="font-family:'JetBrains Mono',monospace;color:#fbbf24;">{{ ln.restZins }}</span></span>
@@ -3862,13 +3863,18 @@
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
         <div>
-          <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Restschuld (€)</span>
-          <input value="{{ lnBalance }}" onchange="{{ setLnBalance }}" placeholder="0" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;" style-focus="border-color:var(--acc);">
+          <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Insgesamt (€)</span>
+          <input value="{{ lnOriginal }}" onchange="{{ setLnOriginal }}" placeholder="0" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;" style-focus="border-color:var(--acc);">
         </div>
         <div>
           <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Monatsrate (€)</span>
           <input value="{{ lnRate }}" onchange="{{ setLnRate }}" placeholder="0" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--ink);font-size:14px;font-family:'JetBrains Mono',monospace;outline:none;" style-focus="border-color:var(--acc);">
         </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <span style="display:block;font-size:11px;font-weight:600;color:var(--ink3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;">Offen (€)</span>
+        <input value="{{ lnBalance }}" onchange="{{ setLnBalance }}" placeholder="Wird automatisch berechnet" style="width:100%;background:var(--bg2);border:1px solid var(--line3);border-radius:10px;padding:11px 14px;color:var(--acc);font-size:14px;font-family:'JetBrains Mono',monospace;font-weight:600;outline:none;" style-focus="border-color:var(--acc);">
+        <div style="font-size:11.5px;color:var(--ink3);margin-top:6px;">Automatisch: Insgesamt minus bereits gezahlte Raten. Bei abweichenden Schluss- oder Sonderraten kannst du den offenen Betrag anpassen.</div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
         <div>
@@ -5424,7 +5430,7 @@ class Component extends DCLogic {
       abcId:0, abcName:'', abcDate:'', abrId:0, abrName:'', abrDate:'',
       finTips:[], tipsBusy:false,
       asIcon:'landmark', asName:'', asValue:'', asNote:'',
-      lnName:'', lnBalance:'', lnRate:'', lnInterest:'', lnPaid:'', lnTotal:'24',
+      lnName:'', lnOriginal:'', lnBalance:'', lnRate:'', lnInterest:'', lnPaid:'', lnTotal:'24', lnExtraPaid:0,
       bgIcon:'shopping-basket', bgCategory:'Lebensmittel', bgLimit:'',
       expSel:{ tx:true, abos:true, loans:true, tracker:true, plan:false, shop:false, profil:false }, expFmt:'csv', expRange:'Dieser Monat',
       pwOld:'', pwNew:'', pwNew2:'', pwBusy:false, emailPw:'',
@@ -7873,8 +7879,19 @@ class Component extends DCLogic {
   openExport = () => this.setState({ modal:'export' });
   openAsset = () => this.setState({ modal:'asset', asId:0, asName:'', asValue:'', asNote:'', asIcon:'landmark' });
   openAssetEdit = (e) => { const a = (this.state.data.assets || []).find(x => x.id === parseInt(e.currentTarget.dataset.id)); if (!a) return; this.setState({ modal:'asset', asId:a.id, asName:a.name, asValue:String(a.value).replace('.', ','), asNote:a.note || '', asIcon:a.icon || 'landmark' }); };
-  openLoan = () => this.setState({ modal:'loan', lnId:0, lnName:'', lnBalance:'', lnRate:'', lnInterest:'', lnPaid:'', lnTotal:'24', lnType:'sonstiges', lnStart:'' });
-  openLoanEdit = (e) => { const l = (this.state.data.loans || []).find(x => x.id === parseInt(e.currentTarget.dataset.id)); if (!l) return; const paid = Number(l.paid_months) || 0, bc = Math.round(Number(l.balance) * 100), rc = Math.max(1, Math.round(Number(l.rate) * 100)), inferred = paid + Math.ceil(bc / rc); this.setState({ modal:'loan', lnId:l.id, lnName:l.name, lnBalance:String(l.balance).replace('.', ','), lnRate:String(l.rate).replace('.', ','), lnInterest:String(l.interest * 100).replace('.', ','), lnPaid:String(paid), lnTotal:String(l.total_installments || inferred), lnType:(l.type && this.LOAN_TYPES[l.type] ? l.type : 'sonstiges'), lnStart:(l.start_date ? String(l.start_date).slice(0, 10) : '') }); };
+  openLoan = () => this.setState({ modal:'loan', lnId:0, lnName:'', lnOriginal:'', lnBalance:'', lnRate:'', lnInterest:'', lnPaid:'', lnTotal:'24', lnExtraPaid:0, lnType:'sonstiges', lnStart:'' });
+  openLoanEdit = (e) => {
+    const l = (this.state.data.loans || []).find(x => x.id === parseInt(e.currentTarget.dataset.id));
+    if (!l) return;
+    const paid = Number(l.paid_months) || 0, balance = Number(l.balance) || 0, rate = Number(l.rate) || 0;
+    const original = Number(l.original_amount) > 0 ? Number(l.original_amount) : balance + paid * rate;
+    const bc = Math.round(balance * 100), rc = Math.max(1, Math.round(rate * 100)), inferred = paid + Math.ceil(bc / rc);
+    const monthlyInterest = (Number(l.interest) || 0) / 12;
+    const factor = Math.pow(1 + monthlyInterest, paid);
+    const scheduledOpen = monthlyInterest > 0 ? original * factor - rate * ((factor - 1) / monthlyInterest) : original - paid * rate;
+    const extraPaid = Math.max(0, scheduledOpen - balance);
+    this.setState({ modal:'loan', lnId:l.id, lnName:l.name, lnOriginal:String(original.toFixed(2)).replace('.', ','), lnBalance:String(balance.toFixed(2)).replace('.', ','), lnRate:String(rate).replace('.', ','), lnInterest:String(l.interest * 100).replace('.', ','), lnPaid:String(paid), lnTotal:String(l.total_installments || inferred), lnExtraPaid:extraPaid, lnType:(l.type && this.LOAN_TYPES[l.type] ? l.type : 'sonstiges'), lnStart:(l.start_date ? String(l.start_date).slice(0, 10) : '') });
+  };
   pickLoanType = (e) => this.setState({ lnType: e.currentTarget.dataset.type });
   setLnStart = (e) => this.setState({ lnStart: e.target.value });
   _loanPaidMonths = () => {
@@ -8567,32 +8584,55 @@ class Component extends DCLogic {
   };
 
   setLnName = (e) => this.setState({ lnName: e.target.value });
-  setLnBalance = (e) => this.setState({ lnBalance: e.target.value });
-  setLnRate = (e) => this.setState({ lnRate: e.target.value });
+  _loanNumber = (value) => parseFloat(String(value || '0').replace(',', '.')) || 0;
+  _loanOpen = (original, rate, interest, paid, extraPaid) => {
+    const months = Math.max(0, paid), monthly = Math.max(0, interest) / 12, factor = Math.pow(1 + monthly, months);
+    const scheduled = monthly > 0 ? original * factor - rate * ((factor - 1) / monthly) : original - months * rate;
+    return Math.max(0, scheduled - Math.max(0, extraPaid || 0));
+  };
+  _loanOpenText = (original, rate, interest, paid, extraPaid) => this._loanOpen(original, rate, interest, paid, extraPaid).toFixed(2).replace('.', ',');
+  setLnOriginal = (e) => {
+    const value = e.target.value, original = this._loanNumber(value), rate = this._loanNumber(this.state.lnRate), interest = this._loanNumber(this.state.lnInterest) / 100, paid = Math.max(0, parseInt(this.state.lnPaid) || 0);
+    this.setState({ lnOriginal:value, lnBalance:this._loanOpenText(original, rate, interest, paid, this.state.lnExtraPaid) });
+  };
+  setLnBalance = (e) => {
+    const value = e.target.value, balance = this._loanNumber(value), original = this._loanNumber(this.state.lnOriginal), rate = this._loanNumber(this.state.lnRate), interest = this._loanNumber(this.state.lnInterest) / 100, paid = Math.max(0, parseInt(this.state.lnPaid) || 0);
+    this.setState({ lnBalance:value, lnExtraPaid:Math.max(0, this._loanOpen(original, rate, interest, paid, 0) - balance) });
+  };
+  setLnRate = (e) => {
+    const value = e.target.value, rate = this._loanNumber(value), original = this._loanNumber(this.state.lnOriginal), interest = this._loanNumber(this.state.lnInterest) / 100, paid = Math.max(0, parseInt(this.state.lnPaid) || 0);
+    this.setState({ lnRate:value, lnBalance:this._loanOpenText(original, rate, interest, paid, this.state.lnExtraPaid) });
+  };
   _applyLoanTerm = (raw) => {
     const total = Math.max(1, parseInt(raw) || 1), paid = Math.max(0, parseInt(this.state.lnPaid) || 0);
-    const remaining = Math.max(1, total - paid);
-    const balance = parseFloat((this.state.lnBalance || '0').replace(',', '.')) || 0;
+    const original = this._loanNumber(this.state.lnOriginal);
     const annual = (parseFloat((this.state.lnInterest || '0').replace(',', '.')) || 0) / 100;
     let payment = 0;
-    if (balance > 0) { const monthly = annual / 12; payment = monthly > 0 ? balance * monthly / (1 - Math.pow(1 + monthly, -remaining)) : balance / remaining; }
-    this.setState({ lnTotal:String(total), lnRate:payment > 0 ? payment.toFixed(2).replace('.', ',') : this.state.lnRate });
+    if (original > 0) { const monthly = annual / 12; payment = monthly > 0 ? original * monthly / (1 - Math.pow(1 + monthly, -total)) : original / total; }
+    const rate = payment > 0 ? payment : this._loanNumber(this.state.lnRate);
+    this.setState({ lnTotal:String(total), lnRate:payment > 0 ? payment.toFixed(2).replace('.', ',') : this.state.lnRate, lnBalance:this._loanOpenText(original, rate, annual, paid, this.state.lnExtraPaid) });
   };
   setLnTotal = (e) => this._applyLoanTerm(e.target.value);
   pickLoanTerm = (e) => this._applyLoanTerm(e.currentTarget.dataset.term);
-  setLnInterest = (e) => this.setState({ lnInterest: e.target.value });
-  setLnPaid = (e) => this.setState({ lnPaid: e.target.value });
+  setLnInterest = (e) => {
+    const value = e.target.value, interest = this._loanNumber(value) / 100, original = this._loanNumber(this.state.lnOriginal), rate = this._loanNumber(this.state.lnRate), paid = Math.max(0, parseInt(this.state.lnPaid) || 0);
+    this.setState({ lnInterest:value, lnBalance:this._loanOpenText(original, rate, interest, paid, this.state.lnExtraPaid) });
+  };
+  setLnPaid = (e) => {
+    const value = e.target.value, paid = Math.max(0, parseInt(value) || 0), original = this._loanNumber(this.state.lnOriginal), rate = this._loanNumber(this.state.lnRate), interest = this._loanNumber(this.state.lnInterest) / 100;
+    this.setState({ lnPaid:value, lnBalance:this._loanOpenText(original, rate, interest, paid, this.state.lnExtraPaid) });
+  };
   saveLoan = async () => {
     const s = this.state;
     const num = x => parseFloat((x || '0').replace(',', '.')) || 0;
-    const balance = num(s.lnBalance), rate = num(s.lnRate);
+    const original = num(s.lnOriginal), balance = num(s.lnBalance), rate = num(s.lnRate);
     const interest = num(s.lnInterest) / 100;
-    if (!s.lnName.trim() || balance <= 0 || rate <= 0) { this._toast('Bitte Name, Restschuld und Rate ausfüllen'); return; }
+    if (!s.lnName.trim() || original <= 0 || balance < 0 || rate <= 0) { this._toast('Bitte Name, Gesamtbetrag, offenen Betrag und Rate ausfüllen'); return; }
     const totalInstallments = parseInt(s.lnTotal) || 0;
     if (totalInstallments < 1 || totalInstallments < (parseInt(s.lnPaid) || 0)) { this._toast('Raten insgesamt müssen mindestens den bereits gezahlten Raten entsprechen'); return; }
     this.setState({ modal:'' });
     try {
-      await this.api(s.lnId ? '/loans/' + s.lnId : '/loans', { method: s.lnId ? 'PUT' : 'POST', body:{ name: s.lnName.trim(), balance, rate, interest, paid_months: parseInt(s.lnPaid) || 0, total_installments: totalInstallments, type: s.lnType || 'sonstiges', start_date: s.lnStart || null } });
+      await this.api(s.lnId ? '/loans/' + s.lnId : '/loans', { method: s.lnId ? 'PUT' : 'POST', body:{ name: s.lnName.trim(), original_amount:original, balance, rate, interest, paid_months: parseInt(s.lnPaid) || 0, total_installments: totalInstallments, type: s.lnType || 'sonstiges', start_date: s.lnStart || null } });
       this._toast(s.lnId ? 'Kredit aktualisiert' : 'Kredit angelegt');
       this.refresh();
     } catch (e) { this._toast(e.message); }
@@ -9987,7 +10027,7 @@ class Component extends DCLogic {
       const pctPaid = origTotal > 0 ? Math.round(paid / origTotal * 100) : 0;
       return {
         id: l.id, name: l.name, zins: (interest * 100).toLocaleString('de-DE', { maximumFractionDigits: 2 }) + ' %',
-        rest:'€ ' + fmt(balance), rate:'€ ' + fmt(rate),
+        rest:'€ ' + fmt(balance), original:'€ ' + fmt(Number(l.original_amount) > 0 ? Number(l.original_amount) : balance + paid * rate), rate:'€ ' + fmt(rate),
         paid, total: origTotal, restZins:'€ ' + fmt(simr.totalInterest),
         ende: simr.months >= 600 ? 'nie (Rate zu klein)' : (simr.months > 0 ? monLabel(simr.months - 1) : '-'),
         endeC: simr.months >= 600 ? '#f87171' : 'var(--acc)',
@@ -11230,9 +11270,9 @@ class Component extends DCLogic {
       pickAssetIcon: this.pickAssetIcon,
       asName: s.asName, asValue: s.asValue, asNote: s.asNote,
       setAsName: this.setAsName, setAsValue: this.setAsValue, setAsNote: this.setAsNote, saveAsset: this.saveAsset,
-      lnName: s.lnName, lnBalance: s.lnBalance, lnRate: s.lnRate, lnInterest: s.lnInterest, lnPaid: s.lnPaid, lnTotal: s.lnTotal, lnStart: s.lnStart,
+      lnName: s.lnName, lnOriginal: s.lnOriginal, lnBalance: s.lnBalance, lnRate: s.lnRate, lnInterest: s.lnInterest, lnPaid: s.lnPaid, lnTotal: s.lnTotal, lnStart: s.lnStart,
       loanTerms: [1,3,6,12,24,36,48,60].map(n => { const on = String(s.lnTotal) === String(n); return { n, st:{ c:on?'var(--acc)':'var(--ink3)', bg:on?'var(--acc-bg)':'var(--chip)', bd:on?'var(--acc-bd)':'var(--line3)' } }; }), pickLoanTerm: this.pickLoanTerm,
-      setLnName: this.setLnName, setLnBalance: this.setLnBalance, setLnRate: this.setLnRate, setLnInterest: this.setLnInterest, setLnPaid: this.setLnPaid, setLnTotal: this.setLnTotal, setLnStart: this.setLnStart, saveLoan: this.saveLoan,
+      setLnName: this.setLnName, setLnOriginal: this.setLnOriginal, setLnBalance: this.setLnBalance, setLnRate: this.setLnRate, setLnInterest: this.setLnInterest, setLnPaid: this.setLnPaid, setLnTotal: this.setLnTotal, setLnStart: this.setLnStart, saveLoan: this.saveLoan,
       loanTypes: Object.keys(this.LOAN_TYPES).map(k => ({
         key:k, icon:this.LOAN_TYPES[k].icon, label:this.LOAN_TYPES[k].label,
         st: s.lnType === k ? { c:'var(--acc)', bg:'var(--acc-bg)', bd:'var(--acc-bd)' } : { c:'var(--ink3)', bg:'var(--bg)', bd:'var(--line3)' },

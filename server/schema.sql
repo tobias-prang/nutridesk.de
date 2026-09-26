@@ -157,6 +157,7 @@ CREATE TABLE IF NOT EXISTS loans (
   id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   user_id       INT UNSIGNED NOT NULL,
   name          VARCHAR(120) NOT NULL,
+  original_amount DECIMAL(10,2) NULL,
   balance       DECIMAL(10,2) NOT NULL,
   rate          DECIMAL(8,2) NOT NULL,
   interest      DECIMAL(6,4) NOT NULL DEFAULT 0,
@@ -264,6 +265,9 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB;
+
+ALTER TABLE loans
+  ADD COLUMN IF NOT EXISTS original_amount DECIMAL(10,2) NULL AFTER name;
 
 -- Prüfliste für CSV- und FinTS-Importe vor der Übernahme ins Finanzbuch.
 CREATE TABLE IF NOT EXISTS staging_transactions (

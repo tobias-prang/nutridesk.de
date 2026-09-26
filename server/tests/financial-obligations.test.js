@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { applyRegularInstallment, getMonthlyFinancialObligations, getCurrentMonthExpenses } = require('../lib/financial-obligations');
+const { applyRegularInstallment, undoRegularInstallment, getMonthlyFinancialObligations, getCurrentMonthExpenses } = require('../lib/financial-obligations');
 
 const month = '2026-09';
 const loans = [8.50, 90.50, 22.01, 146.39, 27.12, 79.89].map((rate, id) => ({ id, balance: 1000, rate }));
@@ -57,4 +57,10 @@ test('+1 Rate reduziert Restschuld und erhöht den Ratenzähler', () => {
 
 test('+1 Rate verwendet bei der letzten Rate nur die Restschuld', () => {
   assert.deepEqual(applyRegularInstallment({ balance: 10, rate: 30, paid_months: 4 }), { paid: 10, balance: 0, paidMonths: 5 });
+});
+
+test('+1 Rate berücksichtigt bei verzinsten Krediten zuerst den Monatszins', () => {
+  const next = applyRegularInstallment({ balance: 8500, rate: 410, interest: 0.1422, paid_months: 0 });
+  assert.deepEqual(next, { paid: 410, balance: 8190.73, paidMonths: 1 });
+  assert.equal(undoRegularInstallment({ balance: next.balance, interest: 0.1422 }, next.paid), 8500);
 });

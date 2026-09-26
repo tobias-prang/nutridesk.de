@@ -21,7 +21,7 @@ const { validateUpload } = require('./lib/upload-guard'); // SEC-004B: Upload-Va
 const badwords = require('./badwords');
 const packs = require('./packs');
 const { scanFile } = require('./lib/malware-scan'); // SEC-004B: Malware-Scan (fail-closed)
-const { applyRegularInstallment, getMonthlyFinancialObligations, getCurrentMonthExpenses } = require('./lib/financial-obligations');
+const { applyRegularInstallment, undoRegularInstallment, getMonthlyFinancialObligations, getCurrentMonthExpenses } = require('./lib/financial-obligations');
 
 const PORT = parseInt(process.env.PORT || '8420', 10);
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -1096,6 +1096,7 @@ const RESOURCES = {
       name: b.name !== undefined || !partial ? vStr(b.name, 'Name', 120) : undefined,
       type: b.type !== undefined ? vEnum(b.type, 'Kreditart', ['sonstiges', 'finanzkredit', 'autokredit', 'immobilie', 'ratenkredit', 'privatkredit', 'studienkredit', 'dispo']) : (partial ? undefined : 'sonstiges'),
       start_date: b.start_date !== undefined ? vDate(b.start_date, 'Vertragsbeginn', { optional: true }) : (partial ? undefined : null),
+      original_amount: b.original_amount !== undefined ? vNum(b.original_amount, 'Gesamtbetrag', 0.01, 99999999) : (partial ? undefined : vNum(b.balance, 'Gesamtbetrag', 0.01, 99999999)),
       balance: b.balance !== undefined || !partial ? vNum(b.balance, 'Restschuld', 0, 99999999) : undefined,
       rate: b.rate !== undefined || !partial ? vNum(b.rate, 'Monatsrate', 0.01, 999999) : undefined,
       interest: b.interest !== undefined || !partial ? vNum(b.interest, 'Zinssatz', 0, 1) : undefined,
@@ -3815,7 +3816,7 @@ app.delete('/loans/:id/installment', auth, loanPayLimit, asyncRoute(async (req, 
     if (!last) { await conn.rollback(); return res.status(400).json({ error: 'Keine reguläre Rate zum Zurücknehmen vorhanden' }); }
     const expected = 'Reguläre Rate #' + (Number(loan.paid_months) || 0);
     if (last.note !== expected) { await conn.rollback(); return res.status(400).json({ error: 'Nur die zuletzt verbuchte reguläre Rate kann zurückgenommen werden' }); }
-    const restored = Math.round((Number(loan.balance) + Number(last.amount)) * 100) / 100;
+    const restored = undoRegularInstallment(loan, last.amount);
     await conn.execute('UPDATE loans SET balance=?, paid_months=GREATEST(0, paid_months-1) WHERE id=?', [restored, loan.id]);
     await conn.execute('DELETE FROM loan_payments WHERE id=?', [last.id]);
     await conn.commit();

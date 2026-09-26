@@ -37,8 +37,24 @@ function applyRegularInstallment(item) {
   const rate = cents(item.rate);
   if (balance <= 0) throw new Error('Kredit ist bereits vollständig getilgt');
   if (rate <= 0) throw new Error('Kreditrate ist ungültig');
-  const paid = Math.min(balance, rate);
-  return { paid: money(paid), balance: money(balance - paid), paidMonths: (Number(item.paid_months) || 0) + 1 };
+  const monthlyInterest = Math.max(0, Number(item.interest) || 0) / 12;
+  const interest = Math.round(balance * monthlyInterest);
+  const due = balance + interest;
+  const paid = Math.min(due, rate);
+  return { paid: money(paid), balance: money(due - paid), paidMonths: (Number(item.paid_months) || 0) + 1 };
+}
+
+function undoRegularInstallment(item, paidValue) {
+  const current = cents(item.balance);
+  const paid = cents(paidValue);
+  const monthlyInterest = Math.max(0, Number(item.interest) || 0) / 12;
+  if (monthlyInterest <= 0) return money(current + paid);
+  const estimate = Math.round((current + paid) / (1 + monthlyInterest));
+  for (let delta = -3; delta <= 3; delta++) {
+    const previous = Math.max(0, estimate + delta);
+    if (previous + Math.round(previous * monthlyInterest) - paid === current) return money(previous);
+  }
+  return money(estimate);
 }
 
 function subscriptionChargeCents(item, month) {
@@ -78,4 +94,4 @@ function getCurrentMonthExpenses({ transactions = [], month }) {
   return money(spentCents);
 }
 
-module.exports = { cents, monthBounds, loanChargeCents, applyRegularInstallment, getMonthlyFinancialObligations, getCurrentMonthExpenses };
+module.exports = { cents, monthBounds, loanChargeCents, applyRegularInstallment, undoRegularInstallment, getMonthlyFinancialObligations, getCurrentMonthExpenses };
